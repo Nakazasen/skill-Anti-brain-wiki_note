@@ -1,0 +1,5 @@
+# GitHub linguist overrides
+# Show correct language (not PowerShell)
+*.ps1 linguist-vendored
+*.sh linguist-vendored
+docs/** linguist-documentation
