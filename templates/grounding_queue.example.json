@@ -1,0 +1,20 @@
+{
+  "_schema": "hybrid-abw/grounding-queue/1.0",
+  "_description": "Example grounding queue entry. Copy structure for real operations.",
+  "example_entry": {
+    "id": "gq-SRC-20260411-0001",
+    "manifest_ref": "processed/manifest.jsonl#line-1",
+    "source_title": "Example Source Title",
+    "query": "Summarize key claims from [source]",
+    "priority": "high",
+    "status": "pending",
+    "created_at": "2026-04-11T22:00:00+07:00",
+    "started_at": null,
+    "completed_at": null,
+    "grounding_engine": "notebooklm",
+    "notebook_id": null,
+    "result_summary": null,
+    "target_wiki_path": "wiki/concepts/example.md",
+    "error": null
+  }
+}

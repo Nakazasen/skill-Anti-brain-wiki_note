@@ -1,0 +1,95 @@
+[🇻🇳 Tiếng Việt](README.md) | 🇬🇧 **English**
+
+# 🧠 Hybrid Anti-Brain-Wiki (Hybrid ABW)
+
+> **Agentic Knowledge Management System with Test-Time Compute (TTC) Deliberation.**
+> Transform static documentation into a self-critiquing, verifiable, and deeply reasoning knowledge entity.
+
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](AGENTS.md)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Framework](https://img.shields.io/badge/Framework-AWF%204.1-8b5cf6.svg)](https://github.com/TUAN130294/awf)
+
+---
+
+## ✨ Why "Anti-Brain-Wiki"?
+
+Traditional Wikis are often "dead" documentation repositories. **Hybrid ABW** changes this by integrating AI into the data lifecycle:
+- **Anti-Hallucination**: Answers are never based on guesswork. Every response must be cited from an evidence Manifest.
+- **Extended Thinking**: Uses a **Test-Time Compute (TTC)** mechanism to perform reasoning loops (Deliberation Loop) before providing the final answer.
+- **Persistent Memory**: Strictly separates Operational state (`.brain/`), Persistent knowledge (`wiki/`), and Grounding Engines (NotebookLM).
+
+---
+
+## 🚀 Breakthrough Features
+
+### 1. TTC Deliberation Layer (v1.1.0)
+AI reasoning is no longer a "one-shot" pass. For complex queries, the system activates **Deliberative** mode:
+- **Decomposition**: Breaks complex problems into solvable sub-tasks.
+- **Self-Critique**: Scores answers against 5 rigorous criteria (0-10 scale).
+- **Circuit Breaker**: Intelligent triggers to prevent infinite loops and optimize token budget.
+
+### 2. Grounded Ingestion Pipeline
+A 6-stage data ingestion process ensures absolute integrity:
+- Automatic extraction of Claims & Entities.
+- Idempotency checks via SHA-256.
+- Full Provenance tracing back to the specific line in the evidence Manifest.
+
+### 3. Hybrid Grounding
+Supports multi-layered verification:
+- **NotebookLM**: Deep grounding on private datasets.
+- **Manual**: Human-in-the-loop verification.
+- **Fallback Mode**: Automatic queuing for later grounding if MCP is disconnected.
+
+---
+
+## 🛠️ Installation
+
+This repository is a Skill set for the **Antigravity IDE**.
+
+1. Clone the repository into your skills directory.
+2. Ensure **AWF v4.0+** is installed.
+3. Run the bootstrap command:
+   ```
+   /init
+   ```
+
+---
+
+## 🎮 Core Commands
+
+| Command | Function | Description |
+|---------|----------|-------------|
+| `/abw-ingest` | 📥 Ingest Knowledge | Process raw files into the Wiki with full evidence tracking |
+| `/abw-query` | 🔍 Fast Query | Search and retrieve cited answers from Wiki Layers 1-4 |
+| `/abw-query-deep` | 🧠 Deep Reasoning | Activate the TTC Deliberation loop for complex problems |
+| `/abw-lint` | 🏥 Quality Audit | Run 12 comprehensive health checks on the entire knowledge base |
+| `/abw-status` | 🚀 Status Check | Quick health check for MCP connection and Grounding Queue |
+| `/abw-setup` | ⚙️ System Setup | Interactive Wizard for NotebookLM connection setup |
+
+---
+
+## 📂 System Structure
+
+```
+.
+├── .brain/              # Operational state (Gaps, Queue, Deliberation Runs)
+├── wiki/                # Compiled knowledge (Markdown + Metadata)
+├── processed/           # Evidence layer (Manifest.jsonl)
+├── raw/                 # Raw input data
+├── skills/              # Core ABW logic & scripts
+└── templates/           # TTC Configuration templates (Exit Gate, Circuit Breaker)
+```
+
+---
+
+## 📜 Roadmap & Changelog
+
+### v1.1.0 (Current)
+- 🆕 **TTC Deliberation Controller**: 5-pass thinking loop implementation.
+- 🆕 **12-Check Audit**: Comprehensive linter for knowledge integrity.
+- 🆕 **Normalized Manifest**: Standardization of 12 fields for provenance chains.
+
+---
+
+**Build with 💡 and Test-Time Compute.**
+*Authored by Nakazasen & Antigravity Team*

@@ -1,0 +1,19 @@
+{
+  "_schema": "hybrid-abw/knowledge-gaps/1.0",
+  "_description": "Example knowledge gap entry. Copy structure for real gap logging.",
+  "example_entry": {
+    "id": "gap-20260411-0001",
+    "query": "What is the token throughput of Gemini Flash 2.5?",
+    "context": "User asked during query-wiki session",
+    "searched_locations": ["wiki/concepts/", "wiki/entities/"],
+    "notebooklm_checked": false,
+    "notebooklm_notebook_id": null,
+    "reason": "No source covers throughput benchmarks",
+    "priority": "medium",
+    "status": "open",
+    "created_at": "2026-04-11T22:00:00+07:00",
+    "resolved_at": null,
+    "resolution_path": null,
+    "suggested_sources": ["https://ai.google.dev/gemini-api/docs/models"]
+  }
+}

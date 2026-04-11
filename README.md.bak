@@ -1,0 +1,95 @@
+🇻🇳 **Tiếng Việt** | [🇬🇧 English](README.en.md)
+
+# 🧠 Hybrid Anti-Brain-Wiki (Hybrid ABW)
+
+> **Hệ quản trị tri thức Agentic với cơ chế Suy luận mở rộng (Test-Time Compute).**
+> Biến kho tài liệu tĩnh thành một thực thể tri thức có khả năng tự phê bình, kiểm chứng và suy luận sâu.
+
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](AGENTS.md)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Framework](https://img.shields.io/badge/Framework-AWF%204.1-8b5cf6.svg)](https://github.com/TUAN130294/awf)
+
+---
+
+## ✨ Tại sao là "Anti-Brain-Wiki"?
+
+Thông thường, Wiki là nơi chứa các tài liệu "chết". **Hybrid ABW** thay đổi điều đó bằng cách tích hợp AI vào từng nhịp thở của dữ liệu:
+- **Anti-Hallucination**: Không bao giờ trả lời dựa trên phỏng đoán. Mọi câu trả lời đều phải có trích dẫn từ Manifest bằng chứng.
+- **Extended Thinking**: Sử dụng cơ chế **Test-Time Compute (TTC)** để AI thực hiện các vòng tuần hoàn suy nghĩ (Deliberation Loop) trước khi đưa ra kết quả cuối cùng.
+- **Persistent Memory**: Tách biệt rõ ràng giữa bộ nhớ vận hành (Operational), kiến trúc bền vững (Wiki) và Grounding Engine (NotebookLM).
+
+---
+
+## 🚀 Tính Năng Đột Phá
+
+### 1. TTC Deliberation Layer (v1.1.0)
+AI không chỉ trả lời "phẳng". Khi gặp câu hỏi phức tạp, hệ thống kích hoạt chế độ **Deliberative**:
+- **Decomposition**: Chia nhỏ vấn đề.
+- **Self-Critique**: Tự chấm điểm câu trả lời dựa trên 5 tiêu chí khắt khe.
+- **Circuit Breaker**: Ngắt mạch thông minh để tránh vòng lặp vô tận và tối ưu chi phí.
+
+### 2. Grounded Ingestion Pipeline
+Quy trình nạp dữ liệu 6 giai đoạn đảm bảo tính toàn vẹn tuyệt đối:
+- Tự động trích xuất Claims & Entities.
+- Kiểm tra trùng lặp bằng SHA-256.
+- Truy vết nguồn gốc (Provenance) đến tận dòng cuối cùng của Manifest.
+
+### 3. Hybrid Grounding
+Hỗ trợ đa tầng xác thực:
+- **NotebookLM**: Grounding sâu trên dữ liệu private.
+- **Manual**: Xác thực bởi con người.
+- **Fallback Mode**: Tự động đưa vào hàng chờ (Queue) khi mất kết nối MCP.
+
+---
+
+## 🛠️ Cài Đặt
+
+Repo này là một bộ Skill dành cho **Antigravity IDE**.
+
+1. Clone repo vào thư mục skill của bạn.
+2. Đảm bảo bạn đã cài đặt **AWF v4.0+**.
+3. Chạy lệnh khởi tạo:
+   ```
+   /init
+   ```
+
+---
+
+## 🎮 Các Lệnh Chính
+
+| Lệnh | Chức năng | Mô tả |
+|------|-----------|-------|
+| `/abw-ingest` | 📥 Nạp kiến thức | Xử lý file raw và đưa vào Wiki với đầy đủ bằng chứng |
+| `/abw-query` | 🔍 Truy vấn nhanh | Tìm kiếm và trả lời trích dẫn từ Wiki tầng 1-4 |
+| `/abw-query-deep` | 🧠 Suy luận sâu | Kích hoạt TTC Deliberation cho các vấn đề phức tạp |
+| `/abw-lint` | 🏥 Kiểm soát chất lượng | Chạy 12 bài kiểm tra định kỳ cho toàn bộ kho tri thức |
+| `/abw-status` | 🚀 Kiểm tra trạng thái | Kiểm tra nhanh kết nối MCP và hàng chờ Grounding |
+| `/abw-setup` | ⚙️ Cài đặt hệ thống | Interactive Wizard hướng dẫn kết nối NotebookLM |
+
+---
+
+## 📂 Cấu Trúc Hệ Thống
+
+```
+.
+├── .brain/              # Trạng thái vận hành (Gaps, Queue, Deliberation Runs)
+├── wiki/                # Kho tri thức đã biên soạn (Markdown + Metadata)
+├── processed/           # Tầng bằng chứng (Manifest.jsonl)
+├── raw/                 # Dữ liệu thô đầu vào
+├── skills/              # Logic cốt lõi của ABW
+└── templates/           # Mẫu cấu hình cho TTC (Exit Gate, Circuit Breaker)
+```
+
+---
+
+## 📜 Lộ Trình Phát Triển (Changelog)
+
+### v1.1.0 (Current)
+- 🆕 **TTC Deliberation Controller**: Vòng lặp suy nghĩ 5 bước.
+- 🆕 **12-Check Audit**: Hệ thống linter toàn diện cho tri thức.
+- 🆕 **Normalized Manifest**: Chuẩn hóa 12 trường dữ liệu cho provenance chain.
+
+---
+
+**Build with 💡 and Test-Time Compute.**
+*Authored by Nakazasen & Antigravity Team*

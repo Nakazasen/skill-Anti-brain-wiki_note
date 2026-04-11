@@ -1,0 +1,46 @@
+{
+  "run_id": "delib-20260411-0001",
+  "query": "What should we do about API rate limits for enterprise customers?",
+  "mode": "deliberative",
+  "rounds": 3,
+  "max_rounds": 4,
+  "exit_reason": "score_threshold_met",
+  "exit_score": 9,
+  "circuit_breaker_triggered": false,
+  "scores": {
+    "evidence_coverage": 2,
+    "citation_integrity": 2,
+    "consistency": 1,
+    "grounding_status": 2,
+    "answer_completeness": 2
+  },
+  "passes": [
+    {
+      "pass": 1,
+      "type": "decomposition",
+      "result": "Decomposed into: what=rate limit policy, evidence=wiki/concepts/api-rate-limits.md, missing=enterprise tier data, verify=current limits vs proposed"
+    },
+    {
+      "pass": 2,
+      "type": "evidence_assembly",
+      "result": "Found wiki/concepts/api-rate-limits.md (grounded, high), manifest#line-7. Missing: enterprise pricing data."
+    },
+    {
+      "pass": 3,
+      "type": "self_critique",
+      "result": "Citation chain complete. One ambiguity: enterprise vs standard tier not distinguished in existing note. Score: 9/10 -- exit."
+    }
+  ],
+  "used_wiki_notes": [
+    "wiki/concepts/api-rate-limits.md"
+  ],
+  "used_manifest_refs": [
+    "processed/manifest.jsonl#line-7"
+  ],
+  "used_notebooklm": false,
+  "notebooklm_queries": [],
+  "result_status": "grounded",
+  "gaps_logged": [],
+  "created_at": "2026-04-11T23:10:00+07:00",
+  "duration_ms": 4200
+}

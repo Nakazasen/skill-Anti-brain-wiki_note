@@ -1,0 +1,51 @@
+# =============================================================================
+# Hybrid Anti-Brain-Wiki .gitignore
+# Policy: AWF 4.1 Eternal Context Design + ABW runtime state separation
+# =============================================================================
+
+# --- .brain/ runtime state (NEVER commit) ---
+# Per AWF save_brain.md: session.json is always local state
+.brain/session.json
+.brain/session_log.txt
+.brain/cache/
+
+# ABW runtime state -- generated at runtime by ingest-wiki, query-wiki, lint-wiki
+# Examples in templates/ -- these files start EMPTY and are populated by skills
+.brain/grounding_queue.json
+.brain/knowledge_gaps.json
+.brain/deliberation_runs.jsonl
+.brain/exit_gate_policy.json
+.brain/circuit_breaker.json
+
+# --- .brain/ files that MAY be committed ---
+# .brain/brain.json         -> Commit if team shares project knowledge (AWF policy)
+# .brain/snapshots/         -> Optional: commit for historical record
+# .brain/summaries/         -> Optional: commit for human-readable context
+# .brain/.gitkeep files     -> Always commit (preserve directory structure)
+
+# --- processed/ runtime data ---
+# manifest.jsonl is append-only runtime state. Each project generates its own.
+processed/manifest.jsonl
+
+# --- raw/ source files ---
+# Raw sources may be large (PDFs, videos). Decide per-project.
+# Uncomment below if raw files should not be committed:
+# raw/*
+# !raw/.gitkeep
+
+# --- wiki/ lint reports (generated output) ---
+wiki/_indexes/lint-report-*.md
+
+# --- OS and IDE artifacts ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# --- Node/Python artifacts (if applicable) ---
+node_modules/
+__pycache__/
+*.pyc
+.env
+.env.local
