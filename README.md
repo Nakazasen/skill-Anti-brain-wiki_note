@@ -1,102 +1,102 @@
-﻿# Hybrid Anti-Brain-Wiki (Hybrid ABW)
+# Hybrid Anti-Brain-Wiki (Hybrid ABW)
 
 > Version: 1.2.0
-> Tagline: Bien AI tu trang thai tra loi nhanh thanh mot he thong tri thuc co grounding (neo du lieu thuc te), co bo nho, va co suy luan ranh gioi (bounded deliberation).
+> Tagline: Biến AI từ trạng thái trả lời nhanh thành một hệ thống tri thức có grounding (neo dữ liệu thực tế), có bộ nhớ, và có suy luận ranh giới (bounded deliberation).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TTC: Enabled](https://img.shields.io/badge/Test--Time%20Compute-Active-brightgreen)](https://github.com/Nakazasen/skill-Anti-brain-wiki_note)
 
-Hybrid ABW la mot kien truc quan ly tri thuc va suy luan danh cho AI Agent. Muc tieu cua no la giai quyet 2 diem yeu pho bien nhat cua LLM:
+Hybrid ABW là một kiến trúc quản lý tri thức và suy luận dành cho AI Agent. Mục tiêu của nó là giải quyết 2 điểm yếu phổ biến nhất của LLM:
 
-- Thieu bo nho dai han dang tin cay.
-- Tra loi nghe co ve hop ly (plausible) nhung khong co nguon goc ro rang (provenance).
-
----
-
-## Tai sao lai la Hybrid ABW?
-
-Thay vi de AI tra loi theo kieu "single-pass" (nghi mot lan roi noi luon), Hybrid ABW buoc mo hinh phai di qua mot khung lam viec ro rang va chat che:
-
-1. doc context van hanh trong `.brain/`.
-2. Tim tri thuc da duoc bien soan trong thu muc `wiki/`.
-3. Neu can thiet, thuc hien grounding qua NotebookLM de lay chung cu.
-4. Neu chua du bang chung, he thong bat buoc phai "log gap" (ghi nhan lo hong kien thuc) thay vi "fake success" (gia vo biet va bia ra cau tra loi).
-
-## Kien truc 4 lop
-
-- `raw/`: Nguon goc tai lieu tho, chua qua xu ly.
-- `processed/`: Lop luu tru bang chung va nguon goc (provenance).
-- `wiki/`: Tri thuc ben vung, tuan thu schema va co trich dan (citation) ro rang.
-- `.brain/`: Trang thai van hanh, bao gom cac hang doi (queue), lich su lo hong kien thuc (gap log), va nhat ky suy luan (deliberation log).
-
-\* *Luu y: NotebookLM duoc su dung nhu mot co may neo du lieu (deep grounding engine), hoan toan khong phai la "than thanh hoa" hay "oracle" tuyet doi.*
+- Thiếu bộ nhớ dài hạn đáng tin cậy.
+- Trả lời nghe có vẻ hợp lý (plausible) nhưng không có nguồn gốc rõ ràng (provenance).
 
 ---
 
-## He thong suy luan TTC (Test-Time Compute Deliberation Engine)
+## Tại sao lại là Hybrid ABW?
 
-Hybrid ABW cung cap duong dan lenh `/abw-query-deep` danh cho cac cau hoi cuc kho nhu:
+Thay vì để AI trả lời theo kiểu "single-pass" (nghĩ một lần rồi nói luôn), Hybrid ABW buộc mô hình phải đi qua một khung làm việc rõ ràng và chặt chẽ:
 
-- Tong hop thong tin (Synthesis)
-- So sanh (Comparison)
-- Phan tich nguyen nhan goc re (Root Cause Analysis - RCA)
-- danh doi trong thiet ke (Design tradeoff)
-- Cac prompt co nhieu yeu to mau thuan (Contradiction-heavy prompts)
+1. Đọc context vận hành trong `.brain/`.
+2. Tìm tri thức đã được biên soạn trong thư mục `wiki/`.
+3. Nếu cần thiết, thực hiện grounding qua NotebookLM để lấy chứng cứ.
+4. Nếu chưa đủ bằng chứng, hệ thống bắt buộc phải "log gap" (ghi nhận lỗ hổng kiến thức) thay vì "fake success" (giả vờ biết và bịa ra câu trả lời).
 
-Luong TTC trai qua 5 buoc (passes):
+## Kiến trúc 4 lớp
 
-1. **Decomposition:** Chia nho van de.
-2. **Evidence Assembly:** Tap hop bang chung.
-3. **Grounding:** Neo du lieu thuc te voi NotebookLM.
-4. **Self-Critique:** Tu danh gia va phan bien noi bo.
-5. **Repair or Exit:** Sua chua phan hoi hoac thoat vong lap.
+- `raw/`: Nguồn gốc tài liệu thô, chưa qua xử lý.
+- `processed/`: Lớp lưu trữ bằng chứng và nguồn gốc (provenance).
+- `wiki/`: Tri thức bền vững, tuân thủ schema và có trích dẫn (citation) rõ ràng.
+- `.brain/`: Trạng thái vận hành, bao gồm các hàng đợi (queue), lịch sử lỗ hổng kiến thức (gap log), và nhật ký suy luận (deliberation log).
 
-Qua trinh suy luan (Deliberation) duoc chan lai an toan bang:
-
-- Cong thoat (exit gate) dua tren muc diem danh gia (score).
-- Cau dao tu dong ngat (circuit breaker) neu bi ket trong vong lap.
-- Ngan sach truy van (query budget) danh cho NotebookLM de tiet kiem token/thoi gian.
+\* *Lưu ý: NotebookLM được sử dụng như một cỗ máy neo dữ liệu (deep grounding engine), hoàn toàn không phải là "thần thánh hóa" hay "oracle" tuyệt đối.*
 
 ---
 
-## Fallback-first, Khong bao gio Fake Success
+## Hệ thống suy luận TTC (Test-Time Compute Deliberation Engine)
 
-day la **nguyen tac quan trong nhat** cua repository nay.
+Hybrid ABW cung cấp đường dẫn lệnh `/abw-query-deep` dành cho các câu hỏi cực khó như:
 
-Neu NotebookLM MCP chua san sang hoac gap loi:
+- Tổng hợp thông tin (Synthesis)
+- So sánh (Comparison)
+- Phân tích nguyên nhân gốc rễ (Root Cause Analysis - RCA)
+- Đánh đổi trong thiết kế (Design tradeoff)
+- Các prompt có nhiều yếu tố mâu thuẫn (Contradiction-heavy prompts)
 
-- Lenh `/abw-ingest` chi duoc phep tao artifact o dang `draft` hoac `pending_grounding`.
-- Lenh `/abw-query` se tra loi theo uu tien tu `wiki/` (wiki-first) va tao log gap neu thieu bang chung.
-- Lenh `/abw-query-deep` van chay, nhung se chu dong bo qua Buoc 3 (Grounding) hoac dat budget = 0 de he thong khong treo cho.
-- Lenh `/abw-lint` phai canh bao ro rang rang he thong dang trong trang thai fallback mode (thieu kha nang grounding sau).
+Luồng TTC trải qua 5 bước (passes):
 
-**Hybrid ABW luon uu tien su trung thuc hon la nhung cau tra loi "nghe co ve thong minh nhung sao rong".**
+1. **Decomposition:** Chia nhỏ vấn đề.
+2. **Evidence Assembly:** Tập hợp bằng chứng.
+3. **Grounding:** Neo dữ liệu thực tế với NotebookLM.
+4. **Self-Critique:** Tự đánh giá và phản biện nội bộ.
+5. **Repair or Exit:** Sửa chữa phản hồi hoặc thoát vòng lặp.
+
+Quá trình suy luận (Deliberation) được chặn lại an toàn bằng:
+
+- Cổng thoát (exit gate) dựa trên mức điểm đánh giá (score).
+- Cầu dao tự động ngắt (circuit breaker) nếu bị kẹt trong vòng lặp.
+- Ngân sách truy vấn (query budget) dành cho NotebookLM để tiết kiệm token/thời gian.
 
 ---
 
-## Quick Start (Bat dau nhanh)
+## Fallback-first, Không bao giờ Fake Success
 
-### 1. Cai dat cac Installer / Workflows
+Đây là **nguyên tắc quan trọng nhất** của repository này.
 
-Tren Windows:
+Nếu NotebookLM MCP chưa sẵn sàng hoặc gặp lỗi:
+
+- Lệnh `/abw-ingest` chỉ được phép tạo artifact ở dạng `draft` hoặc `pending_grounding`.
+- Lệnh `/abw-query` sẽ trả lời theo ưu tiên từ `wiki/` (wiki-first) và tạo log gap nếu thiếu bằng chứng.
+- Lệnh `/abw-query-deep` vẫn chạy, nhưng sẽ chủ động bỏ qua Bước 3 (Grounding) hoặc đặt budget = 0 để hệ thống không treo chờ.
+- Lệnh `/abw-lint` phải cảnh báo rõ ràng rằng hệ thống đang trong trạng thái fallback mode (thiếu khả năng grounding sâu).
+
+**Hybrid ABW luôn ưu tiên sự trung thực hơn là những câu trả lời "nghe có vẻ thông minh nhưng sáo rỗng".**
+
+---
+
+## Quick Start (Bắt đầu nhanh)
+
+### 1. Cài đặt các Installer / Workflows
+
+Trên Windows:
 
 ```powershell
 irm https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.ps1 | iex
 ```
 
-Tren macOS / Linux:
+Trên macOS / Linux:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.sh | sh
 ```
 
-### 2. Cai dat cau noi NotebookLM CLI
+### 2. Cài đặt cầu nối NotebookLM CLI
 
 ```bash
 uv tool install notebooklm-mcp-cli
 ```
 
-### 3. Khoi chay luong quy trinh chinh
+### 3. Khởi chạy luồng quy trình chính
 
 ```text
 /abw-init
@@ -110,77 +110,77 @@ uv tool install notebooklm-mcp-cli
    -> /abw-lint
 ```
 
-### 4. Quy trinh lam viec khuyen nghi
+### 4. Quy trình làm việc khuyến nghị
 
-1. Chep tai lieu tho vao `raw/`.
-2. Chay `/abw-ingest`.
-3. Thay vi phai "bat benh", ban hay su dung `/abw-ask` cho bat ky cau hoi nao. He thong Smart Router se tu dong phan loai va dinh tuyen cau hoi sang luong tu duy nhanh (Fast path), sau (Deep path), hoac khoi tao y tuong moi (Bootstrap path).
-4. Thuong xuyen bao tri du an bang `/abw-lint`.
+1. Chép tài liệu thô vào `raw/`.
+2. Chạy `/abw-ingest`.
+3. Thay vì phải "bắt bệnh", bạn hãy sử dụng `/abw-ask` cho bất kỳ câu hỏi nào. Hệ thống Smart Router sẽ tự động phân loại và định tuyến câu hỏi sang luồng tư duy nhanh (Fast path), sâu (Deep path), hoặc khởi tạo ý tưởng mới (Bootstrap path).
+4. Thường xuyên bảo trì dự án bằng `/abw-lint`.
 
 ---
 
-## Bang lenh he thong (Command Surface)
+## Bảng lệnh hệ thống (Command Surface)
 
-| Command | Muc dich |
+| Command | Mục đích |
 |---------|----------|
-| `/abw-init` | Khoi tao hoac sua chua cau truc thu muc Hybrid ABW. |
-| `/abw-setup` | dang nhap va xac nhan ket noi NotebookLM MCP. |
-| `/abw-status` | Kiem tra tinh trang MCP bridge va grounding queue. |
-| `/abw-ingest` | Xu ly tai lieu raw de tao manifest va wiki artifacts. |
-| `/abw-ask` | **Smart Router: Tu dong phan luong (dinh tuyen) sang query nhanh, suy luan sau hoac bootstrap y tuong moi!** |
+| `/abw-init` | Khởi tạo hoặc sửa chữa cấu trúc thư mục Hybrid ABW. |
+| `/abw-setup` | Đăng nhập và xác nhận kết nối NotebookLM MCP. |
+| `/abw-status` | Kiểm tra tình trạng MCP bridge và grounding queue. |
+| `/abw-ingest` | Xử lý tài liệu raw để tạo manifest và wiki artifacts. |
+| `/abw-ask` | **Smart Router: Tự động phân luồng (định tuyến) sang query nhanh, suy luận sâu hoặc bootstrap ý tưởng mới!** |
 
-**Cac nhanh phia sau Router:**
-| Lenh noi bo / Mo rong | Muc dich |
+**Các nhánh phía sau Router:**
+| Lệnh nội bộ / Mở rộng | Mục đích |
 |---------|----------|
-| `/abw-query` | Tra loi nhanh dua vao duong dan wiki-first (Tier 1). |
-| `/abw-query-deep` | Tra loi cho cac cau hoi kho, yeu cau TTC deliberation (Tier 2). |
-| `/abw-lint` | Audit kiem tra chuan wiki, qua trinh grounding, mau thuan va muc do khoe cua TTC. |
-| `/abw-bootstrap` | Kich hoat he thong suy luan y tuong moi (Tier 3), tao quan ly gia dinh (assumptions) & tap lenh xac nhan gia dinh (validation). |
+| `/abw-query` | Trả lời nhanh dựa vào đường dẫn wiki-first (Tier 1). |
+| `/abw-query-deep` | Trả lời cho các câu hỏi khó, yêu cầu TTC deliberation (Tier 2). |
+| `/abw-lint` | Audit kiểm tra chuẩn wiki, quá trình grounding, mâu thuẫn và mức độ khỏe của TTC. |
+| `/abw-bootstrap` | Kích hoạt hệ thống suy luận ý tưởng mới (Tier 3), tạo quản lý giả định (assumptions) & tập lệnh xác nhận giả định (validation). |
 
 ---
 
-## Tuong thich voi di san AWF (Legacy AWF compatibility)
+## Tương thích với di sản AWF (Legacy AWF compatibility)
 
-Repository nay van giu mot so quy trinh/workflow tu AWF doi cu de tai cau truc tuong thich nguoc va phuc vu tham khao.
+Repository này vẫn giữ một số quy trình/workflow từ AWF đời cũ để tái cấu trúc tương thích ngược và phục vụ tham khảo.
 
-Tuy nhien, trong mot du an Hybrid ABW thuan tuy, bo lenh cot loi truc tiep luon bat dau voi tien to `/abw-*`. Xin dung nham lan repository nay nhu mot ban cai dat AWF thong thuong.
+Tuy nhiên, trong một dự án Hybrid ABW thuần túy, bộ lệnh cốt lõi trực tiếp luôn bắt đầu với tiền tố `/abw-*`. Xin đừng nhầm lẫn repository này như một bản cài đặt AWF thông thường.
 
-Neu ban muon co mot trai nghiem AWF ban tieu chuan theo phien ban goc (upstream), vui long cai dat AWF upstream rieng.
+Nếu bạn muốn có một trải nghiệm AWF bản tiêu chuẩn theo phiên bản gốc (upstream), vui lòng cài đặt AWF upstream riêng.
 
 ---
 
-## Nguyen tac neo du lieu thuc te (Grounding Principle)
+## Nguyên tắc neo dữ liệu thực tế (Grounding Principle)
 
-> "Mot cau tra loi co trich dan nguon van tot hon la mot cau doan mo chap va tu tin."
+> "Một câu trả lời có trích dẫn nguồn vẫn tốt hơn là một câu đoán mò chắp vá và tự tin."
 > 
-> "Chu dong ghi log lai su thieu hut kien thuc (knowledge gap) van tot hon la tra loi sai su that (fake answer)."
+> "Chủ động ghi log lại sự thiếu hụt kiến thức (knowledge gap) vẫn tốt hơn là trả lời sai sự thật (fake answer)."
 
-Moi thay doi chinh trong nhom thu muc kien thuc chung `wiki/` phai luon luon truy xuat nguoc lai duoc ve:
+Mọi thay đổi chính trong nhóm thư mục kiến thức chung `wiki/` phải luôn luôn truy xuất ngược lại được về:
 
-- Nguon tai goc (raw source).
-- Dong mo ta trong manifest (manifest line).
-- Tinh trang xu ly du lieu (grounding outcome).
-- Muc do tu tin cua du lieu (confidence status).
-
----
-
-## Cac tai lieu quan trong khac
-
-- `AGENTS.md`: Tom luoc kien truc he thong va cac bat bien (invariants) bat buoc phai co.
-- Thu muc `skills/`: Chua cac logic thuc thi quan trong cua workflow.
-- Thu muc `workflows/`: Chua cac lenh wrapper boc ngoai (chay truc tiep tren IDE).
-- `wiki/_schemas/note.schema.md`: Khuon rap chuan (schema) quy dinh khung luu tru cua tung Note Kien thuc lau dai.
+- Nguồn tài gốc (raw source).
+- Dòng mô tả trong manifest (manifest line).
+- Tình trạng xử lý dữ liệu (grounding outcome).
+- Mức độ tự tin của dữ liệu (confidence status).
 
 ---
 
-## dong gop (Contributing)
+## Các tài liệu quan trọng khác
 
-Hoan nghenh moi dong gop, dac biet trong cac linh vuc sau:
+- `AGENTS.md`: Tóm lược kiến thức hệ thống và các bất biến (invariants) bắt buộc phải có.
+- Thư mục `skills/`: Chứa các logic thực thi quan trọng của workflow.
+- Thư mục `workflows/`: Chứa các lệnh wrapper bọc ngoài (chạy trực tiếp trên IDE).
+- `wiki/_schemas/note.schema.md`: Khuôn rập chuẩn (schema) quy định khung lưu trữ của từng Note Kiến thức lâu dài.
 
-- Tinh chinh thong so gioi han (TTC tuning).
-- Nang cao chat luong cho cau noi neo du lieu (grounding bridge).
-- Tang do phu toan dien cho bo tu dong kiem tra `lint`.
-- Nang cap phien ban tien hoa cho he thong `wiki schema`.
-- Cai thien muc do trung thuc va tinh kha dung cua quy trinh du phong fallback.
+---
 
-Chi tiet co the xem trong file `CONTRIBUTING.md`.
+## Đóng góp (Contributing)
+
+Hoan nghênh mọi đóng góp, đặc biệt trong các lĩnh vực sau:
+
+- Tinh chỉnh thông số giới hạn (TTC tuning).
+- Nâng cao chất lượng cho cầu nối neo dữ liệu (grounding bridge).
+- Tăng độ phủ toàn diện cho bộ tự động kiểm tra `lint`.
+- Nâng cấp phiên bản tiến hóa cho hệ thống `wiki schema`.
+- Cải thiện mức độ trung thực và tính khả dụng của quy trình dự phòng fallback.
+
+Chi tiết có thể xem trong file `CONTRIBUTING.md`.
