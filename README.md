@@ -1,68 +1,178 @@
-# 🧠 Hybrid Anti-Brain-Wiki (Hybrid ABW)
+# Hybrid Anti-Brain-Wiki (Hybrid ABW)
 
-> **Version:** 1.1.0  
-> **Tagline:** Đưa trí tuệ nhân tạo từ "Phản hồi tức thì" sang "Tư duy đa tầng" rành mạch.
+> Version: 1.1.1
+> Tagline: Bien AI tu tra loi nhanh thanh he thong tri thuc co grounding, co bo nho, va co bounded deliberation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TTC: Enabled](https://img.shields.io/badge/Test--Time%20Compute-Active-brightgreen)](https://github.com/Nakazasen/skill-Anti-brain-wiki_note)
 
-**Hybrid ABW** là một kiến trúc quản lý tri thức và tư duy cho AI Agent, được thiết kế để giải quyết vấn đề lớn nhất của các mô hình ngôn ngữ hiện nay: **Sự thiếu hụt bộ nhớ dài hạn tin cậy và sự hời hợt trong lập luận**.
+Hybrid ABW la mot kien truc quan ly tri thuc va suy luan cho AI agent. Muc tieu cua no la giai quyet 2 diem yeu pho bien cua LLM:
+
+- thieu bo nho dai han dang tin cay
+- tra loi nghe hop ly nhung khong co provenance ro rang
 
 ---
 
-## ✨ Tại sao lại là Hybrid ABW?
+## Tai sao la Hybrid ABW?
 
-Thay vì để AI tự do "phóng tác" câu trả lời, Hybrid ABW ép AI phải đi qua một bộ khung tư duy nghiêm ngặt, đối chiếu mọi tuyên bố với các nguồn bằng chứng xác thực (Grounding).
+Thay vi de model tra loi theo kieu single-pass, Hybrid ABW buoc model di qua mot khung lam viec ro rang:
 
-### 1. Kiến trúc Bộ nhớ 4 Lớp (The 4-Layer Memory)
-Hệ thống phân tách tri thức thành các tầng riêng biệt để tối ưu hóa việc truy xuất:
-- **Layer 1: Operation Memory** (`.brain/`): Ghi nhớ bối cảnh phiên làm việc hiện tại, các task đang dở dang và blockers.
-- **Layer 2: Persistent Knowledge** (`wiki/`): Kho tri thức đã được biên soạn, trích dẫn và xác thực. Đây là "Bộ não vĩnh cửu" của bạn.
-- **Layer 3: Grounding Engine** (NotebookLM): Kết nối với dữ liệu tư nhân sâu để đối chiếu chéo (cross-check) thông tin.
-- **Layer 4: Logic Gap Logging** (`knowledge_gaps.json`): Trung thực ghi lại những gì AI chưa biết thay vì trả lời bừa bãi.
+1. doc context van hanh trong `.brain/`
+2. tim tri thuc da bien soan trong `wiki/`
+3. neu can thi grounding qua NotebookLM
+4. neu chua du bang chung thi log gap thay vi fake success
 
-### 2. Test-Time Compute (TTC) Deliberation Engine
-Được lấy cảm hứng từ các kỹ thuật suy luận hiện đại, Hybrid ABW cung cấp lệnh `/abw-query-deep` – kích hoạt một vòng lặp suy nghĩ (deliberation loop) 5 bước:
-1. **Decomposition**: Chia nhỏ vấn đề.
-2. **Evidence Assembly**: Gom bằng chứng từ Wiki.
-3. **Grounding**: Xác thực qua NotebookLM.
-4. **Self-Critique**: Tự chấm điểm lập luận (Exit Gate).
-5. **Repair**: Sửa lỗi logic trước khi trả lời.
+## Kien truc 4 lop
+
+- `raw/`: nguon goc chua xu ly
+- `processed/`: lop bang chung va provenance
+- `wiki/`: tri thuc ben vung, co schema va citation
+- `.brain/`: trang thai van hanh, queue, gap log, deliberation log
+
+NotebookLM duoc dung nhu deep grounding engine, khong phai "oracle" tuyet doi.
 
 ---
 
-## 🛠️ Cài đặt & Sử dụng (Quick Start)
+## TTC Deliberation Engine
 
-Dự án được thiết kế dưới dạng **Global Skill** (Kỹ năng Toàn cầu) cho Antigravity IDE, cho phép bạn mang bộ não này theo mọi Project.
+Hybrid ABW cung cap `/abw-query-deep` cho cac cau hoi kho nhu:
 
-### 1. Cài đặt MCP Bridge
-Bạn cần cài đặt bộ công cụ CLI hỗ trợ NotebookLM:
+- synthesis
+- comparison
+- RCA
+- design tradeoff
+- contradiction-heavy prompts
+
+Luong TTC co 5 pass:
+
+1. Decomposition
+2. Evidence Assembly
+3. Grounding
+4. Self-Critique
+5. Repair or Exit
+
+Deliberation duoc chan bang:
+
+- exit gate theo score
+- circuit breaker
+- query budget cho NotebookLM
+
+---
+
+## Fallback-first, khong fake success
+
+Day la nguyen tac quan trong nhat cua repo nay.
+
+Neu NotebookLM MCP chua san sang:
+
+- `/abw-ingest` chi duoc tao `draft` hoac `pending_grounding`
+- `/abw-query` tra loi theo wiki-first va log gap neu thieu bang chung
+- `/abw-query-deep` van chay, nhung bo Pass 3 hoac dat budget = 0
+- `/abw-lint` phai bao cao ro he thong dang trong fallback mode
+
+Hybrid ABW uu tien trung thuc hon la nghe co ve thong minh.
+
+---
+
+## Quick Start
+
+### 1. Cai installer
+
+Windows:
+
 ```powershell
+irm https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.ps1 | iex
+```
+
+macOS / Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.sh | sh
+```
+
+### 2. Cai NotebookLM CLI
+
+```bash
 uv tool install notebooklm-mcp-cli
 ```
 
-### 2. Khởi tạo & Đăng nhập
-Trong IDE, thực hiện 2 lệnh đơn giản:
-- `/abw-init`: Khởi tạo cấu trúc folder chuẩn (wiki, raw, .brain).
-- `/abw-setup`: Wizard hướng dẫn đăng nhập NotebookLM và kiểm tra kết nối.
+### 3. Chay flow chinh
 
-### 3. Quy trình làm việc chuẩn
-1. Thả tài liệu vào thư mục `raw/`.
-2. Chạy `/abw-ingest` để AI đọc, trích xuất và lưu vào Wiki (grounded status).
-3. Hỏi đáp bằng `/abw-query` (nhanh) hoặc `/abw-query-deep` (suy luận sâu).
+```text
+/abw-init
+/abw-setup
+/abw-ingest
+/abw-query
+/abw-query-deep
+/abw-lint
+```
+
+### 4. Quy trinh khuyen nghi
+
+1. Tha tai lieu vao `raw/`
+2. Chay `/abw-ingest`
+3. Hoi nhanh bang `/abw-query`
+4. Hoi kho bang `/abw-query-deep`
+5. Bao tri bang `/abw-lint`
+
+---
+
+## Command Surface chinh
+
+| Command | Muc dich |
+|---------|----------|
+| `/abw-init` | Khoi tao hoac repair cau truc Hybrid ABW |
+| `/abw-setup` | Dang nhap va xac nhan NotebookLM MCP |
+| `/abw-status` | Kiem tra MCP bridge va grounding queue |
+| `/abw-ingest` | Xu ly raw source thanh manifest va wiki artifacts |
+| `/abw-query` | Query nhanh theo wiki-first path |
+| `/abw-query-deep` | Query kho voi TTC deliberation |
+| `/abw-lint` | Audit wiki, grounding, contradictions, TTC health |
 
 ---
 
-## 🛡️ Nguyên tắc "Grounding"
-> **"Một câu trả lời có trích dẫn đáng giá hơn một phỏng đoán tự tin. Một lỗ hổng được ghi lại đáng giá hơn một câu trả lời giả."**
+## Legacy AWF compatibility
 
-Hệ thống tuân thủ nghiêm ngặt **AGENTS.md** Spec – đảm bảo mọi thông tin trong Wiki đều có nguồn gốc (provenance chain) rõ ràng.
+Repo nay van giu mot so workflow AWF cu de compatibility va tham khao.
+
+Nhung trong repo public nay, command surface chinh la `/abw-*`.
+Khong nen doc repo nay nhu mot AWF installer thong thuong.
+
+Neu ban muon full upstream AWF experience, hay cai upstream AWF rieng.
 
 ---
 
-## 🤝 Đóng góp
-Chúng tôi hoan nghênh mọi đóng góp để hoàn thiện Deliberation Engine và các bộ Schema tri thức. Hãy xem [CONTRIBUTING.md](CONTRIBUTING.md).
+## Grounding principle
+
+> Mot cau tra loi co citation tot hon mot cau tra loi tu tin.
+> Mot knowledge gap duoc log tot hon mot fake answer.
+
+Moi thay doi chinh trong `wiki/` nen truy nguoc duoc ve:
+
+- raw source
+- manifest line
+- grounding outcome
+- confidence status
 
 ---
-**Phát triển bởi Đội ngũ Advanced Agentic Coding - Google DeepMind.**
-*(Lưu ý: Đây là một dự án nghiên cứu và phát triển mã nguồn mở).*
+
+## Tai lieu quan trong
+
+- `AGENTS.md`: system architecture va invariants
+- `skills/`: logic thuc thi cua ABW workflows
+- `workflows/`: command wrappers cho IDE surface
+- `wiki/_schemas/note.schema.md`: schema cho persistent knowledge
+
+---
+
+## Dong gop
+
+Dong gop duoc hoan nghenh, nhat la o cac huong:
+
+- TTC tuning
+- better grounding bridges
+- lint checks
+- wiki schema evolution
+- fallback honesty va reliability
+
+Xem them `CONTRIBUTING.md`.
