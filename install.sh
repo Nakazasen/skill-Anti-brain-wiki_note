@@ -43,8 +43,7 @@ TEMPLATE_FILES=(
   "knowledge_gaps.example.json"
   "exit_gate_policy.example.json"
   "circuit_breaker.example.json"
-  "ingest_exit_gate_policy.json"
-  "ingest_circuit_breaker.json"
+  "deliberation_run.example.json"
   "assumptions.example.json"
   "hypotheses.example.json"
   "decision_log.example.jsonl"
@@ -65,7 +64,6 @@ ABW_SKILLS=(
   "abw-setup.md"
   "abw-status.md"
   "ingest-wiki.md"
-  "ingest-wiki-deliberative.md"
   "query-wiki.md"
   "query-wiki-deliberative.md"
   "lint-wiki.md"
@@ -161,6 +159,7 @@ for template in "${TEMPLATE_FILES[@]}"; do
   fi
 done
 
+CRITICAL_FAIL=0
 echo -e "${CYAN}Installing ABW skills...${NC}"
 for skill in "${ABW_SKILLS[@]}"; do
   if source_type=$(install_file "skills/$skill" "$SKILLS_DIR/$skill"); then
@@ -168,8 +167,14 @@ for skill in "${ABW_SKILLS[@]}"; do
     success=$((success + 1))
   else
     echo -e "  ${RED}[X] FAILED: $skill${NC}"
+    CRITICAL_FAIL=1
   fi
 done
+
+if [ "$CRITICAL_FAIL" -eq 1 ]; then
+  echo -e "\n${RED}CRITICAL ERROR: Failed to install one or more required ABW skills. Aborting installation.${NC}"
+  exit 1
+fi
 
 echo -e "${CYAN}Installing compatibility helper skills...${NC}"
 for skill in "${AWF_HELPER_SKILLS[@]}"; do

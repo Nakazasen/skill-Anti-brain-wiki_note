@@ -40,8 +40,7 @@ $TemplateFiles = @(
     "knowledge_gaps.example.json",
     "exit_gate_policy.example.json",
     "circuit_breaker.example.json",
-    "ingest_exit_gate_policy.json",
-    "ingest_circuit_breaker.json",
+    "deliberation_run.example.json",
     "assumptions.example.json",
     "hypotheses.example.json",
     "decision_log.example.jsonl",
@@ -62,7 +61,6 @@ $AbwSkills = @(
     "abw-setup.md",
     "abw-status.md",
     "ingest-wiki.md",
-    "ingest-wiki-deliberative.md",
     "query-wiki.md",
     "query-wiki-deliberative.md",
     "lint-wiki.md",
@@ -167,6 +165,7 @@ foreach ($template in $TemplateFiles) {
     }
 }
 
+$criticalFail = $false
 Write-Host "Installing ABW skills..." -ForegroundColor Cyan
 foreach ($skill in $AbwSkills) {
     try {
@@ -176,7 +175,13 @@ foreach ($skill in $AbwSkills) {
     }
     catch {
         Write-Host "  [X] FAILED: $skill" -ForegroundColor Red
+        $criticalFail = $true
     }
+}
+
+if ($criticalFail) {
+    Write-Host "`nCRITICAL ERROR: Failed to install one or more required ABW skills. Aborting installation." -ForegroundColor Red
+    exit 1
 }
 
 Write-Host "Installing compatibility helper skills..." -ForegroundColor Cyan
