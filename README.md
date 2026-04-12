@@ -71,9 +71,13 @@ Repository này tồn tại để giúp các mô hình nhỏ hơn, rẻ hơn, nh
 | refactor legacy code but still need orientation | `/abw-ask` |
 | refactor code with a clear scope already in mind | `/refactor` |
 | save your working session | `/save-brain` |
+| start a session with state and grounding checks | `/abw-start` |
+| wrap a session and prepare handover | `/abw-wrap` |
 | restore last-session context | `/recap` |
 | decide what to do next | `/next` |
+| review code or project state before a heavier audit | `/abw-review` |
 | audit a change or artifact | `/abw-audit` |
+| recover after a bad change | `/abw-rollback` |
 | run the full acceptance chain | `/abw-eval` |
 
 ---
@@ -125,6 +129,8 @@ Supporting workflows:
 - `/save-brain`
 - `/recap`
 - `/next`
+- `/abw-start`
+- `/abw-wrap`
 
 ### 5. Đánh giá và nghiệm thu
 **EN:** Evaluate output quality before accepting work as done.  
@@ -132,6 +138,8 @@ Supporting workflows:
 
 - `/abw-audit`
 - `/abw-meta-audit`
+- `/abw-review`
+- `/abw-rollback`
 - `/abw-accept`
 - `/abw-eval`
 

@@ -19,8 +19,45 @@ Nếu bạn sắp bắt đầu làm việc, hãy đi từ một trong hai entryp
 
 - **Dùng `/abw-ask`** khi bạn có một việc cụ thể cần làm hoặc một câu hỏi cụ thể nhưng chưa nhớ chính xác lệnh nào.
 - **Dùng `/abw-eval`** khi bạn muốn chạy vòng đánh giá cho một thay đổi, workflow, tài liệu, hoặc đầu ra của mô hình trước khi chấp nhận.
+- **Dùng `/abw-start`** khi bạn muốn mở phiên làm việc theo cách có kiểm tra trạng thái và grounding path.
+- **Dùng `/abw-wrap`** khi bạn muốn chốt phiên, chuẩn bị handover, và nhắc phần cần ingest hoặc nghiệm thu.
 - **Dùng `/next`** khi bạn đang ở giữa dự án và cần gợi ý bước hợp lý tiếp theo dựa trên trạng thái hiện tại.
 - **Dùng `/help`** khi bạn cần hiểu sơ đồ hệ thống, xem toàn bộ danh sách lệnh, hoặc học mental model 5 lane.
+
+### Muốn làm X thì gọi gì đầu tiên?
+
+| Trường hợp | Lệnh gọi đầu tiên |
+|---|---|
+| Không biết nên bắt đầu từ đâu | `/abw-ask` |
+| Có câu hỏi về dự án nhưng chưa rõ nên tra cứu hay brainstorm | `/abw-ask` |
+| Cần tra cứu nhanh một fact đã có trong wiki | `/abw-query` |
+| Cần phân tích sâu, so sánh, RCA, tradeoff | `/abw-query-deep` |
+| Dự án còn greenfield, chưa có raw/wiki | `/abw-bootstrap` |
+| Muốn chốt ý tưởng, scope, hoặc MVP | `/brainstorm` |
+| Muốn dựng nền tri thức từ tài liệu nguồn | `/abw-ingest` |
+| Muốn kiểm tra sức khỏe wiki / grounding / manifest | `/abw-lint` |
+| Muốn kiểm tra MCP hoặc trạng thái hàng đợi | `/abw-status` |
+| Muốn lên kế hoạch tính năng hoặc chia task | `/plan` |
+| Muốn thiết kế kỹ thuật hoặc DB | `/design` |
+| Muốn dựng mockup UI/UX hoặc đặc tả màn hình | `/visualize` |
+| Muốn bắt tay vào code | `/code` |
+| Muốn chạy app cục bộ | `/run` |
+| Muốn sửa bug | `/debug` |
+| Muốn kiểm tra bằng test | `/test` |
+| Muốn refactor code cũ nhưng chưa hiểu rõ hiện trạng | `/abw-ask` |
+| Muốn refactor code cũ và đã rõ phạm vi | `/refactor` |
+| Muốn rà soát sản phẩm / code / bảo mật | `/audit` |
+| Muốn lưu tiến độ trước khi nghỉ | `/save-brain` |
+| Muốn mở phiên làm việc có kiểm tra trạng thái | `/abw-start` |
+| Muốn chốt phiên và chuẩn bị handover | `/abw-wrap` |
+| Muốn khôi phục lại bối cảnh phiên trước | `/recap` |
+| Muốn biết bước tiếp theo nên làm gì | `/next` |
+| Muốn review code hoặc hiện trạng trước khi audit nặng hơn | `/abw-review` |
+| Muốn tự audit một thay đổi hoặc tài liệu | `/abw-audit` |
+| Muốn audit lại chính báo cáo audit | `/abw-meta-audit` |
+| Muốn quay lại trạng thái an toàn sau một thay đổi sai | `/abw-rollback` |
+| Muốn chốt pass/fail cuối cùng | `/abw-accept` |
+| Muốn chạy cả chuỗi nghiệm thu từ đầu đến cuối | `/abw-eval` |
 
 ---
 
@@ -70,16 +107,20 @@ Workflow hỗ trợ trong delivery:
 
 Dùng nhóm này để quản lý phiên làm việc và khôi phục bối cảnh.
 
+- `/abw-start` : Mở phiên làm việc và kiểm tra trạng thái hệ thống
 - `/save-brain` : Lưu tiến độ và chuẩn bị handover
 - `/recap` : Khôi phục bối cảnh từ phiên trước
 - `/next` : Gợi ý bước tiếp theo một cách thông minh
+- `/abw-wrap` : Chốt phiên, tổng kết, và chuẩn bị quay lại
 
 ### 5. Đánh giá và nghiệm thu
 
 Dùng nhóm này để đánh giá đầu ra, chất vấn lập luận yếu, và quyết định có nên chấp nhận thay đổi hay không.
 
+- `/abw-review` : Review code, thay đổi, hoặc hiện trạng dự án
 - `/abw-audit` : Tự audit một thay đổi, workflow, tài liệu, hoặc đầu ra
 - `/abw-meta-audit` : Audit lại chính báo cáo audit
+- `/abw-rollback` : Quay về trạng thái an toàn sau thay đổi lỗi
 - `/abw-accept` : Chạy cổng nghiệm thu cuối cùng
 - `/abw-eval` : Chạy toàn bộ chuỗi evaluation từ đầu đến cuối
 

@@ -95,8 +95,12 @@ _Empty -- will be populated as notes with `related` fields are added._
 | **Triển khai sản phẩm** | `/plan` | Lập kế hoạch thực thi và chia task |
 | **Triển khai sản phẩm** | `/code` | Cài đặt tính năng và phát triển |
 | **Phiên làm việc và ghi nhớ** | `/save-brain` | Lưu tiến độ và chuẩn bị handover |
+| **Phiên làm việc và ghi nhớ** | `/abw-start` | Mở phiên và kiểm tra trạng thái hệ thống |
+| **Phiên làm việc và ghi nhớ** | `/abw-wrap` | Chốt phiên và chuẩn bị quay lại |
 | **Đánh giá và nghiệm thu** | `/abw-audit` | Tự audit một thay đổi, tài liệu, workflow, hoặc đầu ra |
+| **Đánh giá và nghiệm thu** | `/abw-review` | Review code, thay đổi, hoặc hiện trạng dự án |
 | **Đánh giá và nghiệm thu** | `/abw-meta-audit` | Audit lại chính báo cáo audit |
+| **Đánh giá và nghiệm thu** | `/abw-rollback` | Quay về trạng thái an toàn sau thay đổi lỗi |
 | **Đánh giá và nghiệm thu** | `/abw-accept` | Chạy cổng nghiệm thu cuối cùng |
 | **Đánh giá và nghiệm thu** | `/abw-eval` | Chạy toàn bộ chuỗi evaluation |
 | **Dựng nền tri thức** | `/abw-lint` | Audit sức khỏe wiki, manifest, và grounding |
