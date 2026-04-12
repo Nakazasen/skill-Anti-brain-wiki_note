@@ -23,6 +23,19 @@ $WorkflowFiles = @(
     "abw-accept.md",
     "abw-eval.md",
 
+    "brainstorm.md",
+    "plan.md",
+    "design.md",
+    "visualize.md",
+    "code.md",
+    "run.md",
+    "debug.md",
+    "test.md",
+    "deploy.md",
+    "refactor.md",
+    "audit.md",
+    "save_brain.md",
+    "recap.md",
     "help.md",
     "next.md",
     "README.md",
@@ -233,10 +246,28 @@ Do not route users to the legacy AWF flow by default.
 | `/abw-accept` | abw-accept.md | Run the final acceptance gate |
 | `/abw-eval` | abw-eval.md | Run the full evaluation chain |
 
+## Extended Workflows
+| Command | Workflow File | Purpose |
+|---------|---------------|---------|
+| `/brainstorm` | brainstorm.md | Product discovery, scoping, and MVP framing |
+| `/plan` | plan.md | Delivery planning and task breakdown |
+| `/design` | design.md | Technical and data design |
+| `/visualize` | visualize.md | UI/UX mockup and screen specification |
+| `/code` | code.md | Feature implementation |
+| `/run` | run.md | Local execution |
+| `/debug` | debug.md | Bug investigation and repair |
+| `/test` | test.md | Test and quality loop |
+| `/deploy` | deploy.md | Delivery to target environment |
+| `/refactor` | refactor.md | Safe cleanup after behavior is understood |
+| `/audit` | audit.md | Product/code/security review in the delivery loop |
+| `/save-brain` | save_brain.md | Save session progress and handover |
+| `/recap` | recap.md | Restore last-session context |
+| `/next` | next.md | Suggest the best next move |
+
 ## Command Model (5 Lanes)
 - Ask & Think: `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
 - Build Knowledge: `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`
-- Build Product: `/plan`, `/design`, `/code`, `/run`, `/debug`, `/test`, `/deploy`
+- Build Product: `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
 - Session & Memory: `/save-brain`, `/recap`, `/next`
 - Evaluation & Acceptance: `/abw-audit`, `/abw-meta-audit`, `/abw-accept`, `/abw-eval`
 
@@ -274,7 +305,14 @@ else {
 
 Write-Host "`nVerifying installation..." -ForegroundColor Cyan
 $missingFiles = 0
-$requiredWorkflows = @("abw-init.md", "abw-setup.md", "abw-status.md", "abw-ingest.md", "abw-ask.md", "abw-query.md", "abw-query-deep.md", "abw-bootstrap.md", "abw-lint.md", "abw-audit.md", "abw-meta-audit.md", "abw-accept.md", "abw-eval.md")
+$requiredWorkflows = @(
+    "abw-init.md", "abw-setup.md", "abw-status.md", "abw-ingest.md", "abw-ask.md",
+    "abw-query.md", "abw-query-deep.md", "abw-bootstrap.md", "abw-lint.md",
+    "abw-audit.md", "abw-meta-audit.md", "abw-accept.md", "abw-eval.md",
+    "brainstorm.md", "plan.md", "design.md", "visualize.md", "code.md", "run.md",
+    "debug.md", "test.md", "deploy.md", "refactor.md", "audit.md", "save_brain.md",
+    "recap.md", "next.md", "help.md", "README.md", "awf-update.md"
+)
 
 foreach ($wf in $requiredWorkflows) {
     if (-not (Test-Path "$GlobalDir\$wf")) {
