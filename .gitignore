@@ -17,6 +17,10 @@
 .brain/exit_gate_policy.json
 .brain/circuit_breaker.json
 
+# Bootstrap reasoning state (do not commit greenfield assumptions/plans)
+.brain/bootstrap/*.json
+.brain/bootstrap/*.jsonl
+
 # --- .brain/ files that MAY be committed ---
 # .brain/brain.json         -> Commit if team shares project knowledge (AWF policy)
 # .brain/snapshots/         -> Optional: commit for historical record

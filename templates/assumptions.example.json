@@ -1,0 +1,18 @@
+[
+    {
+        "id": "asm-001",
+        "statement": "Users need a mobile-first interface.",
+        "confidence": "low",
+        "why_assumed": "Consumer apps typically see 80%+ mobile traffic.",
+        "how_to_verify": "Check analytics of existing tools or survey target audience.",
+        "status": "active"
+    },
+    {
+        "id": "asm-002",
+        "statement": "Real-time sync can be postponed to phase 2.",
+        "confidence": "medium",
+        "why_assumed": "Not critical for the core MVP loop. Reduces initial complexity.",
+        "how_to_verify": "Ask product owner about conflict frequency in current process.",
+        "status": "active"
+    }
+]

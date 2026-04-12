@@ -1,0 +1,9 @@
+[
+    {
+        "id": "val-001",
+        "task": "Build a spike for SQLite sync",
+        "target_assumption": "asm-002",
+        "effort": "medium",
+        "status": "pending"
+    }
+]

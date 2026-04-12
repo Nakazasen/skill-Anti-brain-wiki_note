@@ -1,0 +1,21 @@
+[
+    {
+        "id": "hyp-001",
+        "title": "Local-first architecture for MVP",
+        "description": "Building the app as local-first will reduce server costs and improve perceived performance.",
+        "score": 7,
+        "pros": [
+            "Offline capability",
+            "Zero latency data mutation",
+            "Cheaper hosting"
+        ],
+        "cons": [
+            "Complex sync logic",
+            "Heavier initial load times"
+        ],
+        "open_risks": [
+            "Conflict resolution might be too hard for MVP timeline"
+        ],
+        "status": "competing"
+    }
+]

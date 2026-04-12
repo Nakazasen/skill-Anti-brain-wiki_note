@@ -29,11 +29,8 @@ ABW structure exists but MCP not verified?
 Raw sources waiting to be processed?
   -> /abw-ingest
 
-User wants a quick answer from existing wiki knowledge?
-  -> /abw-query
-
-User wants synthesis, comparison, RCA, or design reasoning?
-  -> /abw-query-deep
+User wants to ask a question or discuss an idea?
+  -> /abw-ask (Smart Router will handle the complexity)
 
 User wants to inspect quality, contradictions, or grounding drift?
   -> /abw-lint
@@ -76,8 +73,8 @@ Reason: source material is waiting to be processed into manifest/wiki artifacts.
 Output:
 
 ```text
-Next step: /abw-query
-Reason: use the fast wiki-first retrieval path first.
+Next step: /abw-ask
+Reason: use the smart router to automatically determine if a fast lookup is needed.
 ```
 
 ### Case 5: The user asks a hard question
@@ -93,8 +90,8 @@ Hard question examples:
 Output:
 
 ```text
-Next step: /abw-query-deep
-Reason: this needs TTC-style bounded deliberation rather than a fast lookup.
+Next step: /abw-ask
+Reason: the smart router will detect the complexity and trigger deep deliberation paths.
 ```
 
 ### Case 6: The repo needs maintenance or trust checking

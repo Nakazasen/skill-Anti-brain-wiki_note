@@ -1,0 +1,2 @@
+{"id": "dec-001", "date": "2024-05-20", "decision": "Use React Native", "context": "Need both iOS and Android from day 1 with a small team.", "status": "provisional", "evidence_based": false}
+{"id": "dec-002", "date": "2024-05-21", "decision": "Postpone Real-time sync", "context": "Not critical for the core MVP loop. Reduces initial complexity.", "status": "final", "evidence_based": true}
