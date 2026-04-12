@@ -261,6 +261,15 @@ foreach ($wf in $requiredWorkflows) {
     }
 }
 
+foreach ($skill in $AbwSkills) {
+    if (-not (Test-Path "$SkillsDir\$skill")) {
+        Write-Host "  [!] Missing Skill: $skill" -ForegroundColor Red
+        $missingFiles++
+    } else {
+        Write-Host "  [OK] Verified Skill: $skill" -ForegroundColor DarkGray
+    }
+}
+
 $geminiContent = Get-Content $GeminiMd -Raw -ErrorAction SilentlyContinue
 if (($null -eq $geminiContent) -or ($geminiContent.IndexOf("# Hybrid ABW - Antigravity IDE Command Surface") -lt 0)) {
     Write-Host "  [!] GEMINI.md missing ABW block." -ForegroundColor Red

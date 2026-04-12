@@ -248,6 +248,15 @@ for wf in "${REQUIRED_WFS[@]}"; do
   fi
 done
 
+for skill in "${ABW_SKILLS[@]}"; do
+  if [ ! -f "$SKILLS_DIR/$skill" ]; then
+    echo -e "  ${RED}[!] Missing Skill: $skill${NC}"
+    MISSING_FILES=$((MISSING_FILES + 1))
+  else
+    echo -e "  ${GRAY}[OK] Verified Skill: $skill${NC}"
+  fi
+done
+
 if ! grep -q "# Hybrid ABW - Antigravity IDE Command Surface" "$GEMINI_MD" 2>/dev/null; then
   echo -e "  ${RED}[!] GEMINI.md missing ABW block.${NC}"
   MISSING_FILES=$((MISSING_FILES + 1))
