@@ -3,7 +3,7 @@ description: Quay lai trang thai on dinh (legacy compatibility workflow)
 ---
 
 > Legacy compatibility workflow
-> Public ABW-first surface: `/abw-init`, `/abw-setup`, `/abw-ingest`, `/abw-ask`, `/abw-lint`.
+> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
 # WORKFLOW: /rollback - Legacy Recovery Flow
 

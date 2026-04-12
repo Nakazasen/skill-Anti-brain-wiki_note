@@ -27,8 +27,10 @@ Primary commands:
 - /abw-setup      activate NotebookLM MCP
 - /abw-status     check MCP and queue state
 - /abw-ingest     ingest source files into wiki knowledge
-- /abw-query      ask a fast wiki-first question
-- /abw-query-deep ask a hard TTC question
+- /abw-ask        (Router) ask any question here first
+- /abw-query      (Tier 1) ask a fast wiki-first question
+- /abw-query-deep (Tier 2) ask a hard TTC question
+- /abw-bootstrap  (Tier 3) greenfield projects/ideas
 - /abw-lint       audit wiki, manifest, and deliberation health
 ```
 
@@ -55,17 +57,19 @@ Recommend:
 
 - `/abw-ingest`
 
-### If the user wants a quick answer from existing knowledge
+### If the user wants to ask any question
 
 Recommend:
 
-- `/abw-query`
+- `/abw-ask` (let the router handle it)
 
-### If the user wants comparison, synthesis, RCA, or design reasoning
+### If the user explicitly wants to bypass the router for a specific Tier
 
 Recommend:
 
-- `/abw-query-deep`
+- `/abw-query` for fast answers from existing knowledge
+- `/abw-query-deep` for comparison, synthesis, RCA, or design reasoning
+- `/abw-bootstrap` for greenfield ideas without existing context
 
 ### If the user wants to inspect repo health
 
@@ -100,8 +104,10 @@ Dung /abw-status de kiem tra MCP bridge, fallback mode, va grounding queue.
 Answer with:
 
 ```text
-Dung /abw-query.
+Nen dung /abw-ask de he thong tu dong dinh tuyen.
+Neu ban muon chu dong chon nhanh: dung /abw-query.
 Neu cau hoi can tong hop nhieu nguon hoac can tu phan bien, dung /abw-query-deep.
+Neu du an hoan toan moi (greenfield), dung /abw-bootstrap.
 ```
 
 ---

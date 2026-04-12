@@ -17,8 +17,10 @@ If you are reading this repository for the first time, treat **`/abw-*` as the m
 | `/abw-setup` | Activate NotebookLM MCP and verify fallback state |
 | `/abw-status` | Check MCP bridge and grounding queue status |
 | `/abw-ingest` | Ingest source material into processed/wiki artifacts |
-| `/abw-query` | Fast wiki-first retrieval path |
-| `/abw-query-deep` | Bounded TTC query path for synthesis and hard questions |
+| `/abw-ask` | **Smart Router: Default entrypoint for any question** |
+| `/abw-query` | Tier 1: Fast wiki-first retrieval path |
+| `/abw-query-deep` | Tier 2: Bounded TTC query path for synthesis and hard questions |
+| `/abw-bootstrap` | Tier 3: Greenfield reasoning and hypothesis generation |
 | `/abw-lint` | Audit wiki, manifest, queue, and deliberation health |
 
 ---
@@ -28,9 +30,12 @@ If you are reading this repository for the first time, treat **`/abw-*` as the m
 ```text
 /abw-init
    -> /abw-setup
+   -> /abw-status
    -> /abw-ingest
-   -> /abw-query
-   -> /abw-query-deep
+   -> /abw-ask 
+        |-> (Tier 1) /abw-query
+        |-> (Tier 2) /abw-query-deep
+        |-> (Tier 3) /abw-bootstrap
    -> /abw-lint
 ```
 
@@ -38,9 +43,10 @@ If you are reading this repository for the first time, treat **`/abw-*` as the m
 
 - start with `/abw-init`
 - activate NotebookLM using `/abw-setup`
+- check status using `/abw-status`
 - ingest knowledge using `/abw-ingest`
-- use `/abw-query` for fast answers
-- use `/abw-query-deep` for comparison, RCA, design, and contradiction-heavy prompts
+- use `/abw-ask` as the default router for any question you have
+- (the router will internally bypass or direct you to `/abw-query`, `/abw-query-deep`, or `/abw-bootstrap`)
 - use `/abw-lint` to keep the knowledge base healthy
 
 ---
@@ -82,8 +88,10 @@ If you want the full upstream AWF experience, install upstream AWF separately.
 | Connect NotebookLM | `/abw-setup` |
 | Check whether ABW is in fallback mode | `/abw-status` |
 | Turn raw sources into wiki knowledge | `/abw-ingest` |
-| Ask a quick grounded question | `/abw-query` |
-| Ask a hard synthesis or comparison question | `/abw-query-deep` |
+| Ask the system any general question | `/abw-ask` |
+| Ask a quick grounded question directly | `/abw-query` |
+| Ask a hard synthesis or comparison question directly | `/abw-query-deep` |
+| Formulate hypotheses for a greenfield project directly | `/abw-bootstrap` |
 | Audit wiki and grounding health | `/abw-lint` |
 
 ---

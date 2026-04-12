@@ -68,8 +68,7 @@ $AbwSkills = @(
     "lint-wiki.md",
     "notebooklm-mcp-bridge.md",
     "abw-bootstrap.md",
-    "abw-router.md",
-
+    "abw-router.md"
 )
 
 try {
@@ -81,67 +80,102 @@ catch {
 
 $Null = New-Item -ItemType Directory -Force -Path $GlobalDir, $SchemasDir, $TemplatesDir, $SkillsDir, "$env:USERPROFILE\.gemini"
 
-function Download-File {
+# Local clone detection
+$isLocalRepo = $false
+$RepoRoot = ""
+if ($MyInvocation.MyCommand.Path) {
+    # If run as a script file, check if it's inside the actual repo
+    $possibleRoot = Split-Path $MyInvocation.MyCommand.Path
+    if (Test-Path (Join-Path $possibleRoot "workflows\abw-init.md")) {
+        $isLocalRepo = $true
+        $RepoRoot = $possibleRoot
+    }
+}
+
+function Install-File {
     param(
-        [string]$Url,
+        [string]$RelativePath,
         [string]$Destination
     )
+    if ($isLocalRepo) {
+        $LocalPath = Join-Path $RepoRoot $RelativePath
+        if (Test-Path $LocalPath) {
+            Copy-Item -Path $LocalPath -Destination $Destination -Force -ErrorAction Stop
+            return "LOCAL"
+        }
+    }
+    
+    $Url = "$RepoBase/$RelativePath"
+    if ($Url -match '\\') {
+        $Url = $Url.Replace('\', '/')
+    }
     Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing -ErrorAction Stop
+    return "REMOTE"
 }
 
 Write-Host ""
 Write-Host "===============================================" -ForegroundColor Cyan
 Write-Host "Hybrid ABW Installer v$CurrentVersion" -ForegroundColor Cyan
+if ($isLocalRepo) {
+    Write-Host "(Local installation mode detected)" -ForegroundColor Yellow
+}
 Write-Host "===============================================" -ForegroundColor Cyan
 Write-Host ""
 
 $success = 0
+$criticalFail = $false
 
 Write-Host "Installing ABW workflows..." -ForegroundColor Cyan
 foreach ($wf in $WorkflowFiles) {
     try {
-        Download-File -Url "$RepoBase/workflows/$wf" -Destination "$GlobalDir\$wf"
-        Write-Host "  [OK] $wf" -ForegroundColor Green
+        $source = Install-File -RelativePath "workflows/$wf" -Destination "$GlobalDir\$wf"
+        Write-Host "  [OK] $wf ($source)" -ForegroundColor Green
         $success++
     }
     catch {
-        Write-Host "  [X] $wf" -ForegroundColor Red
+        Write-Host "  [X] FAILED: $wf" -ForegroundColor Red
+        $criticalFail = $true
     }
+}
+
+if ($criticalFail) {
+    Write-Host "`nCRITICAL ERROR: Failed to install one or more required ABW workflows. Aborting installation." -ForegroundColor Red
+    exit 1
 }
 
 Write-Host "Installing schemas..." -ForegroundColor Cyan
 foreach ($schema in $SchemaFiles) {
     try {
-        Download-File -Url "$RepoBase/schemas/$schema" -Destination "$SchemasDir\$schema"
-        Write-Host "  [OK] $schema" -ForegroundColor Green
+        $source = Install-File -RelativePath "schemas/$schema" -Destination "$SchemasDir\$schema"
+        Write-Host "  [OK] $schema ($source)" -ForegroundColor Green
         $success++
     }
     catch {
-        Write-Host "  [X] $schema" -ForegroundColor Red
+        Write-Host "  [X] FAILED: $schema" -ForegroundColor Red
     }
 }
 
 Write-Host "Installing templates..." -ForegroundColor Cyan
 foreach ($template in $TemplateFiles) {
     try {
-        Download-File -Url "$RepoBase/templates/$template" -Destination "$TemplatesDir\$template"
-        Write-Host "  [OK] $template" -ForegroundColor Green
+        $source = Install-File -RelativePath "templates/$template" -Destination "$TemplatesDir\$template"
+        Write-Host "  [OK] $template ($source)" -ForegroundColor Green
         $success++
     }
     catch {
-        Write-Host "  [X] $template" -ForegroundColor Red
+        Write-Host "  [X] FAILED: $template" -ForegroundColor Red
     }
 }
 
 Write-Host "Installing ABW skills..." -ForegroundColor Cyan
 foreach ($skill in $AbwSkills) {
     try {
-        Download-File -Url "$RepoBase/skills/$skill" -Destination "$SkillsDir\$skill"
-        Write-Host "  [OK] $skill" -ForegroundColor Green
+        $source = Install-File -RelativePath "skills/$skill" -Destination "$SkillsDir\$skill"
+        Write-Host "  [OK] $skill ($source)" -ForegroundColor Green
         $success++
     }
     catch {
-        Write-Host "  [X] $skill" -ForegroundColor Red
+        Write-Host "  [X] FAILED: $skill" -ForegroundColor Red
     }
 }
 
@@ -150,12 +184,12 @@ foreach ($skill in $AwfHelperSkills) {
     $skillDir = "$SkillsDir\$skill"
     $Null = New-Item -ItemType Directory -Force -Path $skillDir
     try {
-        Download-File -Url "$RepoBase/awf_skills/$skill/SKILL.md" -Destination "$skillDir\SKILL.md"
-        Write-Host "  [OK] $skill" -ForegroundColor Green
+        $source = Install-File -RelativePath "awf_skills/$skill/SKILL.md" -Destination "$skillDir\SKILL.md"
+        Write-Host "  [OK] $skill ($source)" -ForegroundColor Green
         $success++
     }
     catch {
-        Write-Host "  [X] $skill" -ForegroundColor Red
+        Write-Host "  [X] FAILED: $skill" -ForegroundColor Red
     }
 }
 
@@ -203,11 +237,8 @@ else {
     $content = Get-Content $GeminiMd -Raw -ErrorAction SilentlyContinue
     if ($null -eq $content) { $content = "" }
     $abwMarker = "# Hybrid ABW - Antigravity IDE Command Surface"
-    $oldAwfMarker = "# AWF - Antigravity Workflow Framework"
     $abwIndex = $content.IndexOf($abwMarker)
     if ($abwIndex -ge 0) { $content = $content.Substring(0, $abwIndex).TrimEnd() }
-    $oldAwfIndex = $content.IndexOf($oldAwfMarker)
-    if ($oldAwfIndex -ge 0) { $content = $content.Substring(0, $oldAwfIndex).TrimEnd() }
     if ($content.Length -gt 0) {
         $content = $content + "`n`n" + $abwInstructions
     }
@@ -215,6 +246,32 @@ else {
         $content = $abwInstructions
     }
     Set-Content -Path $GeminiMd -Value $content -Encoding UTF8
+}
+
+Write-Host "`nVerifying installation..." -ForegroundColor Cyan
+$missingFiles = 0
+$requiredWorkflows = @("abw-init.md", "abw-setup.md", "abw-status.md", "abw-ingest.md", "abw-ask.md", "abw-query.md", "abw-query-deep.md", "abw-bootstrap.md", "abw-lint.md")
+
+foreach ($wf in $requiredWorkflows) {
+    if (-not (Test-Path "$GlobalDir\$wf")) {
+        Write-Host "  [!] Missing: $wf" -ForegroundColor Red
+        $missingFiles++
+    } else {
+        Write-Host "  [OK] Verified: $wf" -ForegroundColor DarkGray
+    }
+}
+
+$geminiContent = Get-Content $GeminiMd -Raw -ErrorAction SilentlyContinue
+if (($null -eq $geminiContent) -or ($geminiContent.IndexOf("# Hybrid ABW - Antigravity IDE Command Surface") -lt 0)) {
+    Write-Host "  [!] GEMINI.md missing ABW block." -ForegroundColor Red
+    $missingFiles++
+} else {
+    Write-Host "  [OK] GEMINI.md ABW registration verified." -ForegroundColor DarkGray
+}
+
+if ($missingFiles -gt 0) {
+    Write-Host "`nInstallation FAILED verification. Missing $missingFiles required components." -ForegroundColor Red
+    exit 1
 }
 
 Write-Host ""

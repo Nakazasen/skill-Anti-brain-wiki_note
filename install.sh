@@ -72,7 +72,6 @@ ABW_SKILLS=(
   "notebooklm-mcp-bridge.md"
   "abw-bootstrap.md"
   "abw-router.md"
-
 )
 
 RED='\033[0;31m'
@@ -82,62 +81,93 @@ CYAN='\033[0;36m'
 GRAY='\033[0;90m'
 NC='\033[0m'
 
+# Local clone detection
+IS_LOCAL=0
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" &>/dev/null && pwd)"
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/workflows/abw-init.md" ]; then
+  IS_LOCAL=1
+  REPO_ROOT="$SCRIPT_DIR"
+fi
+
+install_file() {
+  local rel_path="$1"
+  local dest="$2"
+  
+  if [ "$IS_LOCAL" -eq 1 ] && [ -f "$REPO_ROOT/$rel_path" ]; then
+    cp "$REPO_ROOT/$rel_path" "$dest"
+    echo "LOCAL"
+    return 0
+  fi
+  
+  local url="$REPO_BASE/$rel_path"
+  if curl -fsSL "$url" -o "$dest"; then
+    echo "REMOTE"
+    return 0
+  else
+    return 1
+  fi
+}
+
 CURRENT_VERSION=$(curl -fsSL "$REPO_BASE/VERSION" 2>/dev/null || echo "1.2.0")
 CURRENT_VERSION=$(echo "$CURRENT_VERSION" | tr -d '\r\n ')
 
 mkdir -p "$GLOBAL_DIR" "$SCHEMAS_DIR" "$TEMPLATES_DIR" "$SKILLS_DIR" "$HOME/.gemini"
 
-fetch_file() {
-  local url="$1"
-  local dest="$2"
-  curl -fsSL "$url" -o "$dest"
-}
-
 echo ""
 echo -e "${CYAN}===============================================${NC}"
 echo -e "${CYAN}Hybrid ABW Installer v$CURRENT_VERSION${NC}"
+if [ "$IS_LOCAL" -eq 1 ]; then
+  echo -e "${YELLOW}(Local installation mode detected)${NC}"
+fi
 echo -e "${CYAN}===============================================${NC}"
 echo ""
 
 success=0
+CRITICAL_FAIL=0
 
 echo -e "${CYAN}Installing ABW workflows...${NC}"
 for wf in "${WORKFLOW_FILES[@]}"; do
-  if fetch_file "$REPO_BASE/workflows/$wf" "$GLOBAL_DIR/$wf"; then
-    echo -e "  ${GREEN}[OK]${NC} $wf"
+  if source_type=$(install_file "workflows/$wf" "$GLOBAL_DIR/$wf"); then
+    echo -e "  ${GREEN}[OK]${NC} $wf ($source_type)"
     success=$((success + 1))
   else
-    echo -e "  ${RED}[X]${NC} $wf"
+    echo -e "  ${RED}[X] FAILED to install critical workflow: $wf${NC}"
+    CRITICAL_FAIL=1
   fi
 done
 
+if [ "$CRITICAL_FAIL" -eq 1 ]; then
+  echo -e "\n${RED}CRITICAL ERROR: Failed to install one or more required ABW workflows. Aborting installation.${NC}"
+  exit 1
+fi
+
 echo -e "${CYAN}Installing schemas...${NC}"
 for schema in "${SCHEMA_FILES[@]}"; do
-  if fetch_file "$REPO_BASE/schemas/$schema" "$SCHEMAS_DIR/$schema"; then
-    echo -e "  ${GREEN}[OK]${NC} $schema"
+  if source_type=$(install_file "schemas/$schema" "$SCHEMAS_DIR/$schema"); then
+    echo -e "  ${GREEN}[OK]${NC} $schema ($source_type)"
     success=$((success + 1))
   else
-    echo -e "  ${RED}[X]${NC} $schema"
+    echo -e "  ${RED}[X] FAILED: $schema${NC}"
   fi
 done
 
 echo -e "${CYAN}Installing templates...${NC}"
 for template in "${TEMPLATE_FILES[@]}"; do
-  if fetch_file "$REPO_BASE/templates/$template" "$TEMPLATES_DIR/$template"; then
-    echo -e "  ${GREEN}[OK]${NC} $template"
+  if source_type=$(install_file "templates/$template" "$TEMPLATES_DIR/$template"); then
+    echo -e "  ${GREEN}[OK]${NC} $template ($source_type)"
     success=$((success + 1))
   else
-    echo -e "  ${RED}[X]${NC} $template"
+    echo -e "  ${RED}[X] FAILED: $template${NC}"
   fi
 done
 
 echo -e "${CYAN}Installing ABW skills...${NC}"
 for skill in "${ABW_SKILLS[@]}"; do
-  if fetch_file "$REPO_BASE/skills/$skill" "$SKILLS_DIR/$skill"; then
-    echo -e "  ${GREEN}[OK]${NC} $skill"
+  if source_type=$(install_file "skills/$skill" "$SKILLS_DIR/$skill"); then
+    echo -e "  ${GREEN}[OK]${NC} $skill ($source_type)"
     success=$((success + 1))
   else
-    echo -e "  ${RED}[X]${NC} $skill"
+    echo -e "  ${RED}[X] FAILED: $skill${NC}"
   fi
 done
 
@@ -145,11 +175,11 @@ echo -e "${CYAN}Installing compatibility helper skills...${NC}"
 for skill in "${AWF_HELPER_SKILLS[@]}"; do
   skill_dir="$SKILLS_DIR/$skill"
   mkdir -p "$skill_dir"
-  if fetch_file "$REPO_BASE/awf_skills/$skill/SKILL.md" "$skill_dir/SKILL.md"; then
-    echo -e "  ${GREEN}[OK]${NC} $skill"
+  if source_type=$(install_file "awf_skills/$skill/SKILL.md" "$skill_dir/SKILL.md"); then
+    echo -e "  ${GREEN}[OK]${NC} $skill ($source_type)"
     success=$((success + 1))
   else
-    echo -e "  ${RED}[X]${NC} $skill"
+    echo -e "  ${RED}[X] FAILED: $skill${NC}"
   fi
 done
 
@@ -195,13 +225,39 @@ else
   tmp_file=$(mktemp)
   if grep -q "# Hybrid ABW - Antigravity IDE Command Surface" "$GEMINI_MD" 2>/dev/null; then
     sed '/# Hybrid ABW - Antigravity IDE Command Surface/,$d' "$GEMINI_MD" > "$tmp_file"
-  elif grep -q "# AWF - Antigravity Workflow Framework" "$GEMINI_MD" 2>/dev/null; then
-    sed '/# AWF - Antigravity Workflow Framework/,$d' "$GEMINI_MD" > "$tmp_file"
   else
     cat "$GEMINI_MD" > "$tmp_file"
   fi
   printf "\n%s\n" "$ABW_INSTRUCTIONS" >> "$tmp_file"
   mv "$tmp_file" "$GEMINI_MD"
+fi
+
+echo -e "\n${CYAN}Verifying installation...${NC}"
+MISSING_FILES=0
+REQUIRED_WFS=(
+  "abw-init.md" "abw-setup.md" "abw-status.md" "abw-ingest.md" 
+  "abw-ask.md" "abw-query.md" "abw-query-deep.md" "abw-bootstrap.md" "abw-lint.md"
+)
+
+for wf in "${REQUIRED_WFS[@]}"; do
+  if [ ! -f "$GLOBAL_DIR/$wf" ]; then
+    echo -e "  ${RED}[!] Missing: $wf${NC}"
+    MISSING_FILES=$((MISSING_FILES + 1))
+  else
+    echo -e "  ${GRAY}[OK] Verified: $wf${NC}"
+  fi
+done
+
+if ! grep -q "# Hybrid ABW - Antigravity IDE Command Surface" "$GEMINI_MD" 2>/dev/null; then
+  echo -e "  ${RED}[!] GEMINI.md missing ABW block.${NC}"
+  MISSING_FILES=$((MISSING_FILES + 1))
+else
+  echo -e "  ${GRAY}[OK] GEMINI.md ABW registration verified.${NC}"
+fi
+
+if [ "$MISSING_FILES" -gt 0 ]; then
+  echo -e "\n${RED}Installation FAILED verification. Missing $MISSING_FILES required components.${NC}"
+  exit 1
 fi
 
 echo ""

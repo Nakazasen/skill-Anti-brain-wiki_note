@@ -3,7 +3,7 @@ description: Viet code theo spec (legacy AWF compatibility workflow)
 ---
 > LEGACY COMPATIBILITY WORKFLOW
 > This file is kept for older AWF-style flows.
-> Public ABW-first surface: `/abw-init`, `/abw-setup`, `/abw-ingest`, `/abw-query`, `/abw-query-deep`, `/abw-lint`.
+> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
 # WORKFLOW: /code - The Universal Coder v2.1 (BMAD-Enhanced)
 
