@@ -53,6 +53,31 @@ Repository này tồn tại để giúp các mô hình nhỏ hơn, rẻ hơn, nh
 
 ---
 
+## First Command Cheat Sheet
+
+| If you want to... | First command |
+|---|---|
+| start but don't know where to begin | `/abw-ask` |
+| ask a quick factual question from existing knowledge | `/abw-query` |
+| analyze tradeoffs, RCA, or a complex question | `/abw-query-deep` |
+| work on a greenfield idea with no usable knowledge yet | `/abw-bootstrap` |
+| define product scope or MVP | `/brainstorm` |
+| ingest source material into project knowledge | `/abw-ingest` |
+| plan implementation | `/plan` |
+| design system / DB / structure | `/design` |
+| build UI/UX mockups or screen specs | `/visualize` |
+| start coding | `/code` |
+| debug a bug | `/debug` |
+| refactor legacy code but still need orientation | `/abw-ask` |
+| refactor code with a clear scope already in mind | `/refactor` |
+| save your working session | `/save-brain` |
+| restore last-session context | `/recap` |
+| decide what to do next | `/next` |
+| audit a change or artifact | `/abw-audit` |
+| run the full acceptance chain | `/abw-eval` |
+
+---
+
 ## Mental Model: 5 Lanes
 
 ### 1. Khám phá và tư duy
