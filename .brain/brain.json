@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "schema_version": "1.1.0",
+    "awf_version": "4.0.2",
+    "created_at": "2026-04-10T00:00:00Z",
+    "updated_at": "2026-04-12T15:10:00Z"
+  },
+  "project": {
+    "name": "Hybrid ABW Command Surface",
+    "description": "Hệ thống Hybrid Anti-Brain-Wiki (ABW) cho Antigravity IDE, cung cấp cơ chế reasoning 3 tầng (Tier 1/2/3) và bộ installer bền bỉ (hardened).",
+    "type": "tooling",
+    "status": "production-ready",
+    "repository": "https://github.com/Nakazasen/skill-Anti-brain-wiki_note"
+  },
+  "tech_stack": {
+    "automation": {
+      "language": "PowerShell, Bash",
+      "purpose": "Installers & Environment Registration"
+    },
+    "workflows": {
+      "language": "Markdown (Gemini Artifacts)",
+      "purpose": "Standardized Agent Behavior & Hybrid ABW Tiers"
+    },
+    "documentation": {
+      "vcs": "Git",
+      "conventions": "ABW-first, Fallback-first"
+    }
+  },
+  "command_surface": {
+    "router": "/abw-ask",
+    "tiers": [
+      {
+        "name": "Tier 1: Fast Path",
+        "command": "/abw-query",
+        "logic": "Wiki-first retrieval, no TTC loop."
+      },
+      {
+        "name": "Tier 2: Deliberative Path",
+        "command": "/abw-query-deep",
+        "logic": "Bounded Test-Time Compute (TTC) with self-critique loop."
+      },
+      {
+        "name": "Tier 3: Bootstrap Path",
+        "command": "/abw-bootstrap",
+        "logic": "Reasoning for greenfield projects with no prior knowledge."
+      }
+    ],
+    "utility": [
+      "/abw-init", "/abw-setup", "/abw-status", "/abw-ingest", "/abw-lint"
+    ]
+  },
+  "knowledge_items": {
+    "conventions": [
+      {
+        "area": "No Fake Success",
+        "convention": "Nếu thiếu dữ liệu hoặc MCP down, log Gap thay vì hallucinate."
+      },
+      {
+        "area": "Installer Safety",
+        "convention": "Không truncate block AWF cũ trong GEMINI.md, thực hiện append an toàn."
+      }
+    ]
+  },
+  "updated_at": "2026-04-12T15:10:00Z"
+}
