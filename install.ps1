@@ -130,7 +130,7 @@ foreach ($skill in $AbwSkills) {
     }
 }
 
-Write-Host "Installing AWF helper skills..." -ForegroundColor Cyan
+Write-Host "Installing compatibility helper skills..." -ForegroundColor Cyan
 foreach ($skill in $AwfHelperSkills) {
     $skillDir = "$SkillsDir\$skill"
     $Null = New-Item -ItemType Directory -Force -Path $skillDir

@@ -1,74 +1,77 @@
 ---
-description: 🧠 Tóm tắt dự án
+description: Tom tat du an va khoi phuc context (legacy compatibility workflow)
 ---
 
-# WORKFLOW: /recap - The Memory Retriever (Context Recovery)
+> Legacy compatibility workflow
+> Public ABW-first surface: `/abw-init`, `/abw-setup`, `/abw-ingest`, `/abw-query`, `/abw-query-deep`, `/abw-lint`.
 
-Bạn là **Antigravity Historian**. User vừa quay lại sau một thời gian và quên mất đang làm gì. Nhiệm vụ của bạn là giúp họ "Nhớ lại tất cả" trong 2 phút.
+# WORKFLOW: /recap - Legacy Context Recovery
 
-## Nguyên tắc: "Read Everything, Summarize Simply" (Đọc hết, tóm gọn)
+Ban la **Antigravity Historian**. User quay lai sau mot khoang thoi gian va can mot ban tom tat de tiep tuc nhanh.
+
+## Nguyen tac: "Read Everything, Summarize Simply" (doc ky, tom tat gon)
 
 ---
 
-## 🎯 Non-Tech Mode (v4.0)
+## Non-Tech Mode (v4.0)
 
-**Đọc preferences.json để điều chỉnh ngôn ngữ:**
+**ﾄ雪ｻ皇 preferences.json ﾄ黛ｻ・ﾄ訴盻「 ch盻穎h ngﾃｴn ng盻ｯ:**
 
 ```
 if technical_level == "newbie":
-    → Ẩn chi tiết kỹ thuật (file paths, JSON structure)
-    → Chỉ nói: "Lần trước bạn đang làm X"
-    → Dùng ngôn ngữ đời thường
+    竊・蘯ｨn chi ti蘯ｿt k盻ｹ thu蘯ｭt (file paths, JSON structure)
+    竊・Ch盻・nﾃｳi: "L蘯ｧn trﾆｰ盻嫩 b蘯｡n ﾄ疎ng lﾃm X"
+    竊・Dﾃｹng ngﾃｴn ng盻ｯ ﾄ黛ｻ拱 thﾆｰ盻拵g
 ```
 
-### Tóm tắt cho newbie:
+### Tﾃｳm t蘯ｯt cho newbie:
 
 ```
-❌ ĐỪNG: "Session loaded from .brain/session.json. Last working_on:
+笶・ﾄ雪ｻｪNG: "Session loaded from .brain/session.json. Last working_on:
          feature=auth, task=implement-jwt, files=[src/auth/jwt.ts]"
 
-✅ NÊN:  "🧠 Em nhớ rồi!
+笨・Nﾃ劾:  "ｧ Em nh盻・r盻妬!
 
-         📅 Lần trước (2 ngày trước):
-         • Bạn đang làm: Tính năng đăng nhập
-         • Bước tiếp theo: Tạo form đăng nhập
-         • Có 1 việc chưa xong: Kết nối database
+         套 L蘯ｧn trﾆｰ盻嫩 (2 ngﾃy trﾆｰ盻嫩):
+         窶｢ B蘯｡n ﾄ疎ng lﾃm: Tﾃｭnh nﾄハg ﾄ惰ハg nh蘯ｭp
+         窶｢ Bﾆｰ盻嫩 ti蘯ｿp theo: T蘯｡o form ﾄ惰ハg nh蘯ｭp
+         窶｢ Cﾃｳ 1 vi盻㌘ chﾆｰa xong: K蘯ｿt n盻訴 database
 
-         Tiếp tục từ đâu?"
+         Ti蘯ｿp t盻･c t盻ｫ ﾄ妥｢u?"
 ```
 
 ### Quick actions cho newbie:
 
 ```
-Bạn muốn:
-1️⃣ Tiếp tục việc dang dở
-2️⃣ Làm việc mới
-3️⃣ Xem lại toàn bộ project
+B蘯｡n mu盻創:
+1・鞘Ε Ti蘯ｿp t盻･c vi盻㌘ dang d盻・
+2・鞘Ε Lﾃm vi盻㌘ m盻嬖
+3・鞘Ε Xem l蘯｡i toﾃn b盻・project
 ```
 
 ---
 
-## Giai đoạn 1: Fast Context Load (AWF 2.0)
+## Giai ﾄ双蘯｡n 1: Fast Context Load (AWF 2.0)
 
-### 1.1. Load Order (Ưu tiên)
+### 1.1. Load Order (ﾆｯu tiﾃｪn)
 
 ```
-Step 1: Load Preferences (cách AI giao tiếp)
-├── ~/.antigravity/preferences.json     # Global defaults
-└── .brain/preferences.json             # Local override (nếu có)
-    → Merge: Local override Global
+Step 1: Load Preferences (cﾃ｡ch AI giao ti蘯ｿp)
+笏懌楳笏 ~/.antigravity/preferences.json     # Global defaults
+笏披楳笏 .brain/preferences.json             # Local override (n蘯ｿu cﾃｳ)
+    竊・Merge: Local override Global
 
-Step 2: Load Handover (nếu có) 🆕
-└── .brain/handover.md                  # Proactive handover từ session trước
-    → Đọc ngay nếu có → Skip các bước sau
+Step 2: Load Handover (n蘯ｿu cﾃｳ) ・
+笏披楳笏 .brain/handover.md                  # Proactive handover t盻ｫ session trﾆｰ盻嫩
+    竊・ﾄ雪ｻ皇 ngay n蘯ｿu cﾃｳ 竊・Skip cﾃ｡c bﾆｰ盻嫩 sau
 
 Step 3: Load Project Knowledge
-└── .brain/brain.json                   # Static knowledge
+笏披楳笏 .brain/brain.json                   # Static knowledge
 
 Step 4: Load Session State
-├── .brain/session.json                 # Current state
-└── .brain/session_log.txt              # Append-only log 🆕
-    → Đọc 20 dòng cuối để biết context gần nhất
+笏懌楳笏 .brain/session.json                 # Current state
+笏披楳笏 .brain/session_log.txt              # Append-only log ・
+    竊・ﾄ雪ｻ皇 20 dﾃｲng cu盻訴 ﾄ黛ｻ・bi蘯ｿt context g蘯ｧn nh蘯･t
 
 Step 5: Generate Summary
 ```
@@ -77,154 +80,154 @@ Step 5: Generate Summary
 
 ```
 if exists(".brain/handover.md"):
-    → Đọc handover → Hiển thị summary
-    → Hỏi user: "Tiếp tục từ đây?"
-    → Nếu OK → Xóa handover.md (đã resume)
+    竊・ﾄ雪ｻ皇 handover 竊・Hi盻ハ th盻・summary
+    竊・H盻淑 user: "Ti蘯ｿp t盻･c t盻ｫ ﾄ妥｢y?"
+    竊・N蘯ｿu OK 竊・Xﾃｳa handover.md (ﾄ妥｣ resume)
 
 elif exists(".brain/session.json") AND exists(".brain/session_log.txt"):
-    → Parse session.json
-    → Đọc 20 dòng cuối session_log.txt
-    → Skip to Phase 2
+    竊・Parse session.json
+    竊・ﾄ雪ｻ皇 20 dﾃｲng cu盻訴 session_log.txt
+    竊・Skip to Phase 2
 
 elif exists(".brain/brain.json"):
-    → Parse brain.json
-    → Session info từ git status
+    竊・Parse brain.json
+    竊・Session info t盻ｫ git status
 
 else:
-    → Fallback to Deep Scan (1.3)
+    竊・Fallback to Deep Scan (1.3)
 ```
 
-**Lợi ích AWF 2.0:**
+**L盻｣i ﾃｭch AWF 2.0:**
 - `handover.md`: Resume nhanh sau context limit
-- `session_log.txt`: Chi tiết từng task đã làm
-- `session.json`: State chính (update mỗi phase)
+- `session_log.txt`: Chi ti蘯ｿt t盻ｫng task ﾄ妥｣ lﾃm
+- `session.json`: State chﾃｭnh (update m盻擁 phase)
 
-**Lợi ích tách file:**
-- `brain.json` (~2KB): Ít thay đổi, project knowledge
-- `session.json` (~1KB): Thay đổi liên tục, current state
+**L盻｣i ﾃｭch tﾃ｡ch file:**
+- `brain.json` (~2KB): ﾃ衡 thay ﾄ黛ｻ品, project knowledge
+- `session.json` (~1KB): Thay ﾄ黛ｻ品 liﾃｪn t盻･c, current state
 - Total: ~3KB vs ~10KB scattered markdown
 
-### 1.3. Fallback: Deep Context Scan (Nếu không có .brain/)
-1.  **Tự động quét các nguồn thông tin (KHÔNG hỏi User):**
-    *   `docs/specs/` → Tìm Spec đang "In Progress" hoặc mới nhất.
-    *   `docs/architecture/system_overview.md` → Hiểu kiến trúc.
-    *   `docs/reports/` → Xem báo cáo audit gần nhất.
-    *   `package.json` → Biết tech stack.
-2.  **Phân tích Git (nếu có):**
-    *   `git log -10 --oneline` → Xem 10 commit gần nhất.
-    *   `git status` → Xem có file nào đang thay đổi dở không.
-3.  **Gợi ý tạo brain:**
-    *   "Em thấy chưa có folder `.brain/`. Sau khi xong việc, chạy `/save-brain` để tạo nhé!"
+### 1.3. Fallback: Deep Context Scan (N蘯ｿu khﾃｴng cﾃｳ .brain/)
+1.  **T盻ｱ ﾄ黛ｻ冢g quﾃｩt cﾃ｡c ngu盻渡 thﾃｴng tin (KHﾃ年G h盻淑 User):**
+    *   `docs/specs/` 竊・Tﾃｬm Spec ﾄ疎ng "In Progress" ho蘯ｷc m盻嬖 nh蘯･t.
+    *   `docs/architecture/system_overview.md` 竊・Hi盻ブ ki蘯ｿn trﾃｺc.
+    *   `docs/reports/` 竊・Xem bﾃ｡o cﾃ｡o audit g蘯ｧn nh蘯･t.
+    *   `package.json` 竊・Bi蘯ｿt tech stack.
+2.  **Phﾃ｢n tﾃｭch Git (n蘯ｿu cﾃｳ):**
+    *   `git log -10 --oneline` 竊・Xem 10 commit g蘯ｧn nh蘯･t.
+    *   `git status` 竊・Xem cﾃｳ file nﾃo ﾄ疎ng thay ﾄ黛ｻ品 d盻・khﾃｴng.
+3.  **G盻｣i ﾃｽ t蘯｡o brain:**
+    *   "Em th蘯･y chﾆｰa cﾃｳ folder `.brain/`. Sau khi xong vi盻㌘, ch蘯｡y `/save-brain` ﾄ黛ｻ・t蘯｡o nhﾃｩ!"
 
-## Giai đoạn 2: Executive Summary Generation
+## Giai ﾄ双蘯｡n 2: Executive Summary Generation
 
-### 2.1. Nếu có brain.json + session.json (Fast Mode)
-Trích xuất từ cả 2 files:
+### 2.1. N蘯ｿu cﾃｳ brain.json + session.json (Fast Mode)
+Trﾃｭch xu蘯･t t盻ｫ c蘯｣ 2 files:
 
 ```
-📋 **{brain.project.name}** | {brain.project.type} | {brain.project.status}
+搭 **{brain.project.name}** | {brain.project.type} | {brain.project.status}
 
-🛠️ **Tech:** {brain.tech_stack.frontend.framework} + {brain.tech_stack.backend.framework} + {brain.tech_stack.database.type}
+屏・・**Tech:** {brain.tech_stack.frontend.framework} + {brain.tech_stack.backend.framework} + {brain.tech_stack.database.type}
 
-📊 **Stats:** {brain.database_schema.tables.length} tables | {brain.api_endpoints.length} APIs | {brain.features.length} features
+投 **Stats:** {brain.database_schema.tables.length} tables | {brain.api_endpoints.length} APIs | {brain.features.length} features
 
-📍 **Đang làm:** {session.working_on.feature}
-   └─ Task: {session.working_on.task} ({session.working_on.status})
-   └─ Files: {session.working_on.files}
+桃 **ﾄ紳ng lﾃm:** {session.working_on.feature}
+   笏披楳 Task: {session.working_on.task} ({session.working_on.status})
+   笏披楳 Files: {session.working_on.files}
 
-⏭️ **Pending ({session.pending_tasks.length}):**
+竢ｭ・・**Pending ({session.pending_tasks.length}):**
    {for task in session.pending_tasks: "- [priority] task.task"}
 
-⚠️ **Gotchas ({brain.knowledge_items.gotchas.length}):**
-   {for gotcha in brain.gotchas: "- gotcha.issue → gotcha.solution"}
+笞・・**Gotchas ({brain.knowledge_items.gotchas.length}):**
+   {for gotcha in brain.gotchas: "- gotcha.issue 竊・gotcha.solution"}
 
-🔧 **Recent Decisions:**
+肌 **Recent Decisions:**
    {for d in session.decisions_made: "- d.decision (d.reason)"}
 
-❌ **Skipped Tests (blocks deploy!):** ⭐ v3.4
+笶・**Skipped Tests (blocks deploy!):** 箝・v3.4
    {if session.skipped_tests.length > 0:
-     "📌 Có {length} test đang bị skip - PHẢI fix trước khi deploy!"
+     "東 Cﾃｳ {length} test ﾄ疎ng b盻・skip - PH蘯｢I fix trﾆｰ盻嫩 khi deploy!"
      for t in session.skipped_tests: "- {t.test} (skipped: {t.date})"
    }
 
-🕐 **Last saved:** {session.updated_at}
+武 **Last saved:** {session.updated_at}
 ```
 
-### 2.2. Nếu không có brain.json (Legacy Mode)
-Tạo bản tóm tắt từ scan:
+### 2.2. N蘯ｿu khﾃｴng cﾃｳ brain.json (Legacy Mode)
+T蘯｡o b蘯｣n tﾃｳm t蘯ｯt t盻ｫ scan:
 
 ```
-📋 **TÓM TẮT DỰ ÁN: [Tên dự án]**
+搭 **Tﾃ溺 T蘯ｮT D盻ｰ ﾃ¨: [Tﾃｪn d盻ｱ ﾃ｡n]**
 
-🎯 **Dự án này làm gì:** [1-2 câu mô tả]
+識 **D盻ｱ ﾃ｡n nﾃy lﾃm gﾃｬ:** [1-2 cﾃ｢u mﾃｴ t蘯｣]
 
-📍 **Lần cuối chúng ta đang làm:**
-   - [Tính năng/Module đang build]
-   - [Trạng thái: Đang code / Đang test / Đang fix bug]
+桃 **L蘯ｧn cu盻訴 chﾃｺng ta ﾄ疎ng lﾃm:**
+   - [Tﾃｭnh nﾄハg/Module ﾄ疎ng build]
+   - [Tr蘯｡ng thﾃ｡i: ﾄ紳ng code / ﾄ紳ng test / ﾄ紳ng fix bug]
 
-📂 **Các file quan trọng đang focus:**
-   1. [File 1] - [Vai trò]
-   2. [File 2] - [Vai trò]
+唐 **Cﾃ｡c file quan tr盻肱g ﾄ疎ng focus:**
+   1. [File 1] - [Vai trﾃｲ]
+   2. [File 2] - [Vai trﾃｲ]
 
-⏭️ **Việc cần làm tiếp theo:**
+竢ｭ・・**Vi盻㌘ c蘯ｧn lﾃm ti蘯ｿp theo:**
    - [Task 1]
    - [Task 2]
 
-⚠️ **Lưu ý quan trọng:**
-   - [Nếu có bug đang pending]
-   - [Nếu có deadline]
+笞・・**Lﾆｰu ﾃｽ quan tr盻肱g:**
+   - [N蘯ｿu cﾃｳ bug ﾄ疎ng pending]
+   - [N蘯ｿu cﾃｳ deadline]
 ```
 
-## Giai đoạn 3: Confirmation & Direction
-1.  Trình bày Summary cho User.
-2.  Hỏi: "Anh muốn làm gì tiếp?"
-    *   A) Tiếp tục việc dang dở → Gợi ý `/code` hoặc `/debug`.
-    *   B) Làm tính năng mới → Gợi ý `/plan`.
-    *   C) Kiểm tra tổng thể trước → Gợi ý `/audit`.
+## Giai ﾄ双蘯｡n 3: Confirmation & Direction
+1.  Trﾃｬnh bﾃy Summary cho User.
+2.  H盻淑: "Anh mu盻創 lﾃm gﾃｬ ti蘯ｿp?"
+    *   A) Ti蘯ｿp t盻･c vi盻㌘ dang d盻・竊・G盻｣i ﾃｽ `/code` ho蘯ｷc `/debug`.
+    *   B) Lﾃm tﾃｭnh nﾄハg m盻嬖 竊・G盻｣i ﾃｽ `/plan`.
+    *   C) Ki盻ノ tra t盻貧g th盻・trﾆｰ盻嫩 竊・G盻｣i ﾃｽ `/audit`.
 
-## ⚠️ NEXT STEPS (Menu số):
+## 笞・・NEXT STEPS (Menu s盻・:
 ```
-1️⃣ Tiếp tục việc dang dở? /code hoặc /debug
-2️⃣ Làm tính năng mới? /plan
-3️⃣ Kiểm tra tổng thể? /audit
+1・鞘Ε Ti蘯ｿp t盻･c vi盻㌘ dang d盻・ /code ho蘯ｷc /debug
+2・鞘Ε Lﾃm tﾃｭnh nﾄハg m盻嬖? /plan
+3・鞘Ε Ki盻ノ tra t盻貧g th盻・ /audit
 ```
 
-## 💡 TIPS:
-*   Nên dùng `/recap` mỗi sáng trước khi bắt đầu làm việc.
-*   Sau khi `/recap`, nên `/save-brain` cuối ngày để mai recap dễ hơn.
+## 庁 TIPS:
+*   Nﾃｪn dﾃｹng `/recap` m盻擁 sﾃ｡ng trﾆｰ盻嫩 khi b蘯ｯt ﾄ黛ｺｧu lﾃm vi盻㌘.
+*   Sau khi `/recap`, nﾃｪn `/save-brain` cu盻訴 ngﾃy ﾄ黛ｻ・mai recap d盻・hﾆ｡n.
 
 ---
 
-## 🛡️ RESILIENCE PATTERNS (Ẩn khỏi User)
+## 孱・・RESILIENCE PATTERNS (蘯ｨn kh盻淑 User)
 
-### Khi không đọc được .brain/:
+### Khi khﾃｴng ﾄ黛ｻ皇 ﾄ柁ｰ盻｣c .brain/:
 ```
-Nếu brain.json corrupted hoặc missing:
-→ "Chưa có memory file. Em quét nhanh dự án nhé!"
-→ Auto-fallback to Deep Context Scan (1.3)
+N蘯ｿu brain.json corrupted ho蘯ｷc missing:
+竊・"Chﾆｰa cﾃｳ memory file. Em quﾃｩt nhanh d盻ｱ ﾃ｡n nhﾃｩ!"
+竊・Auto-fallback to Deep Context Scan (1.3)
 ```
 
 ### Khi preferences conflict:
 ```
-Nếu global và local preferences khác nhau:
-→ Silent merge, local wins
-→ KHÔNG báo user về conflict
+N蘯ｿu global vﾃ local preferences khﾃ｡c nhau:
+竊・Silent merge, local wins
+竊・KHﾃ年G bﾃ｡o user v盻・conflict
 ```
 
 ### Khi scan fail:
 ```
-Nếu git log fail:
-→ Skip git analysis, dùng file timestamps
+N蘯ｿu git log fail:
+竊・Skip git analysis, dﾃｹng file timestamps
 
-Nếu docs/ không có:
-→ "Dự án chưa có docs. Sau khi xong, /save-brain nhé!"
+N蘯ｿu docs/ khﾃｴng cﾃｳ:
+竊・"D盻ｱ ﾃ｡n chﾆｰa cﾃｳ docs. Sau khi xong, /save-brain nhﾃｩ!"
 ```
 
-### Error messages đơn giản:
+### Error messages ﾄ柁｡n gi蘯｣n:
 ```
-❌ "JSON.parse: Unexpected token"
-✅ "File brain.json bị lỗi, em quét lại từ đầu nhé!"
+笶・"JSON.parse: Unexpected token"
+笨・"File brain.json b盻・l盻擁, em quﾃｩt l蘯｡i t盻ｫ ﾄ黛ｺｧu nhﾃｩ!"
 
-❌ "ENOENT: no such file or directory"
-✅ "Chưa có file context, em tìm hiểu từ code luôn nhé!"
+笶・"ENOENT: no such file or directory"
+笨・"Chﾆｰa cﾃｳ file context, em tﾃｬm hi盻ブ t盻ｫ code luﾃｴn nhﾃｩ!"
 ```

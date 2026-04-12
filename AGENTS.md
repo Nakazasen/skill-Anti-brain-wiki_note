@@ -313,11 +313,11 @@ Triggers: duplicate NbLM query, no new evidence x2, contradiction stall x2, scor
 | `wiki/index.md` | Central knowledge index | ingest-wiki, lint-wiki |
 | `wiki/_schemas/note.schema.md` | Schema contract for wiki notes | System (immutable) |
 | `brain-state-helper-bridge.md` | Bridge rules between `.brain/` and `wiki/` -- data flow, conflict resolution | System (immutable) |
-| `.gitignore` | Runtime state exclusion policy (aligned with AWF save_brain.md) | System |
+| `.gitignore` | Runtime state exclusion policy for ABW runtime artifacts | System |
 
-### AWF Compatibility
+### Legacy Compatibility Layer
 
-| AWF File | Relationship to ABW |
+| Legacy File | Relationship to ABW |
 |----------|-------------------|
 | `.brain/brain.json` | <-> Coexists -- ABW does NOT modify this file |
 | `.brain/session.json` | <-> Coexists -- ABW reads for Layer 1 recap, does NOT modify |
@@ -428,4 +428,4 @@ lint-wiki triggered
 
 ---
 
-*Created: 2026-04-11 | Hybrid Anti-Brain-Wiki v1.1.1 | Compatible with AWF 4.1 Eternal Context Design*
+*Created: 2026-04-11 | Hybrid Anti-Brain-Wiki v1.1.1 | Includes legacy compatibility shims where needed*

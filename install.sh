@@ -131,7 +131,7 @@ for skill in "${ABW_SKILLS[@]}"; do
   fi
 done
 
-echo -e "${CYAN}Installing AWF helper skills...${NC}"
+echo -e "${CYAN}Installing compatibility helper skills...${NC}"
 for skill in "${AWF_HELPER_SKILLS[@]}"; do
   skill_dir="$SKILLS_DIR/$skill"
   mkdir -p "$skill_dir"

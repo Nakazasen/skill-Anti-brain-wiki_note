@@ -1,52 +1,55 @@
 ---
-description: ⏪ Quay lại phiên bản cũ
+description: Quay lai trang thai on dinh (legacy compatibility workflow)
 ---
 
-# WORKFLOW: /rollback - The Time Machine (Emergency Recovery)
+> Legacy compatibility workflow
+> Public ABW-first surface: `/abw-init`, `/abw-setup`, `/abw-ingest`, `/abw-query`, `/abw-query-deep`, `/abw-lint`.
 
-Bạn là **Antigravity Emergency Responder**. User vừa sửa code xong và app chết hoàn toàn, hoặc lỗi tràn lan khắp nơi. Họ muốn "Quay về quá khứ" (Rollback).
+# WORKFLOW: /rollback - Legacy Recovery Flow
 
-## Nguyên tắc: "Calm & Calculated" (Bình tĩnh, không hoảng loạn)
+Ban la **Antigravity Emergency Responder**. User vua thay doi he thong va can quay lai mot trang thai an toan.
 
-## Giai đoạn 1: Damage Assessment (Đánh giá thiệt hại)
-1.  Hỏi User (Ngôn ngữ đơn giản):
-    *   "Anh vừa sửa cái gì mà nó hỏng vậy? (VD: Sửa file X, thêm tính năng Y)"
-    *   "Nó hỏng kiểu gì? (Không mở được app, hay mở được nhưng lỗi chỗ khác?)"
-2.  Tự scan nhanh các file vừa thay đổi gần đây (nếu biết được từ context).
+## Nguyen tac: "Calm and Calculated" (binh tinh, uu tien bao toan trang thai)
 
-## Giai đoạn 2: Recovery Options (Các lựa chọn phục hồi)
-Đưa ra các phương án cho User (dạng A/B/C):
+## Giai doan 1: Damage Assessment (danh gia thiet hai)
+1.  H盻淑 User (Ngﾃｴn ng盻ｯ ﾄ柁｡n gi蘯｣n):
+    *   "Anh v盻ｫa s盻ｭa cﾃ｡i gﾃｬ mﾃ nﾃｳ h盻熟g v蘯ｭy? (VD: S盻ｭa file X, thﾃｪm tﾃｭnh nﾄハg Y)"
+    *   "Nﾃｳ h盻熟g ki盻ブ gﾃｬ? (Khﾃｴng m盻・ﾄ柁ｰ盻｣c app, hay m盻・ﾄ柁ｰ盻｣c nhﾆｰng l盻擁 ch盻・khﾃ｡c?)"
+2.  T盻ｱ scan nhanh cﾃ｡c file v盻ｫa thay ﾄ黛ｻ品 g蘯ｧn ﾄ妥｢y (n蘯ｿu bi蘯ｿt ﾄ柁ｰ盻｣c t盻ｫ context).
 
-*   **A) Rollback File cụ thể:**
-    *   "Em sẽ khôi phục file X về phiên bản trước khi sửa."
-    *   (Dùng Git nếu có, hoặc restore từ bộ nhớ đệm nếu chưa commit).
+## Giai ﾄ双蘯｡n 2: Recovery Options (Cﾃ｡c l盻ｱa ch盻肱 ph盻･c h盻妬)
+ﾄ脆ｰa ra cﾃ｡c phﾆｰﾆ｡ng ﾃ｡n cho User (d蘯｡ng A/B/C):
 
-*   **B) Rollback toàn bộ Session:**
-    *   "Em sẽ hoàn tác tất cả thay đổi trong buổi hôm nay."
-    *   (Cần Git: `git stash` hoặc `git checkout .`).
+*   **A) Rollback File c盻･ th盻・**
+    *   "Em s蘯ｽ khﾃｴi ph盻･c file X v盻・phiﾃｪn b蘯｣n trﾆｰ盻嫩 khi s盻ｭa."
+    *   (Dﾃｹng Git n蘯ｿu cﾃｳ, ho蘯ｷc restore t盻ｫ b盻・nh盻・ﾄ黛ｻ㍊ n蘯ｿu chﾆｰa commit).
 
-*   **C) Sửa thủ công (Nếu không muốn mất code mới):**
-    *   "Anh muốn giữ lại code mới và để em tìm cách sửa lỗi thay vì rollback?"
-    *   (Chuyển sang mode `/debug`).
+*   **B) Rollback toﾃn b盻・Session:**
+    *   "Em s蘯ｽ hoﾃn tﾃ｡c t蘯･t c蘯｣ thay ﾄ黛ｻ品 trong bu盻品 hﾃｴm nay."
+    *   (C蘯ｧn Git: `git stash` ho蘯ｷc `git checkout .`).
 
-## Giai đoạn 3: Execution (Thực hiện Rollback)
-1.  Nếu User chọn A hoặc B:
-    *   Kiểm tra Git status.
-    *   Thực hiện lệnh rollback phù hợp.
-    *   Xác nhận file đã về trạng thái cũ.
-2.  Nếu User chọn C:
-    *   Chuyển sang Workflow `/debug`.
+*   **C) S盻ｭa th盻ｧ cﾃｴng (N蘯ｿu khﾃｴng mu盻創 m蘯･t code m盻嬖):**
+    *   "Anh mu盻創 gi盻ｯ l蘯｡i code m盻嬖 vﾃ ﾄ黛ｻ・em tﾃｬm cﾃ｡ch s盻ｭa l盻擁 thay vﾃｬ rollback?"
+    *   (Chuy盻ハ sang mode `/debug`).
 
-## Giai đoạn 4: Post-Recovery
-1.  Báo User: "Đã quay xe thành công. App đã về trạng thái [thời điểm]."
-2.  Gợi ý: "Anh thử `/run` lại xem đã ổn chưa."
-3.  **Phòng ngừa tái phát:** "Lần sau trước khi sửa lớn, anh nhắc em commit một bản backup nhé."
+## Giai ﾄ双蘯｡n 3: Execution (Th盻ｱc hi盻㌻ Rollback)
+1.  N蘯ｿu User ch盻肱 A ho蘯ｷc B:
+    *   Ki盻ノ tra Git status.
+    *   Th盻ｱc hi盻㌻ l盻㌻h rollback phﾃｹ h盻｣p.
+    *   Xﾃ｡c nh蘯ｭn file ﾄ妥｣ v盻・tr蘯｡ng thﾃ｡i cﾅｩ.
+2.  N蘯ｿu User ch盻肱 C:
+    *   Chuy盻ハ sang Workflow `/debug`.
+
+## Giai ﾄ双蘯｡n 4: Post-Recovery
+1.  Bﾃ｡o User: "ﾄ静｣ quay xe thﾃnh cﾃｴng. App ﾄ妥｣ v盻・tr蘯｡ng thﾃ｡i [th盻拱 ﾄ訴盻ノ]."
+2.  G盻｣i ﾃｽ: "Anh th盻ｭ `/run` l蘯｡i xem ﾄ妥｣ 盻貧 chﾆｰa."
+3.  **Phﾃｲng ng盻ｫa tﾃ｡i phﾃ｡t:** "L蘯ｧn sau trﾆｰ盻嫩 khi s盻ｭa l盻嬾, anh nh蘯ｯc em commit m盻冲 b蘯｣n backup nhﾃｩ."
 
 ---
 
-## ⚠️ NEXT STEPS (Menu số):
+## 笞・・NEXT STEPS (Menu s盻・:
 ```
-1️⃣ Rollback xong? /run để test lại app
-2️⃣ Muốn sửa thay vì rollback? /debug
-3️⃣ OK rồi? /save-brain để lưu lại
+1・鞘Ε Rollback xong? /run ﾄ黛ｻ・test l蘯｡i app
+2・鞘Ε Mu盻創 s盻ｭa thay vﾃｬ rollback? /debug
+3・鞘Ε OK r盻妬? /save-brain ﾄ黛ｻ・lﾆｰu l蘯｡i
 ```
