@@ -76,7 +76,7 @@ try {
     $CurrentVersion = (Invoke-WebRequest -Uri "$RepoBase/VERSION" -UseBasicParsing).Content.Trim()
 }
 catch {
-    $CurrentVersion = "1.1.1"
+    $CurrentVersion = "1.2.0"
 }
 
 $Null = New-Item -ItemType Directory -Force -Path $GlobalDir, $SchemasDir, $TemplatesDir, $SkillsDir, "$env:USERPROFILE\.gemini"

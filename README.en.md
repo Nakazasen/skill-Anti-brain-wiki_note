@@ -1,6 +1,6 @@
 # Hybrid Anti-Brain-Wiki (Hybrid ABW)
 
-> Version: 1.1.1
+> Version: 1.2.0
 > Tagline: Turn AI from fast response mode into a grounded, memory-aware, bounded-deliberation system.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

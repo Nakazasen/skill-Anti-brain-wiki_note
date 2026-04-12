@@ -1,6 +1,6 @@
 # Hybrid Anti-Brain-Wiki (Hybrid ABW)
 
-> Version: 1.1.1
+> Version: 1.2.0
 > Tagline: Bien AI tu tra loi nhanh thanh he thong tri thuc co grounding, co bo nho, va co bounded deliberation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
