@@ -67,6 +67,19 @@ Tập trung vào việc đánh giá đầu ra, kiểm tra chất lượng lập 
 
 ---
 
+## Naming Policy
+
+- Dùng tiền tố **`/abw-*`** cho các lệnh thuộc lớp protocol, system state, grounding, routing, evaluation, recovery, hoặc session orchestration.
+- Giữ **verb ngắn** cho các lệnh delivery thao tác trực tiếp như `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`.
+- Giữ **`/save-brain`**, `/recap`, và `/next` như session verbs ngắn; không tự đổi sang dạng `abw-*` nếu chưa có quyết định kiến trúc mới.
+- Không tự rename command chỉ để “đồng bộ thương hiệu” nếu việc đổi tên không đi kèm thay đổi rõ ràng về capability hoặc public surface.
+- Không xóa command cũ chỉ vì đã có command mới, trừ khi đã xác nhận chiến lược migration, alias, hoặc deprecation.
+- Với các lệnh ở vùng ranh giới discovery như `/brainstorm`, chỉ được thêm alias branded như `/abw-brainstorm` khi có quyết định rõ; không tự thay command chính.
+- Mọi thay đổi command surface phải cập nhật đồng thời: workflow file, skill file, installer, `GEMINI.md` injection text, `help.md`, `workflows/README.md`, và root `README.md`.
+- Một command chỉ được xem là “đã đổi tên thành công” khi clean install vẫn hiện đúng command mới trong runtime local.
+
+---
+
 ## Luồng khuyến nghị
 
 1. **Khám phá và tư duy**: Bắt đầu với `/brainstorm` hoặc `/abw-ask`.
