@@ -1,68 +1,178 @@
-# 🧠 Hybrid Anti-Brain-Wiki (Hybrid ABW)
+# Hybrid Anti-Brain-Wiki (Hybrid ABW)
 
-> **Version:** 1.1.0  
-> **Tagline:** Elevating AI from "Instant Response" to "Multi-layer Deliberation."
+> Version: 1.1.1
+> Tagline: Turn AI from fast response mode into a grounded, memory-aware, bounded-deliberation system.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TTC: Enabled](https://img.shields.io/badge/Test--Time%20Compute-Active-brightgreen)](https://github.com/Nakazasen/skill-Anti-brain-wiki_note)
 
-**Hybrid ABW** is a knowledge and reasoning architecture for AI Agents, designed to address the biggest challenges in modern LLMs: **Lack of reliable long-term memory and shallow reasoning**.
+Hybrid ABW is a knowledge and reasoning architecture for AI agents. It is designed to address two common LLM failure modes:
+
+- weak long-term memory
+- plausible but weakly grounded answers
 
 ---
 
-## ✨ Why Hybrid ABW?
+## Why Hybrid ABW?
 
-Instead of letting AI "hallucinate" answers, Hybrid ABW forces it through a rigorous reasoning framework, cross-checking every claim against verified evidence (Grounding).
+Instead of letting the model answer in a single loose pass, Hybrid ABW routes work through a strict structure:
 
-### 1. The 4-Layer Memory Architecture
-Knowledge is separated into distinct layers for optimized retrieval:
-- **Layer 1: Operation Memory** (`.brain/`): Remembers current session context, active tasks, and blockers.
-- **Layer 2: Persistent Knowledge** (`wiki/`): Compiled, cited, and verified knowledge. This is your "Eternal Brain."
-- **Layer 3: Grounding Engine** (NotebookLM): Connects to deep private data for automated cross-checking.
-- **Layer 4: Logic Gap Logging** (`knowledge_gaps.json`): Honestly records what the AI doesn't know, preventing hallucinations.
+1. read operational context from `.brain/`
+2. search compiled knowledge in `wiki/`
+3. escalate to NotebookLM when deep grounding is needed
+4. log gaps honestly instead of pretending certainty
 
-### 2. Test-Time Compute (TTC) Deliberation Engine
-Inspired by modern reinforcement learning and reasoning techniques, Hybrid ABW provides the `/abw-query-deep` command – triggering a 5-pass thinking loop:
-1. **Decomposition**: Break the problem into sub-tasks.
-2. **Evidence Assembly**: Gather evidence from the Wiki.
-3. **Grounding**: Verify via NotebookLM.
-4. **Self-Critique**: Score the reasoning (Exit Gate).
-5. **Repair**: Fix logic gaps before final delivery.
+## The 4-layer architecture
+
+- `raw/`: untouched source material
+- `processed/`: evidence and provenance layer
+- `wiki/`: persistent knowledge with schema and citations
+- `.brain/`: operational state, queues, gap logs, deliberation logs
+
+NotebookLM is treated as a grounding tool, not an unquestionable oracle.
 
 ---
 
-## 🛠️ Installation & Usage (Quick Start)
+## TTC Deliberation Engine
 
-Designed as a **Global Skill** for the Antigravity IDE, allowing you to carry this brain across any project.
+Hybrid ABW exposes `/abw-query-deep` for difficult prompts such as:
 
-### 1. Install MCP Bridge
-Install the required CLI tool:
+- synthesis
+- comparison
+- root cause analysis
+- design tradeoffs
+- contradiction-heavy questions
+
+The TTC loop has 5 passes:
+
+1. Decomposition
+2. Evidence Assembly
+3. Grounding
+4. Self-Critique
+5. Repair or Exit
+
+The loop is bounded by:
+
+- a score-based exit gate
+- a circuit breaker
+- a NotebookLM query budget
+
+---
+
+## Fallback-first, no fake success
+
+This is the most important public contract of the repo.
+
+If NotebookLM MCP is unavailable:
+
+- `/abw-ingest` may create only `draft` or `pending_grounding` artifacts
+- `/abw-query` falls back to wiki-first answers plus gap logging
+- `/abw-query-deep` still runs, but Pass 3 may be skipped or budgeted to zero
+- `/abw-lint` must report reduced grounding capability honestly
+
+Hybrid ABW prefers honesty over confident-sounding output.
+
+---
+
+## Quick Start
+
+### 1. Install the global workflows
+
+Windows:
+
 ```powershell
+irm https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.ps1 | iex
+```
+
+macOS / Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.sh | sh
+```
+
+### 2. Install the NotebookLM CLI bridge
+
+```bash
 uv tool install notebooklm-mcp-cli
 ```
 
-### 2. Initialize & Setup
-In your IDE, run these two commands:
-- `/abw-init`: Scaffolds the standard directory structure (wiki, raw, .brain).
-- `/abw-setup`: Interactive wizard for NotebookLM login and connection testing.
+### 3. Run the primary flow
 
-### 3. Standard Workflow
-1. Drop source files into the `raw/` folder.
-2. Run `/abw-ingest` to extract and compile knowledge into the Wiki.
-3. Query using `/abw-query` (Fast) or `/abw-query-deep` (Slow/Deep thinking).
+```text
+/abw-init
+/abw-setup
+/abw-ingest
+/abw-query
+/abw-query-deep
+/abw-lint
+```
+
+### 4. Recommended usage
+
+1. Drop source files into `raw/`
+2. Run `/abw-ingest`
+3. Ask fast questions with `/abw-query`
+4. Ask hard questions with `/abw-query-deep`
+5. Run `/abw-lint` to audit grounding and knowledge health
+
+---
+
+## Primary command surface
+
+| Command | Purpose |
+|---------|---------|
+| `/abw-init` | Bootstrap or repair the Hybrid ABW structure |
+| `/abw-setup` | Authenticate NotebookLM MCP and verify the bridge |
+| `/abw-status` | Check MCP health and grounding queue status |
+| `/abw-ingest` | Process raw sources into manifest and wiki artifacts |
+| `/abw-query` | Fast wiki-first query path |
+| `/abw-query-deep` | TTC deliberation path for difficult questions |
+| `/abw-lint` | Audit wiki, grounding, contradictions, and TTC health |
 
 ---
 
-## 🛡️ Grounding Principles
-> **"A cited answer beats a confident guess. A logged gap beats a fake answer."**
+## Legacy AWF compatibility
 
-The system strictly adheres to the **AGENTS.md** Spec – ensuring every piece of data in the Wiki has a clear provenance chain.
+This repo still keeps some older AWF workflows for compatibility and reference.
+
+However, the public command surface of this repository is `/abw-*`.
+This repository should not be read as a generic AWF installer.
+
+If you want the full upstream AWF experience, install upstream AWF separately.
 
 ---
 
-## 🤝 Contributing
-We welcome contributions to improve the Deliberation Engine and Knowledge Schemas. See [CONTRIBUTING.md](CONTRIBUTING.md).
+## Grounding principle
+
+> A cited answer beats a confident guess.
+> A logged gap beats a fake answer.
+
+Important artifacts should always be traceable back to:
+
+- the raw source
+- the manifest line
+- the grounding outcome
+- the confidence status
 
 ---
-**Developed by Advanced Agentic Coding Team - Google DeepMind.**
-*(Note: This is an open-source research and development project.)*
+
+## Important files
+
+- `AGENTS.md`: system architecture and invariants
+- `skills/`: workflow execution logic
+- `workflows/`: IDE command wrappers
+- `wiki/_schemas/note.schema.md`: schema for persistent knowledge notes
+
+---
+
+## Contributing
+
+Contributions are especially welcome in these areas:
+
+- TTC tuning
+- grounding bridge quality
+- lint coverage
+- wiki schema evolution
+- fallback honesty and reliability
+
+See `CONTRIBUTING.md` for details.
