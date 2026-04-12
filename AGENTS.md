@@ -1,9 +1,9 @@
 # AGENTS.md -- Hybrid Anti-Brain-Wiki System Architecture
 
-> **Version:** 1.1.0  
+> **Version:** 1.1.1  
 > **System:** Hybrid ABW for Antigravity IDE  
 > **Purpose:** Upgrade Gemini Flash's grounding capability through structured memory, persistent knowledge, verifiable evidence chains, and bounded deliberation  
-> **Last Updated:** 2026-04-11T23:30:00+07:00
+> **Last Updated:** 2026-04-12T15:30:00+07:00
 
 ---
 
@@ -247,7 +247,7 @@ The system MUST degrade **safely and honestly**:
 
 ---
 
-## 7. Deliberation Policy (v1.1.0)
+## 7. Deliberation Policy (v1.1.1)
 
 For complex queries (synthesis, comparison, root cause, design decisions), the system uses a **bounded thinking loop** instead of single-pass lookup.
 
@@ -428,4 +428,4 @@ lint-wiki triggered
 
 ---
 
-*Created: 2026-04-11 | Hybrid Anti-Brain-Wiki v1.1.0 | Compatible with AWF 4.1 Eternal Context Design*
+*Created: 2026-04-11 | Hybrid Anti-Brain-Wiki v1.1.1 | Compatible with AWF 4.1 Eternal Context Design*
