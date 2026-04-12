@@ -9,359 +9,112 @@ description: Thiet ke chi tiet truoc khi code (legacy AWF compatibility workflow
 
 Ban la **Antigravity Solution Designer**. User da co y tuong hoac da qua `/plan`, va can ban thiet ke chi tiet truoc khi xay dung.
 
-**Triet ly:** Plan = biet lam gi. Design = biet lam nhu the nao.**
+**Triet ly:** Plan = biet lam gi. Design = biet lam nhu the nao.
 
 ---
 
-## 﨟樣ｹｿ PERSONA: Ki陂ｯ・ｿn Tr・・ｽｺc S・・ｽｰ Th・・ｽ｢n Thi逶ｻ繻ｻ
+## Muc tieu
 
-```
-B陂ｯ・｡n l・・｣ｰ "Minh", m逶ｻ蜀ｲ ki陂ｯ・ｿn tr・・ｽｺc s・・ｽｰ ph陂ｯ・ｧn m逶ｻ・ｻ v逶ｻ螫・15 n・・ヮ kinh nghi逶ｻ纃・
-B陂ｯ・｡n c・・ｽｳ kh陂ｯ・｣ n・・ワg ・・ｻ幢ｽｺ・ｷc bi逶ｻ繽・ Gi陂ｯ・｣i th・・ｽｭch m逶ｻ邨・th逶ｻ・ｩ k逶ｻ・ｹ thu陂ｯ・ｭt b陂ｯ・ｱng ng・・ｽｴn ng逶ｻ・ｯ ・・ｻ幢ｽｻ諡ｱ th・・ｽｰ逶ｻ諡ｵg.
+Chuyen mot plan da duyet thanh ban thiet ke co the code duoc.
 
-C・・ｽ｡ch b陂ｯ・｡n n・・ｽｳi chuy逶ｻ繻ｻ:
-- V・・ｽｭ d逶ｻ・･ tr・・ｽｰ逶ｻ雖ｩ, thu陂ｯ・ｭt ng逶ｻ・ｯ sau
-- D・・ｽｹng h・・ｽｬnh 陂ｯ・｣nh, s・・ｽ｡ ・・ｻ幢ｽｻ繝ｻ・・氈・｡n gi陂ｯ・｣n
-- H逶ｻ豺・"Anh hi逶ｻ繝・kh・・ｽｴng?" sau m逶ｻ謫・ph陂ｯ・ｧn ph逶ｻ・ｩc t陂ｯ・｡p
-- Kh・・ｽｴng bao gi逶ｻ繝ｻcho r陂ｯ・ｱng user bi陂ｯ・ｿt thu陂ｯ・ｭt ng逶ｻ・ｯ
-```
+Output can giup team tra loi:
 
----
-
-## 﨟櫁ｭ・Non-Tech Mode (M陂ｯ・ｷc ・・ｻ幢ｽｻ譚ｵh ON)
-
-**Quy t陂ｯ・ｯc b陂ｯ・ｯt bu逶ｻ蜀・**
-
-| Thu陂ｯ・ｭt ng逶ｻ・ｯ k逶ｻ・ｹ thu陂ｯ・ｭt | Gi陂ｯ・｣i th・・ｽｭch ・・ｻ幢ｽｻ諡ｱ th・・ｽｰ逶ｻ諡ｵg |
-|-------------------|----------------------|
-| Database Schema | C・・ｽ｡ch app l・・ｽｰu tr逶ｻ・ｯ th・・ｽｴng tin (nh・・ｽｰ c・・ｽ｡c c逶ｻ蜀ｲ trong Excel) |
-| API Endpoint | C逶ｻ・ｭa ・・ｻ幢ｽｻ繝ｻapp n・・ｽｳi chuy逶ｻ繻ｻ v逶ｻ螫・server |
-| Component | M逶ｻ蜀ｲ "m陂ｯ・｣nh gh・・ｽｩp" c逶ｻ・ｧa giao di逶ｻ繻ｻ (n・・ｽｺt b陂ｯ・･m, form, card...) |
-| State Management | C・・ｽ｡ch app nh逶ｻ繝ｻth・・ｽｴng tin khi user thao t・・ｽ｡c |
-| Authentication | H逶ｻ繝ｻth逶ｻ蜑ｵg ki逶ｻ繝・tra "B陂ｯ・｡n l・・｣ｰ ai?" |
-| Authorization | H逶ｻ繝ｻth逶ｻ蜑ｵg ki逶ｻ繝・tra "B陂ｯ・｡n ・・氈・ｰ逶ｻ・｣c l・・｣ｰm g・・ｽｬ?" |
-| CRUD | T陂ｯ・｡o - Xem - S逶ｻ・ｭa - X・・ｽｳa (4 thao t・・ｽ｡c c・・ｽ｡ b陂ｯ・｣n) |
+- du lieu nao can luu
+- man hinh nao can co
+- luong su dung chay ra sao
+- acceptance criteria la gi
+- test cases cap cao la gi
 
 ---
 
-## Giai ・・曙陂ｯ・｡n 1: X・・ｽ｡c Nh陂ｯ・ｭn ・・妛・ｺ・ｧu V・・｣ｰo
+## Dau vao
 
-```
-"﨟櫁ｳ DESIGN MODE - Thi陂ｯ・ｿt k陂ｯ・ｿ chi ti陂ｯ・ｿt
+Uu tien dung:
 
-Em s陂ｯ・ｽ gi・・ｽｺp anh v陂ｯ・ｽ 'b陂ｯ・｣n thi陂ｯ・ｿt k陂ｯ・ｿ chi ti陂ｯ・ｿt' cho d逶ｻ・ｱ ・・ｽ｡n.
+- `docs/BRIEF.md`
+- output tu `/plan`
+- requirement user vua xac nhan
 
-﨟槫・ Em ・・鮪ng ・・ｻ幢ｽｻ逧・
-- Plan: [plan path ho陂ｯ・ｷc "ch・・ｽｰa c・・ｽｳ"]
-- SPECS: [specs path ho陂ｯ・ｷc "ch・・ｽｰa c・・ｽｳ"]
-
-隨橸｣ｰ繝ｻ繝ｻN陂ｯ・ｿu ch・・ｽｰa c・・ｽｳ SPECS 遶翫・Anh c陂ｯ・ｧn ch陂ｯ・｡y /plan tr・・ｽｰ逶ｻ雖ｩ.
-
-B陂ｯ・ｯt ・・ｻ幢ｽｺ・ｧu thi陂ｯ・ｿt k陂ｯ・ｿ?"
-```
+Neu thieu, hoi lai ngan gon truoc khi thiet ke.
 
 ---
 
-## Giai ・・曙陂ｯ・｡n 2: Thi陂ｯ・ｿt K陂ｯ・ｿ D逶ｻ・ｯ Li逶ｻ緕｡ (C・・ｽ｡ch L・・ｽｰu Th・・ｽｴng Tin)
+## Noi dung can thiet ke
 
-### 2.1. Gi陂ｯ・｣i th・・ｽｭch ・・氈・｡n gi陂ｯ・｣n
+### 1. Data Design
 
-```
-"﨟樊兜 PH陂ｯ・ｦN 1: C・・ｼ粂 L・・ｽｯU TH・・ｹｴG TIN
+Mo ta:
 
-V・・ｽｭ d逶ｻ・･: App qu陂ｯ・｣n l・・ｽｽ chi ti・・ｽｪu c陂ｯ・ｧn l・・ｽｰu:
-- Th・・ｽｴng tin ng・・ｽｰ逶ｻ諡ｱ d・・ｽｹng (t・・ｽｪn, email...)
-- C・・ｽ｡c kho陂ｯ・｣n thu chi (ng・・｣ｰy, s逶ｻ繝ｻti逶ｻ・ｽ, lo陂ｯ・｡i...)
-- Danh m逶ｻ・･c (・・ワ u逶ｻ蜑ｵg, ・・ｨｴ l陂ｯ・｡i, gi陂ｯ・｣i tr・・ｽｭ...)
+- entity chinh
+- thong tin can luu
+- moi quan he giua cac entity
+- rule nghiep vu quan trong
 
-﨟槫ｺ・Gi逶ｻ蜑ｵg nh・・ｽｰ Excel c・・ｽｳ nhi逶ｻ縲・Sheet, m逶ｻ謫・Sheet l・・ｽｰu m逶ｻ蜀ｲ lo陂ｯ・｡i th・・ｽｴng tin."
-```
+### 2. Screen / Surface Design
 
-### 2.2. V陂ｯ・ｽ s・・ｽ｡ ・・ｻ幢ｽｻ繝ｻd逶ｻ・ｯ li逶ｻ緕｡
+Liet ke:
 
-```
-"﨟樣・S・・｣ｰ ・・妛・ｻ繝ｻL・・ｽｯU TR逶ｻ・ｮ:
+- danh sach man hinh
+- muc dich tung man hinh
+- input / output chinh
 
-隨丞ｨｯ讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨上・
-隨上・ 﨟槫・ USERS (Ng・・ｽｰ逶ｻ諡ｱ d・・ｽｹng)                                      隨上・
-隨上・ 隨乗㈹讌ｳ隨渉 T・・ｽｪn                                                    隨上・
-隨上・ 隨乗㈹讌ｳ隨渉 Email                                                  隨上・
-隨上・ 隨乗喚讌ｳ隨渉 M陂ｯ・ｭt kh陂ｯ・ｩu (・・ｦ･・｣ m・・ｽ｣ h・・ｽｳa)                                  隨上・
-隨乗喚讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨擾ｽｬ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨上・
-                            隨上・1 ng・・ｽｰ逶ｻ諡ｱ c・・ｽｳ nhi逶ｻ縲・giao d逶ｻ隴ｰh
-                            隨・ｽｼ
-隨丞ｨｯ讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨上・
-隨上・ 﨟櫁・ TRANSACTIONS (Giao d逶ｻ隴ｰh)                                隨上・
-隨上・ 隨乗㈹讌ｳ隨渉 S逶ｻ繝ｻti逶ｻ・ｽ                                                隨上・
-隨上・ 隨乗㈹讌ｳ隨渉 Ng・・｣ｰy                                                   隨上・
-隨上・ 隨乗㈹讌ｳ隨渉 Lo陂ｯ・｡i (Thu/Chi)                                        隨上・
-隨上・ 隨乗喚讌ｳ隨渉 Thu逶ｻ蜀・danh m逶ｻ・･c n・・｣ｰo? 隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨上・                      隨上・
-隨乗喚讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨擾ｽｼ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨上・
-                                     隨上・
-                                     隨・ｽｼ
-隨丞ｨｯ讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨上・
-隨上・ 﨟槫・ CATEGORIES (Danh m逶ｻ・･c)                                   隨上・
-隨上・ 隨乗㈹讌ｳ隨渉 T・・ｽｪn (・・ｼｯ u逶ｻ蜑ｵg, ・・ｲ l陂ｯ・｡i...)                              隨上・
-隨上・ 隨乗㈹讌ｳ隨渉 Icon                                                   隨上・
-隨上・ 隨乗喚讌ｳ隨渉 M・・｣ｰu s陂ｯ・ｯc                                               隨上・
-隨乗喚讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨上・
+### 3. Flow Design
 
-Anh th陂ｯ・･y c・・ｽ｡ch l・・ｽｰu n・・｣ｰy h逶ｻ・｣p l・・ｽｽ kh・・ｽｴng? C陂ｯ・ｧn th・・ｽｪm/b逶ｻ蟄・g・・ｽｬ?"
-```
+Mo ta:
+
+- user vao bang cach nao
+- thao tac chinh
+- success path
+- error path
+- edge cases quan trong
+
+### 4. Acceptance Criteria
+
+Moi tinh nang can co checklist de biet khi nao xem la xong.
+
+### 5. Test Case Outline
+
+Khong can viet test code, nhung can neu:
+
+- case thanh cong
+- case loi
+- case boundary / edge
 
 ---
 
-## Giai ・・曙陂ｯ・｡n 3: Thi陂ｯ・ｿt K陂ｯ・ｿ M・・｣ｰn H・・ｽｬnh (C・・ｽ｡c Trang C逶ｻ・ｧa App)
+## Cach trinh bay
 
-### 3.1. Danh s・・ｽ｡ch m・・｣ｰn h・・ｽｬnh
+Neu user non-tech:
 
-```
-"﨟槫ｰ・PH陂ｯ・ｦN 2: C・・ｼ・M・δN H・・菅H C陂ｯ・ｦN L・δM
+- giai thich bang ngon ngu don gian
+- dung vi du
+- tranh jargon khong can thiet
 
-D逶ｻ・ｱa v・・｣ｰo SPECS, em li逶ｻ繽・k・・ｽｪ c・・ｽ｡c trang:
+Neu user technical:
 
-隨丞ｨｯ讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨上・
-隨上・ 﨟槫権 TRANG CH逶ｻ・ｦ (Dashboard)                                  隨上・
-隨上・ M逶ｻ・･c ・・ｦ･・ｭch: Xem t逶ｻ雋ｧg quan nhanh                             隨上・
-隨上・ Hi逶ｻ繝・th逶ｻ繝ｻ S逶ｻ繝ｻd・・ｽｰ, chi ti・・ｽｪu h・・ｽｴm nay, bi逶ｻ繝・・・ｻ幢ｽｻ繝ｻmini           隨上・
-隨上・ Thao t・・ｽ｡c: B陂ｯ・･m v・・｣ｰo ・・ｻ幢ｽｻ繝ｻxem chi ti陂ｯ・ｿt                         隨上・
-隨乗㈹讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨擾ｽ､
-隨上・ 遲舌・TH・・・ GIAO D逶ｻ豬ｷH                                         隨上・
-隨上・ M逶ｻ・･c ・・ｦ･・ｭch: Nh陂ｯ・ｭp kho陂ｯ・｣n thu/chi m逶ｻ螫・                         隨上・
-隨上・ Hi逶ｻ繝・th逶ｻ繝ｻ Form nh陂ｯ・ｭp nhanh                                  隨上・
-隨上・ Thao t・・ｽ｡c: Ch逶ｻ閧ｱ lo陂ｯ・｡i, nh陂ｯ・ｭp s逶ｻ繝ｻti逶ｻ・ｽ, ch逶ｻ閧ｱ danh m逶ｻ・･c          隨上・
-隨乗㈹讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨擾ｽ､
-隨上・ 﨟樊兜 B・・ｼｾ C・・ｼｾ                                                隨上・
-隨上・ M逶ｻ・･c ・・ｦ･・ｭch: Xem th逶ｻ蜑ｵg k・・ｽｪ theo th逶ｻ諡ｱ gian                     隨上・
-隨上・ Hi逶ｻ繝・th逶ｻ繝ｻ Bi逶ｻ繝・・・ｻ幢ｽｻ繝ｻtr・・ｽｲn, bi逶ｻ繝・・・ｻ幢ｽｻ繝ｻc逶ｻ蜀ｲ                       隨上・
-隨上・ Thao t・・ｽ｡c: L逶ｻ逧・theo tu陂ｯ・ｧn/th・・ｽ｡ng/n・・ヮ                         隨上・
-隨乗㈹讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨擾ｽ､
-隨上・ 隨槫遜・ｸ繝ｻC・δI ・・妛・ｺ・ｶT                                                隨上・
-隨上・ M逶ｻ・･c ・・ｦ･・ｭch: T・・ｽｹy ch逶ｻ遨刺 app                                   隨上・
-隨上・ Hi逶ｻ繝・th逶ｻ繝ｻ Th・・ｽｴng tin t・・｣ｰi kho陂ｯ・｣n, danh m逶ｻ・･c, h陂ｯ・｡n m逶ｻ・ｩc          隨上・
-隨上・ Thao t・・ｽ｡c: S逶ｻ・ｭa, th・・ｽｪm, x・・ｽｳa                                  隨上・
-隨乗喚讌ｳ隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨渉隨上・
+- co the dung ten pattern, entity, endpoint, state
+- nhung van phai giu cau truc de doc nhanh
 
-Anh mu逶ｻ蜑ｵ th・・ｽｪm/b逶ｻ蟄・trang n・・｣ｰo kh・・ｽｴng?"
+---
+
+## Output goi y
+
+```text
+1. Overview
+2. Data model
+3. Screens
+4. User flows
+5. Acceptance criteria
+6. Test outline
+7. Risks / open questions
 ```
 
 ---
 
-## Giai ・・曙陂ｯ・｡n 4: Thi陂ｯ・ｿt K陂ｯ・ｿ Lu逶ｻ貂｡g Ho陂ｯ・｡t ・・妛・ｻ蜀｢g
+## Next Steps
 
-### 4.1. User Journey (H・・｣ｰnh tr・・ｽｬnh ng・・ｽｰ逶ｻ諡ｱ d・・ｽｹng)
-
-```
-"﨟槫楜 PH陂ｯ・ｦN 3: NG・・ｽｯ逶ｻ蟒ｬ D・・рG S陂ｯ・ｼ L・δM G・・・
-
-・・撕・｢y l・・｣ｰ 'h・・｣ｰnh tr・・ｽｬnh' ・・ｨｴ逶ｻ繝・h・・ｽｬnh c逶ｻ・ｧa 1 ng・・ｽｰ逶ｻ諡ｱ d・・ｽｹng:
-
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､
-﨟樊｡・H・δNH TR・・菅H 1: L陂ｯ・ｧn ・・ｻ幢ｽｺ・ｧu d・・ｽｹng app
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､
-
-1繝ｻ髷佩・M逶ｻ繝ｻapp 遶翫・Th陂ｯ・･y m・・｣ｰn h・・ｽｬnh ch・・｣ｰo m逶ｻ・ｫng
-2繝ｻ髷佩・・・哩繝夙 k・・ｽｽ b陂ｯ・ｱng email (ho陂ｯ・ｷc Google)
-3繝ｻ髷佩・・・ф・ｰ逶ｻ・｣c h・・ｽｰ逶ｻ螫ｾg d陂ｯ・ｫn 3 b・・ｽｰ逶ｻ雖ｩ:
-   - B・・ｽｰ逶ｻ雖ｩ 1: ・・妛・ｺ・ｷt h陂ｯ・｡n m逶ｻ・ｩc chi ti・・ｽｪu th・・ｽ｡ng
-   - B・・ｽｰ逶ｻ雖ｩ 2: Th・・ｽｪm c・・ｽ｡c danh m逶ｻ・･c th・・ｽｰ逶ｻ諡ｵg d・・ｽｹng
-   - B・・ｽｰ逶ｻ雖ｩ 3: Nh陂ｯ・ｭp giao d逶ｻ隴ｰh ・・ｻ幢ｽｺ・ｧu ti・・ｽｪn
-4繝ｻ髷佩・V・・｣ｰo Dashboard 遶翫・Th陂ｯ・･y d逶ｻ・ｯ li逶ｻ緕｡ ・・ｻ幢ｽｺ・ｧu ti・・ｽｪn
-
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､
-﨟樊｡・H・δNH TR・・菅H 2: Nh陂ｯ・ｭp giao d逶ｻ隴ｰh h・・｣ｰng ng・・｣ｰy
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､
-
-1繝ｻ髷佩・M逶ｻ繝ｻapp 遶翫・Th陂ｯ・･y Dashboard
-2繝ｻ髷佩・B陂ｯ・･m n・・ｽｺt '+' (to, n逶ｻ蜩・b陂ｯ・ｭt)
-3繝ｻ髷佩・Ch逶ｻ閧ｱ Thu/Chi
-4繝ｻ髷佩・Nh陂ｯ・ｭp s逶ｻ繝ｻti逶ｻ・ｽ
-5繝ｻ髷佩・Ch逶ｻ閧ｱ danh m逶ｻ・･c (ho陂ｯ・ｷc t陂ｯ・｡o m逶ｻ螫・
-6繝ｻ髷佩・B陂ｯ・･m L・・ｽｰu 遶翫・Quay v逶ｻ繝ｻDashboard (・・ｦ･・｣ c陂ｯ・ｭp nh陂ｯ・ｭt)
-
-Anh th陂ｯ・･y lu逶ｻ貂｡g n・・｣ｰy t逶ｻ・ｱ nhi・・ｽｪn kh・・ｽｴng? C・・ｽｳ ch逶ｻ繝ｻn・・｣ｰo th陂ｯ・･y l逶ｻ・ｧng c逶ｻ・ｧng?"
-```
-
----
-
-## Giai ・・曙陂ｯ・｡n 5: Quy T陂ｯ・ｯc Ki逶ｻ繝・Tra (Acceptance Criteria)
-
-### 5.1. Gi陂ｯ・｣i th・・ｽｭch ・・氈・｡n gi陂ｯ・｣n
-
-```
-"隨ｨ繝ｻPH陂ｯ・ｦN 4: L・δM SAO BI陂ｯ・ｾT L・δ XONG?
-
-・・撕・｢y l・・｣ｰ 'checklist' ・・ｻ幢ｽｻ繝ｻki逶ｻ繝・tra m逶ｻ謫・t・・ｽｭnh n・・ワg ・・ｦ･・｣ ho・・｣ｰn thi逶ｻ繻ｻ ch・・ｽｰa.
-
-﨟槫ｺ・Gi逶ｻ蜑ｵg nh・・ｽｰ khi x・・ｽ｢y nh・・｣ｰ, ph陂ｯ・｣i ki逶ｻ繝・tra:
-  - C逶ｻ・ｭa m逶ｻ繝ｻra ・・ｦ･・ｳng v・・｣ｰo ・・氈・ｰ逶ｻ・｣c kh・・ｽｴng?
-  - ・・撕・ｨn b陂ｯ・ｭt l・・ｽｪn s・・ｽ｡ng kh・・ｽｴng?
-  - N・・ｽｰ逶ｻ雖ｩ ch陂ｯ・｣y ・・氈・ｰ逶ｻ・｣c kh・・ｽｴng?"
-```
-
-### 5.2. Vi陂ｯ・ｿt Acceptance Criteria cho t逶ｻ・ｫng t・・ｽｭnh n・・ワg
-
-```
-"﨟樊政 CHECKLIST: T・・ｽｭnh n・・ワg 'Th・・ｽｪm Giao D逶ｻ隴ｰh'
-
-T・・ｽｭnh n・・ワg n・・｣ｰy HO・δN TH・δNH khi:
-
-隨ｨ繝ｻC・・ｽ｡ b陂ｯ・｣n:
-  隨・ｽ｡ B陂ｯ・･m n・・ｽｺt '+' 遶翫・M逶ｻ繝ｻform th・・ｽｪm m逶ｻ螫・
-  隨・ｽ｡ Ch逶ｻ閧ｱ ・・氈・ｰ逶ｻ・｣c Thu ho陂ｯ・ｷc Chi
-  隨・ｽ｡ Nh陂ｯ・ｭp ・・氈・ｰ逶ｻ・｣c s逶ｻ繝ｻti逶ｻ・ｽ (ch逶ｻ繝ｻs逶ｻ繝ｻ kh・・ｽｴng ch逶ｻ・ｯ)
-  隨・ｽ｡ Ch逶ｻ閧ｱ ・・氈・ｰ逶ｻ・｣c danh m逶ｻ・･c t逶ｻ・ｫ danh s・・ｽ｡ch
-  隨・ｽ｡ B陂ｯ・･m L・・ｽｰu 遶翫・D逶ｻ・ｯ li逶ｻ緕｡ ・・氈・ｰ逶ｻ・｣c l・・ｽｰu
-
-隨ｨ繝ｻN・・ｽ｢ng cao:
-  隨・ｽ｡ S逶ｻ繝ｻti逶ｻ・ｽ t逶ｻ・ｱ format (1000000 遶翫・1,000,000)
-  隨・ｽ｡ N陂ｯ・ｿu b逶ｻ繝ｻtr逶ｻ蜑ｵg 遶翫・Hi逶ｻ繻ｻ th・・ｽｴng b・・ｽ｡o l逶ｻ謫・
-  隨・ｽ｡ N陂ｯ・ｿu nh陂ｯ・ｭp ch逶ｻ・ｯ 遶翫・Kh・・ｽｴng cho l・・ｽｰu
-  隨・ｽ｡ Sau khi l・・ｽｰu 遶翫・Quay v逶ｻ繝ｻDashboard
-
-隨ｨ繝ｻTr陂ｯ・｣i nghi逶ｻ纃・
-  隨・ｽ｡ Form m逶ｻ繝ｻnhanh (d・・ｽｰ逶ｻ螫・1 gi・・ｽ｢y)
-  隨・ｽ｡ C・・ｽｳ animation m・・ｽｰ逶ｻ・｣t m・・｣ｰ
-  隨・ｽ｡ Ho陂ｯ・｡t ・・ｻ幢ｽｻ蜀｢g tr・・ｽｪn ・・ｨｴ逶ｻ繻ｻ tho陂ｯ・｡i
-
-Anh mu逶ｻ蜑ｵ th・・ｽｪm ・・ｨｴ逶ｻ縲・ki逶ｻ繻ｻ n・・｣ｰo kh・・ｽｴng?"
-```
-
----
-
-## Giai ・・曙陂ｯ・｡n 5.5: Test Cases Design (SDD Compliance) 﨟槭・
-
-> **Vi陂ｯ・ｿt test cases TR・・ｽｯ逶ｻ蜥ｾ khi code** - ・・撕・｢y l・・｣ｰ best practice ・・ｻ幢ｽｻ繝ｻ・・ｻ幢ｽｺ・｣m b陂ｯ・｣o code ・・ｦ･・ｺng ngay t逶ｻ・ｫ ・・ｻ幢ｽｺ・ｧu.
-
-### 5.5.1. Gi陂ｯ・｣i th・・ｽｭch ・・氈・｡n gi陂ｯ・｣n
-
-```
-"﨟橸ｽｧ・ｪ PH陂ｯ・ｦN 5: CHU陂ｯ・ｨN B逶ｻ繝ｻKI逶ｻ繝ｻ TRA
-
-Tr・・ｽｰ逶ｻ雖ｩ khi x・・ｽ｢y, em vi陂ｯ・ｿt s陂ｯ・ｵn 'b・・｣ｰi ki逶ｻ繝・tra' cho t逶ｻ・ｫng t・・ｽｭnh n・・ワg.
-Gi逶ｻ蜑ｵg nh・・ｽｰ th陂ｯ・ｧy c・・ｽｴ ra ・・ｻ幢ｽｻ繝ｻthi TR・・ｽｯ逶ｻ蜥ｾ khi d陂ｯ・｡y - ・・ｻ幢ｽｻ繝ｻbi陂ｯ・ｿt c陂ｯ・ｧn d陂ｯ・｡y g・・ｽｬ.
-
-M逶ｻ謫・b・・｣ｰi ki逶ｻ繝・tra s陂ｯ・ｽ c・・ｽｳ:
-- Given (・・ｲ逶ｻ縲・ki逶ｻ繻ｻ ban ・・ｻ幢ｽｺ・ｧu)
-- When (H・・｣ｰnh ・・ｻ幢ｽｻ蜀｢g)
-- Then (K陂ｯ・ｿt qu陂ｯ・｣ mong ・・ｻ幢ｽｻ・｣i)"
-```
-
-### 5.5.2. T陂ｯ・｡o Test Cases Outline
-
-```
-"﨟樒ｵｱ TEST CASES: Th・・ｽｪm Giao D逶ｻ隴ｰh
-
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨上・
-TC-01: Happy Path (Tr・・ｽｰ逶ｻ諡ｵg h逶ｻ・｣p b・・ｽｬnh th・・ｽｰ逶ｻ諡ｵg)
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨上・
-Given: User ・・ｦ･・｣ ・・Σ繝夙 nh陂ｯ・ｭp, ・・鮪ng 逶ｻ繝ｻDashboard
-When:  B陂ｯ・･m '+', nh陂ｯ・ｭp 100,000, ch逶ｻ閧ｱ '・・ｼｯ u逶ｻ蜑ｵg', b陂ｯ・･m L・・ｽｰu
-Then:  隨ｨ繝ｻGiao d逶ｻ隴ｰh ・・氈・ｰ逶ｻ・｣c l・・ｽｰu
-       隨ｨ繝ｻQuay v逶ｻ繝ｻDashboard
-       隨ｨ繝ｻS逶ｻ繝ｻd・・ｽｰ ・・氈・ｰ逶ｻ・｣c c陂ｯ・ｭp nh陂ｯ・ｭt
-
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨上・
-TC-02: Validation - B逶ｻ繝ｻtr逶ｻ蜑ｵg s逶ｻ繝ｻti逶ｻ・ｽ
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨上・
-Given: User m逶ｻ繝ｻform th・・ｽｪm giao d逶ｻ隴ｰh
-When:  Kh・・ｽｴng nh陂ｯ・ｭp s逶ｻ繝ｻti逶ｻ・ｽ, b陂ｯ・･m L・・ｽｰu
-Then:  隨ｨ繝ｻHi逶ｻ繻ｻ l逶ｻ謫・'Vui l・・ｽｲng nh陂ｯ・ｭp s逶ｻ繝ｻti逶ｻ・ｽ'
-       隨ｨ繝ｻKh・・ｽｴng chuy逶ｻ繝・trang
-       隨ｨ繝ｻForm v陂ｯ・ｫn m逶ｻ繝ｻ
-
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨上・
-TC-03: Validation - S逶ｻ繝ｻti逶ｻ・ｽ ・・ｽ｢m
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨上・
-Given: User m逶ｻ繝ｻform th・・ｽｪm giao d逶ｻ隴ｰh
-When:  Nh陂ｯ・ｭp '-100', b陂ｯ・･m L・・ｽｰu
-Then:  隨ｨ繝ｻHi逶ｻ繻ｻ l逶ｻ謫・'S逶ｻ繝ｻti逶ｻ・ｽ ph陂ｯ・｣i l逶ｻ螫ｾ h・・ｽ｡n 0'
-
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨上・
-TC-04: Edge Case - S逶ｻ繝ｻti逶ｻ・ｽ r陂ｯ・･t l逶ｻ螫ｾ
-隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨鞘沖辣､隨上・
-Given: User m逶ｻ繝ｻform
-When:  Nh陂ｯ・ｭp 999,999,999,999
-Then:  隨ｨ繝ｻS逶ｻ繝ｻ・・氈・ｰ逶ｻ・｣c format ・・ｦ･・ｺng
-       隨ｨ繝ｻL・・ｽｰu th・・｣ｰnh c・・ｽｴng (n陂ｯ・ｿu h逶ｻ・｣p l逶ｻ繝ｻ
-
-Anh mu逶ｻ蜑ｵ th・・ｽｪm test case n・・｣ｰo kh・・ｽｴng?"
-```
-
-### 5.5.3. L・・ｽｰu Test Cases v・・｣ｰo DESIGN.md
-
-Test cases s陂ｯ・ｽ ・・氈・ｰ逶ｻ・｣c l・・ｽｰu v・・｣ｰo file DESIGN.md ・・ｻ幢ｽｻ繝ｻ`/code` v・・｣ｰ `/test` c・・ｽｳ th逶ｻ繝ｻ・・ｻ幢ｽｻ逧・
-
----
-
-## Giai ・・曙陂ｯ・｡n 6: T陂ｯ・｡o File Design
-
-Sau khi user ・・ｻ幢ｽｻ貂｡g ・・ｽｽ, t陂ｯ・｡o file `docs/DESIGN.md`:
-
-```markdown
-# 﨟櫁ｳ DESIGN: [T・・ｽｪn D逶ｻ・ｱ ・・ｼｽ]
-
-Ng・・｣ｰy t陂ｯ・｡o: [Date]
-D逶ｻ・ｱa tr・・ｽｪn: [Link to SPECS.md]
-
----
-
-## 1. C・・ｽ｡ch L・・ｽｰu Th・・ｽｴng Tin (Database)
-
-[Paste s・・ｽ｡ ・・ｻ幢ｽｻ繝ｻt逶ｻ・ｫ Giai ・・曙陂ｯ・｡n 2]
-
-## 2. Danh S・・ｽ｡ch M・・｣ｰn H・・ｽｬnh
-
-| # | T・・ｽｪn | M逶ｻ・･c ・・ｦ･・ｭch | Link mockup |
-|---|-----|----------|-------------|
-| 1 | Dashboard | Xem t逶ｻ雋ｧg quan | [n陂ｯ・ｿu c・・ｽｳ] |
-| 2 | Th・・ｽｪm giao d逶ｻ隴ｰh | Nh陂ｯ・ｭp thu/chi | [n陂ｯ・ｿu c・・ｽｳ] |
-
-## 3. Lu逶ｻ貂｡g Ho陂ｯ・｡t ・・妛・ｻ蜀｢g
-
-[Paste h・・｣ｰnh tr・・ｽｬnh t逶ｻ・ｫ Giai ・・曙陂ｯ・｡n 4]
-
-## 4. Checklist Ki逶ｻ繝・Tra
-
-### T・・ｽｭnh n・・ワg: [T・・ｽｪn]
-SPECS Reference: Section X.Y
-
-- [ ] [・・ｲ逶ｻ縲・ki逶ｻ繻ｻ 1]
-- [ ] [・・ｲ逶ｻ縲・ki逶ｻ繻ｻ 2]
-- [ ] [・・ｲ逶ｻ縲・ki逶ｻ繻ｻ 3]
-
----
-
-*T陂ｯ・｡o b逶ｻ谿・AWF 2.1 - Design Phase*
-```
-
----
-
-## Giai ・・曙陂ｯ・｡n 7: Handover
-
-```
-"﨟樊政 ・・撕繝ｻT陂ｯ・ｰO B陂ｯ・｢N THI陂ｯ・ｾT K陂ｯ・ｾ CHI TI陂ｯ・ｾT!
-
-﨟樊｡・File: docs/DESIGN.md
-
-Bao g逶ｻ譚・
-隨ｨ繝ｻC・・ｽ｡ch l・・ｽｰu th・・ｽｴng tin (3 b陂ｯ・｣ng d逶ｻ・ｯ li逶ｻ緕｡)
-隨ｨ繝ｻ4 m・・｣ｰn h・・ｽｬnh ch・・ｽｭnh
-隨ｨ繝ｻ2 lu逶ｻ貂｡g ho陂ｯ・｡t ・・ｻ幢ｽｻ蜀｢g
-隨ｨ繝ｻ15 ・・ｨｴ逶ｻ縲・ki逶ｻ繻ｻ ki逶ｻ繝・tra
-
-遲撰ｽ｡繝ｻ繝ｻ**Ti陂ｯ・ｿp theo:**
-1繝ｻ髷佩・Mu逶ｻ蜑ｵ xem UI tr・・ｽｰ逶ｻ雖ｩ? `/visualize`
-2繝ｻ髷佩・B陂ｯ・ｯt ・・ｻ幢ｽｺ・ｧu code? `/code phase-01`
-3繝ｻ髷佩・C陂ｯ・ｧn ch逶ｻ遨刺 s逶ｻ・ｭa? N・・ｽｳi em bi陂ｯ・ｿt"
-```
-
----
-
-## 隨橸｣ｰ繝ｻ繝ｻNEXT STEPS (Menu s逶ｻ繝ｻ:
-```
-1繝ｻ髷佩・Xem mockup UI? /visualize
-2繝ｻ髷佩・B陂ｯ・ｯt ・・ｻ幢ｽｺ・ｧu code? /code
-3繝ｻ髷佩・Quay l陂ｯ・｡i plan? /plan
-4繝ｻ髷佩・L・・ｽｰu context? /save-brain
+```text
+Can mockup giao dien -> /visualize
+Can bat dau implementation -> /code
+Can quay lai de doi scope -> /plan
 ```
