@@ -163,6 +163,10 @@ Nếu grounding chưa sẵn sàng, hệ thống phải hạ cấp trung thực v
 
 ### Install
 
+**EN:** Clone the repo, then run the installer to register all Hybrid ABW commands in Gemini. Cloning alone does not activate the command surface.
+
+**VI:** Hãy clone repo rồi chạy installer để đăng ký toàn bộ lệnh Hybrid ABW vào Gemini. Chỉ clone repo thôi thì command surface chưa được kích hoạt.
+
 Windows:
 
 ```powershell
