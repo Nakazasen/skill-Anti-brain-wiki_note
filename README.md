@@ -102,18 +102,17 @@ uv tool install notebooklm-mcp-cli
 /abw-init
 /abw-setup
 /abw-ingest
-/abw-query
-/abw-query-deep
+/abw-ask
 /abw-lint
+/abw-bootstrap
 ```
 
 ### 4. Quy trinh khuyen nghi
 
 1. Tha tai lieu vao `raw/`
 2. Chay `/abw-ingest`
-3. Hoi nhanh bang `/abw-query`
-4. Hoi kho bang `/abw-query-deep`
-5. Bao tri bang `/abw-lint`
+3. Dung `/abw-ask` de hoi bat ky thu gi (he thong tu re nhanh sang Fast, Deep hoac Bootstrap path).
+4. Bao tri bang `/abw-lint`
 
 ---
 
@@ -125,9 +124,12 @@ uv tool install notebooklm-mcp-cli
 | `/abw-setup` | Dang nhap va xac nhan NotebookLM MCP |
 | `/abw-status` | Kiem tra MCP bridge va grounding queue |
 | `/abw-ingest` | Xu ly raw source thanh manifest va wiki artifacts |
+| `/abw-ask` | **Smart Router: Tu dong re nhanh query, deliberation hoac bootstrap** |
+
 | `/abw-query` | Query nhanh theo wiki-first path |
 | `/abw-query-deep` | Query kho voi TTC deliberation |
 | `/abw-lint` | Audit wiki, grounding, contradictions, TTC health |
+| `/abw-bootstrap` | Bootstrap reasoning quan ly assumptions & validation plan |
 
 ---
 
@@ -159,20 +161,4 @@ Moi thay doi chinh trong `wiki/` nen truy nguoc duoc ve:
 ## Tai lieu quan trong
 
 - `AGENTS.md`: system architecture va invariants
-- `skills/`: logic thuc thi cua ABW workflows
-- `workflows/`: command wrappers cho IDE surface
-- `wiki/_schemas/note.schema.md`: schema cho persistent knowledge
-
----
-
-## Dong gop
-
-Dong gop duoc hoan nghenh, nhat la o cac huong:
-
-- TTC tuning
-- better grounding bridges
-- lint checks
-- wiki schema evolution
-- fallback honesty va reliability
-
-Xem them `CONTRIBUTING.md`.
+- `skills/`:

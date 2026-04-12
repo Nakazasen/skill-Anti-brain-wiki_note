@@ -19,6 +19,9 @@ WORKFLOW_FILES=(
   "abw-query.md"
   "abw-query-deep.md"
   "abw-lint.md"
+  "abw-bootstrap.md"
+  "abw-ask.md"
+
   "help.md"
   "next.md"
   "README.md"
@@ -42,6 +45,10 @@ TEMPLATE_FILES=(
   "circuit_breaker.example.json"
   "ingest_exit_gate_policy.json"
   "ingest_circuit_breaker.json"
+  "assumptions.example.json"
+  "hypotheses.example.json"
+  "decision_log.example.jsonl"
+  "validation_backlog.example.json"
 )
 
 AWF_HELPER_SKILLS=(
@@ -63,6 +70,9 @@ ABW_SKILLS=(
   "query-wiki-deliberative.md"
   "lint-wiki.md"
   "notebooklm-mcp-bridge.md"
+  "abw-bootstrap.md"
+  "abw-router.md"
+
 )
 
 RED='\033[0;31m'
@@ -158,12 +168,15 @@ Do not route users to the legacy AWF flow by default.
 | `/abw-setup` | abw-setup.md | Authenticate NotebookLM MCP and verify bridge status |
 | `/abw-status` | abw-status.md | Check MCP health and grounding queue state |
 | `/abw-ingest` | abw-ingest.md | Process raw sources into manifest and wiki artifacts |
+| `/abw-ask` | abw-ask.md | Smart default router: auto-selects fast, deep, or bootstrap path |
+
 | `/abw-query` | abw-query.md | Fast wiki-first query path |
 | `/abw-query-deep` | abw-query-deep.md | TTC deliberation path for complex questions |
 | `/abw-lint` | abw-lint.md | Audit wiki, grounding, and deliberation health |
+| `/abw-bootstrap` | abw-bootstrap.md | System 2 reasoning for greenfield ideas (no raw/wiki data yet) |
 
 ## Recommended Flow
-`/abw-init` -> `/abw-setup` -> `/abw-ingest` -> `/abw-query` -> `/abw-query-deep` -> `/abw-lint`
+`/abw-init` -> `/abw-setup` -> `/abw-ingest` -> `/abw-ask` -> `/abw-lint`
 
 ## Fallback Rule
 If NotebookLM MCP is unavailable:
@@ -200,5 +213,5 @@ echo ""
 echo -e "${CYAN}Next steps:${NC}"
 echo -e "  1. Run /abw-init"
 echo -e "  2. Run /abw-setup"
-echo -e "  3. Run /abw-ingest after dropping sources into raw/"
+echo -e "  3. Run /abw-ingest, then /abw-ask to start interacting"
 echo ""

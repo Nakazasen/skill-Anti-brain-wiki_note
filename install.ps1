@@ -16,6 +16,9 @@ $WorkflowFiles = @(
     "abw-query.md",
     "abw-query-deep.md",
     "abw-lint.md",
+    "abw-bootstrap.md",
+    "abw-ask.md",
+
     "help.md",
     "next.md",
     "README.md",
@@ -38,7 +41,11 @@ $TemplateFiles = @(
     "exit_gate_policy.example.json",
     "circuit_breaker.example.json",
     "ingest_exit_gate_policy.json",
-    "ingest_circuit_breaker.json"
+    "ingest_circuit_breaker.json",
+    "assumptions.example.json",
+    "hypotheses.example.json",
+    "decision_log.example.jsonl",
+    "validation_backlog.example.json"
 )
 
 $AwfHelperSkills = @(
@@ -59,12 +66,16 @@ $AbwSkills = @(
     "query-wiki.md",
     "query-wiki-deliberative.md",
     "lint-wiki.md",
-    "notebooklm-mcp-bridge.md"
+    "notebooklm-mcp-bridge.md",
+    "abw-bootstrap.md",
+    "abw-router.md",
+
 )
 
 try {
     $CurrentVersion = (Invoke-WebRequest -Uri "$RepoBase/VERSION" -UseBasicParsing).Content.Trim()
-} catch {
+}
+catch {
     $CurrentVersion = "1.1.1"
 }
 
@@ -92,7 +103,8 @@ foreach ($wf in $WorkflowFiles) {
         Download-File -Url "$RepoBase/workflows/$wf" -Destination "$GlobalDir\$wf"
         Write-Host "  [OK] $wf" -ForegroundColor Green
         $success++
-    } catch {
+    }
+    catch {
         Write-Host "  [X] $wf" -ForegroundColor Red
     }
 }
@@ -103,7 +115,8 @@ foreach ($schema in $SchemaFiles) {
         Download-File -Url "$RepoBase/schemas/$schema" -Destination "$SchemasDir\$schema"
         Write-Host "  [OK] $schema" -ForegroundColor Green
         $success++
-    } catch {
+    }
+    catch {
         Write-Host "  [X] $schema" -ForegroundColor Red
     }
 }
@@ -114,7 +127,8 @@ foreach ($template in $TemplateFiles) {
         Download-File -Url "$RepoBase/templates/$template" -Destination "$TemplatesDir\$template"
         Write-Host "  [OK] $template" -ForegroundColor Green
         $success++
-    } catch {
+    }
+    catch {
         Write-Host "  [X] $template" -ForegroundColor Red
     }
 }
@@ -125,7 +139,8 @@ foreach ($skill in $AbwSkills) {
         Download-File -Url "$RepoBase/skills/$skill" -Destination "$SkillsDir\$skill"
         Write-Host "  [OK] $skill" -ForegroundColor Green
         $success++
-    } catch {
+    }
+    catch {
         Write-Host "  [X] $skill" -ForegroundColor Red
     }
 }
@@ -138,7 +153,8 @@ foreach ($skill in $AwfHelperSkills) {
         Download-File -Url "$RepoBase/awf_skills/$skill/SKILL.md" -Destination "$skillDir\SKILL.md"
         Write-Host "  [OK] $skill" -ForegroundColor Green
         $success++
-    } catch {
+    }
+    catch {
         Write-Host "  [X] $skill" -ForegroundColor Red
     }
 }
@@ -159,12 +175,15 @@ Do not route users to the legacy AWF flow by default.
 | `/abw-setup` | abw-setup.md | Authenticate NotebookLM MCP and verify bridge status |
 | `/abw-status` | abw-status.md | Check MCP health and grounding queue state |
 | `/abw-ingest` | abw-ingest.md | Process raw sources into manifest and wiki artifacts |
+| `/abw-ask` | abw-ask.md | Smart default router: auto-selects fast, deep, or bootstrap path |
+
 | `/abw-query` | abw-query.md | Fast wiki-first query path |
 | `/abw-query-deep` | abw-query-deep.md | TTC deliberation path for complex questions |
 | `/abw-lint` | abw-lint.md | Audit wiki, grounding, and deliberation health |
+| `/abw-bootstrap` | abw-bootstrap.md | System 2 reasoning for greenfield ideas (no raw/wiki data yet) |
 
 ## Recommended Flow
-`/abw-init` -> `/abw-setup` -> `/abw-ingest` -> `/abw-query` -> `/abw-query-deep` -> `/abw-lint`
+`/abw-init` -> `/abw-setup` -> `/abw-ingest` -> `/abw-ask` -> `/abw-lint`
 
 ## Fallback Rule
 If NotebookLM MCP is unavailable:
@@ -179,7 +198,8 @@ They are not the primary public surface of this install.
 
 if (-not (Test-Path $GeminiMd)) {
     Set-Content -Path $GeminiMd -Value $abwInstructions -Encoding UTF8
-} else {
+}
+else {
     $content = Get-Content $GeminiMd -Raw -ErrorAction SilentlyContinue
     if ($null -eq $content) { $content = "" }
     $abwMarker = "# Hybrid ABW - Antigravity IDE Command Surface"
@@ -190,7 +210,8 @@ if (-not (Test-Path $GeminiMd)) {
     if ($oldAwfIndex -ge 0) { $content = $content.Substring(0, $oldAwfIndex).TrimEnd() }
     if ($content.Length -gt 0) {
         $content = $content + "`n`n" + $abwInstructions
-    } else {
+    }
+    else {
         $content = $abwInstructions
     }
     Set-Content -Path $GeminiMd -Value $content -Encoding UTF8
@@ -205,5 +226,5 @@ Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
 Write-Host "  1. Run /abw-init" -ForegroundColor White
 Write-Host "  2. Run /abw-setup" -ForegroundColor White
-Write-Host "  3. Run /abw-ingest after dropping sources into raw/" -ForegroundColor White
+Write-Host "  3. Run /abw-ingest, then /abw-ask to start interacting" -ForegroundColor White
 Write-Host ""

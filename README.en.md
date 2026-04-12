@@ -102,18 +102,17 @@ uv tool install notebooklm-mcp-cli
 /abw-init
 /abw-setup
 /abw-ingest
-/abw-query
-/abw-query-deep
+/abw-ask
 /abw-lint
+/abw-bootstrap
 ```
 
 ### 4. Recommended usage
 
 1. Drop source files into `raw/`
 2. Run `/abw-ingest`
-3. Ask fast questions with `/abw-query`
-4. Ask hard questions with `/abw-query-deep`
-5. Run `/abw-lint` to audit grounding and knowledge health
+3. Ask anything using `/abw-ask` (it auto-routes to fast query, deep query, or bootstrap reasoning).
+4. Run `/abw-lint` to audit grounding and knowledge health
 
 ---
 
@@ -125,9 +124,12 @@ uv tool install notebooklm-mcp-cli
 | `/abw-setup` | Authenticate NotebookLM MCP and verify the bridge |
 | `/abw-status` | Check MCP health and grounding queue status |
 | `/abw-ingest` | Process raw sources into manifest and wiki artifacts |
+| `/abw-ask` | **Smart Router: Auto-selects fast, deep, or bootstrap paths** |
+
 | `/abw-query` | Fast wiki-first query path |
 | `/abw-query-deep` | TTC deliberation path for difficult questions |
 | `/abw-lint` | Audit wiki, grounding, contradictions, and TTC health |
+| `/abw-bootstrap` | Bootstrap reasoning for greenfield ideas |
 
 ---
 
