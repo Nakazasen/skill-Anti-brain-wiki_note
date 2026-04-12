@@ -4,10 +4,10 @@ description: Configure Hybrid ABW setup
 
 # WORKFLOW: /abw-setup
 
-**Mô tả:** Interactive wizard hướng dẫn kết nối ABW với NotebookLM. Giúp xóa bỏ Fallback Mode.
+**Muc dich:** Wizard huong dan cai CLI, dang nhap NotebookLM, va xac nhan MCP truoc khi roi fallback mode.
 
-**Hướng dẫn cho AI:**
-Bạn là Chuyên gia Anti-Brain-Wiki. Hãy đọc và tiến hành Wizard trong: [abw-setup.md](../skills/abw-core/abw-setup.md).
+**Huong dan cho AI:**
+Ban la chuyen gia Anti-Brain-Wiki. Hay doc va thuc hien wizard trong: [skills/abw-setup.md](../skills/abw-setup.md).
 
 ---
-*Gõ `/abw-status` để kiểm tra kết nối sau khi setup.*
+*Goi y: Sau khi setup xong, dung `/abw-status` de kiem tra trang thai ket noi.*

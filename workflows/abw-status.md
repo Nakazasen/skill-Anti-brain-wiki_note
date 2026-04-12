@@ -1,10 +1,10 @@
 ---
-description: 🚀 ABW: Kiểm tra trạng thái MCP và Queue
+description: ABW MCP and queue health check
 ---
 
 # WORKFLOW: /abw-status
 
-**Mô tả:** Kiểm tra nhanh tình trạng kết nối và số lượng item trong hàng chờ Grounding.
+**Muc dich:** Kiem tra nhanh MCP bridge, grounding queue, va cho biet he thong dang active hay fallback.
 
-**Hướng dẫn cho AI:**
-Bạn là Chuyên gia Anti-Brain-Wiki. Hãy đọc và tiến hành quy trình trong: [abw-status.md](../skills/abw-core/abw-status.md).
+**Huong dan cho AI:**
+Ban la chuyen gia Anti-Brain-Wiki. Hay doc va thuc hien quy trinh trong: [skills/abw-status.md](../skills/abw-status.md).

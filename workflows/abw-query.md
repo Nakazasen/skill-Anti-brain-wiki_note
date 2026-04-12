@@ -1,10 +1,10 @@
 ---
-description: 🔍 ABW: Truy vấn kiến thức nhanh
+description: ABW wiki-first query path
 ---
 
 # WORKFLOW: /abw-query
 
-**Mô tả:** Tìm kiếm và trả lời trích dẫn từ các nguồn đã xác minh trong Wiki.
+**Muc dich:** Tra loi nhanh bang cach recap `.brain/`, tim trong `wiki/`, roi moi fallback sang MCP hoac gap log neu can.
 
-**Hướng dẫn cho AI:**
-Bạn là Chuyên gia Anti-Brain-Wiki. Hãy đọc và tiến hành quy trình trong: [query-wiki.md](../skills/abw-core/query-wiki.md).
+**Huong dan cho AI:**
+Ban la chuyen gia Anti-Brain-Wiki. Hay doc va thuc hien quy trinh trong: [skills/query-wiki.md](../skills/query-wiki.md).

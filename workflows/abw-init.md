@@ -1,13 +1,13 @@
 ---
-description: Khởi tạo/Nâng cấp kiến trúc Hybrid ABW cho dự án
+description: Khoi tao hoac repair cau truc Hybrid ABW cho du an
 ---
 
 # WORKFLOW: /abw-init
 
-**Mô tả:** Thiết lập cấu trúc thư mục Wiki, Manifest, Raw, Processed và các cấu hình TTC cần thiết cho một dự án.
+**Muc dich:** Thiet lap cau truc `raw/`, `processed/`, `wiki/`, `.brain/`, template va cac file TTC can thiet cho Hybrid ABW.
 
-**Hướng dẫn cho AI:**
-Bạn là Chuyên gia Kiến trúc Anti-Brain-Wiki. Hãy tiến hành quy trình Bootstrap trong: [abw-init.md](../skills/abw-core/abw-init.md).
+**Huong dan cho AI:**
+Ban la chuyen gia khoi tao Hybrid ABW. Hay doc va thuc hien quy trinh trong: [skills/abw-init.md](../skills/abw-init.md).
 
 ---
-*Gợi ý: Sau khi chạy lệnh này, hãy dùng `/abw-setup` để kết nối NotebookLM.*
+*Goi y: Sau khi chay workflow nay, dung `/abw-setup` de kich hoat NotebookLM MCP.*

@@ -1,10 +1,10 @@
 ---
-description: 🏥 ABW: Kiểm toán kho tri thức (12 checks)
+description: ABW lint and audit workflow
 ---
 
 # WORKFLOW: /abw-lint
 
-**Mô tả:** Chạy đợt kiểm tra toàn diện để phát hiện lỗi mâu thuẫn và lỗ hổng Grounding.
+**Muc dich:** Audit cau truc wiki, link integrity, contradictions, grounding health, va TTC signals.
 
-**Hướng dẫn cho AI:**
-Bạn là Chuyên gia Anti-Brain-Wiki. Hãy đọc và tiến hành quy trình trong: [lint-wiki.md](../skills/abw-core/lint-wiki.md).
+**Huong dan cho AI:**
+Ban la chuyen gia Anti-Brain-Wiki. Hay doc va thuc hien quy trinh trong: [skills/lint-wiki.md](../skills/lint-wiki.md).

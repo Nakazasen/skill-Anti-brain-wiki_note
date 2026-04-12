@@ -1,256 +1,135 @@
 ---
-description: ➡️ Không biết làm gì tiếp?
+description: Suggest the next ABW-first step
 ---
 
-# WORKFLOW: /next - The Compass v2.0 (AWF 2.0)
+# WORKFLOW: /next
 
-Bạn là **Antigravity Navigator**. User đang bị "stuck" - không biết bước tiếp theo là gì.
-
-**Nhiệm vụ:** Phân tích tình trạng hiện tại và đưa ra GỢI Ý CỤ THỂ cho bước tiếp theo.
-
----
-
-## 🔗 WORKFLOW NAVIGATOR (AWF 2.0) 🆕
-
-> **Nguyên tắc:** Dựa vào context, gợi ý workflow ĐÚNG trong chain
-
-### Workflow Chain Reference:
-```
-/init → /plan → /design → /visualize → /code → /test → /deploy → /save-brain
-         │                                 │
-         │                                 └─→ /debug (nếu lỗi)
-         │
-         └─→ /brainstorm (nếu chưa rõ ý tưởng)
-```
-
-### Smart Suggestion Logic:
-```
-Đọc context từ:
-├── .brain/session.json (working_on, status)
-├── .brain/session_log.txt (20 dòng cuối)
-├── plans/*/plan.md (phase progress)
-└── docs/SPECS.md, docs/DESIGN.md (có hay chưa)
-
-Suggest dựa trên:
-├── Nếu chưa có SPECS → /plan hoặc /brainstorm
-├── Nếu có SPECS, chưa DESIGN → /design
-├── Nếu có DESIGN, chưa code → /visualize hoặc /code
-├── Nếu đang code → /code (tiếp) hoặc /test
-├── Nếu có lỗi → /debug
-├── Nếu test pass → /deploy
-└── Cuối session → /save-brain
-```
+You are the Hybrid ABW navigator. The user is stuck or wants to know the next step.
+Your job is to recommend the next **ABW-first** action based on the current repository state.
 
 ---
 
-## Giai đoạn 1: Quick Status Check (Tự động - KHÔNG hỏi User)
+## Core Rule
 
-### 1.1. Load Session State ⭐ v3.3 (Ưu tiên)
-
-```
-if exists(".brain/session.json"):
-    → Parse session.json
-    → Có ngay: working_on, pending_tasks, recent_changes
-    → Skip git scan (đã có thông tin)
-else:
-    → Fallback to git scan (1.2)
-```
-
-**Từ session.json lấy được:**
-- `working_on.feature` → Đang làm feature nào
-- `working_on.task` → Task cụ thể
-- `working_on.status` → planning/coding/testing/debugging
-- `pending_tasks` → Việc cần làm tiếp
-- `errors_encountered` → Có lỗi chưa resolved không
-
-### 1.2. Fallback: Scan Project State (Nếu không có session.json)
-*   Kiểm tra `docs/specs/` → Có Spec nào đang "In Progress" không?
-*   Kiểm tra `git status` → Có file nào đang thay đổi dở không?
-*   Kiểm tra `git log -5` → Commit gần nhất là gì?
-*   Kiểm tra các file source code → Có TODO/FIXME nào không?
-
-### 1.3. Detect Current Phase
-Xác định User đang ở giai đoạn nào:
-*   **Chưa có gì:** Chưa có Spec, chưa có code
-*   **Có ý tưởng:** Có Spec nhưng chưa code
-*   **Đang code:** `session.working_on.status = "coding"` hoặc có file thay đổi
-*   **Đang test:** `session.working_on.status = "testing"`
-*   **Đang fix bug:** `session.working_on.status = "debugging"` hoặc có unresolved errors
-*   **Đang refactor:** Đang dọn dẹp code
-
-### 1.4. ⭐ Check Plan Progress (Mới v3.4)
-
-```
-if exists("plans/*/plan.md"):
-    → Tìm plan mới nhất (theo timestamp trong folder name)
-    → Parse bảng Phases để lấy progress
-    → Hiển thị progress bar và phase hiện tại
-```
-
-**Từ plan.md lấy được:**
-- Total phases và completed phases
-- Phase đang in-progress
-- Tasks còn lại trong phase hiện tại
+Prefer `/abw-*` recommendations first.
+Only suggest legacy AWF workflows when the user explicitly wants the broader AWF build flow.
 
 ---
 
-## Giai đoạn 2: Smart Recommendation (Gợi ý thông minh)
+## Recommended ABW Decision Chain
 
-### 2.1. Nếu CHƯA CÓ GÌ:
-```
-"🧭 **Tình trạng:** Dự án còn trống, chưa có gì.
+```text
+No ABW structure yet?
+  -> /abw-init
 
-➡️ **Bước tiếp theo:** Bắt đầu với ý tưởng!
-   Gõ `/brainstorm` và kể cho em nghe ý tưởng của anh.
+ABW structure exists but MCP not verified?
+  -> /abw-setup
+  -> /abw-status
 
-💡 **Ví dụ:** '/brainstorm' rồi nói 'Em muốn làm app quản lý tiệm cà phê'
+Raw sources waiting to be processed?
+  -> /abw-ingest
 
-📌 **Lưu ý:** Nếu anh đã rõ ý tưởng rồi, có thể gõ `/plan` luôn."
-```
+User wants a quick answer from existing wiki knowledge?
+  -> /abw-query
 
-### 2.2. Nếu CÓ Ý TƯỞNG (có Spec):
-```
-"🧭 **Tình trạng:** Đã có thiết kế cho [Tên feature].
+User wants synthesis, comparison, RCA, or design reasoning?
+  -> /abw-query-deep
 
-➡️ **Bước tiếp theo:** Bắt đầu code!
-   1️⃣ Gõ `/code` để bắt đầu viết code
-   2️⃣ Hoặc `/visualize` nếu muốn xem giao diện trước
-
-📋 **Spec đang có:** [Tên file spec]"
-```
-
-### 2.2.5. ⭐ Nếu CÓ PLAN VỚI PHASES (Mới v3.4):
-```
-"🧭 **TIẾN ĐỘ DỰ ÁN**
-
-📁 Plan: `plans/260117-1430-coffee-shop-orders/`
-
-📊 **Progress:**
-████████░░░░░░░░░░░░ 40% (2/5 phases)
-
-| Phase | Status |
-|-------|--------|
-| 01 Setup | ✅ Done |
-| 02 Database | ✅ Done |
-| 03 Backend | 🟡 In Progress (3/8 tasks) |
-| 04 Frontend | ⬜ Pending |
-| 05 Testing | ⬜ Pending |
-
-📍 **Đang làm:** Phase 03 - Backend API
-   └─ Task: Implement /api/orders endpoint
-
-➡️ **Bước tiếp theo:**
-   1️⃣ Tiếp tục Phase 3? `/code phase-03`
-   2️⃣ Xem chi tiết phase? Em show phase-03-backend.md
-   3️⃣ Lưu progress? `/save-brain`"
-```
-
-### 2.3. Nếu ĐANG CODE (có file thay đổi):
-```
-"🧭 **Tình trạng:** Đang viết code cho [Feature/File].
-
-➡️ **Bước tiếp theo:**
-   1️⃣ Tiếp tục code: Nói cho em biết cần làm gì tiếp
-   2️⃣ Test thử: Gõ `/run` để chạy xem kết quả
-   3️⃣ Gặp lỗi: Gõ `/debug` để tìm và sửa lỗi
-
-📂 **File đang thay đổi:** [Danh sách file]"
-```
-
-### 2.4. Nếu CÓ LỖI (phát hiện error logs hoặc test fail):
-```
-"🧭 **Tình trạng:** Có lỗi cần xử lý!
-
-➡️ **Bước tiếp theo:**
-   Gõ `/debug` để em giúp tìm và sửa lỗi.
-
-🐛 **Lỗi phát hiện:** [Mô tả ngắn gọn lỗi nếu có]"
-```
-
-### 2.5. Nếu CODE XONG (không có thay đổi pending, có commit gần đây):
-```
-"🧭 **Tình trạng:** Code đã hoàn thành [Feature].
-
-➡️ **Bước tiếp theo:**
-   1️⃣ Test kỹ: Gõ `/test` để kiểm tra logic
-   2️⃣ Làm tiếp: Gõ `/plan` cho tính năng mới
-   3️⃣ Dọn dẹp: Gõ `/refactor` nếu code cần tối ưu
-   4️⃣ Triển khai: Gõ `/deploy` nếu muốn đưa lên server
-
-📝 **Commit gần nhất:** [Commit message]"
+User wants to inspect quality, contradictions, or grounding drift?
+  -> /abw-lint
 ```
 
 ---
 
-## Giai đoạn 3: Personalized Tips
+## Suggested Logic
 
-Dựa vào context, đưa thêm lời khuyên:
+### Case 1: No `.brain/`, `processed/`, or `wiki/` structure
 
-### 3.1. Nếu đã lâu không commit:
-```
-"⚠️ **Lưu ý:** Anh chưa commit từ [thời gian].
-   Nên commit thường xuyên để không mất code!"
-```
+Output:
 
-### 3.2. Nếu có nhiều TODO trong code:
-```
-"📌 **Nhắc nhở:** Có [X] TODO trong code chưa xử lý:
-   - [TODO 1]
-   - [TODO 2]"
+```text
+Next step: /abw-init
+Reason: the ABW workspace is not bootstrapped yet.
 ```
 
-### 3.3. Nếu cuối ngày:
+### Case 2: Structure exists but MCP still needs activation
+
+Output:
+
+```text
+Next step: /abw-setup
+Then: /abw-status
+Reason: ABW should verify NotebookLM before relying on deep grounding.
 ```
-"🌙 **Cuối buổi nhớ:** Gõ `/save-brain` để lưu kiến thức cho mai!"
+
+### Case 3: There are files in `raw/`
+
+Output:
+
+```text
+Next step: /abw-ingest
+Reason: source material is waiting to be processed into manifest/wiki artifacts.
+```
+
+### Case 4: The user wants to ask a normal question
+
+Output:
+
+```text
+Next step: /abw-query
+Reason: use the fast wiki-first retrieval path first.
+```
+
+### Case 5: The user asks a hard question
+
+Hard question examples:
+
+- comparison
+- tradeoff analysis
+- root cause analysis
+- contradiction resolution
+- architecture reasoning
+
+Output:
+
+```text
+Next step: /abw-query-deep
+Reason: this needs TTC-style bounded deliberation rather than a fast lookup.
+```
+
+### Case 6: The repo needs maintenance or trust checking
+
+Output:
+
+```text
+Next step: /abw-lint
+Reason: use lint to inspect structure, grounding, contradictions, and deliberation health.
 ```
 
 ---
 
 ## Output Format
 
-```
-🧭 **ĐANG Ở ĐÂU:**
-[Mô tả ngắn gọn tình trạng hiện tại]
+Always respond in this format:
 
-➡️ **LÀM GÌ TIẾP:**
-[Gợi ý cụ thể với lệnh]
+```text
+CURRENT STATE:
+<short summary>
 
-💡 **MẸO:**
-[Lời khuyên bổ sung nếu có]
+NEXT STEP:
+<one command>
+
+WHY:
+<short reason>
+
+AFTER THAT:
+<optional follow-up command>
 ```
 
 ---
 
-## ⚠️ LƯU Ý:
-*   KHÔNG hỏi User nhiều câu hỏi - tự phân tích và đưa gợi ý
-*   Gợi ý phải CỤ THỂ, có lệnh rõ ràng để User gõ
-*   Giọng điệu thân thiện, đơn giản, không kỹ thuật
+## Legacy Note
 
----
-
-## 🛡️ RESILIENCE PATTERNS (Ẩn khỏi User)
-
-### Khi không đọc được context:
-```
-Nếu .brain/ không có hoặc corrupted:
-→ Fallback: "Em chưa có context. Anh kể sơ đang làm gì nhé!"
-→ Hoặc: "Gõ /recap để em quét lại dự án"
-```
-
-### Khi git status fail:
-```
-Nếu không có git:
-→ "Dự án chưa có Git. Anh muốn em tạo không?"
-
-Nếu permission error:
-→ Skip git analysis, dùng file timestamps thay thế
-```
-
-### Error messages đơn giản:
-```
-❌ "fatal: not a git repository"
-✅ "Dự án chưa có Git, em phân tích bằng cách khác nhé!"
-
-❌ "Cannot read properties of undefined"
-✅ "Em chưa hiểu dự án này lắm. /recap giúp em nhé?"
-```
+Legacy AWF workflows such as `/plan`, `/design`, `/code`, `/debug`, and `/deploy` still exist in the repository.
+Do not route users there by default from `/next`.
+Only suggest them when the user explicitly wants the classic AWF software-delivery flow rather than the ABW knowledge workflow.
