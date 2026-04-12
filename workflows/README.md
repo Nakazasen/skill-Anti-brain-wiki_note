@@ -12,7 +12,7 @@ If you are reading this repository for the first time, treat **`/abw-*` as the m
 ## Primary Commands
 
 | Command | Purpose |
-|---------|---------|
+| --------- | --------- |
 | `/abw-init` | Bootstrap or repair the Hybrid ABW project structure |
 | `/abw-setup` | Activate NotebookLM MCP and verify fallback state |
 | `/abw-status` | Check MCP bridge and grounding queue status |
@@ -83,7 +83,7 @@ If you want the full upstream AWF experience, install upstream AWF separately.
 ## Mapping: Intent -> ABW Command
 
 | Intent | Use |
-|--------|-----|
+| -------- | ----- |
 | Create ABW structure | `/abw-init` |
 | Connect NotebookLM | `/abw-setup` |
 | Check whether ABW is in fallback mode | `/abw-status` |
@@ -102,4 +102,4 @@ If you continue evolving this repository toward ABW-first positioning:
 
 1. keep `/abw-*` documentation in sync with installer behavior
 2. keep legacy AWF docs clearly labeled as secondary or compatibility-only
-3. avoid presenting `/plan`, `/design`, and `/code` as the primary path unless the repo intentionally pivots back to full AWF
+3. avoid presenting `/plan`, `/design`, and `/code` as the primary path unless the repo intentionally pivots back to full AWF
