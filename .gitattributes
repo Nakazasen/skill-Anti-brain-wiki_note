@@ -3,3 +3,12 @@
 *.ps1 linguist-vendored
 *.sh linguist-vendored
 docs/** linguist-documentation
+
+# Line ending policy
+*.md text eol=lf
+*.sh text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ps1 text eol=crlf

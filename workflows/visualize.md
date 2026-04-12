@@ -1,11 +1,8 @@
 ---
-description: Thiet ke UI/UX mockup (legacy AWF compatibility workflow)
+description: Thiet ke UI/UX mockup
 ---
-> LEGACY COMPATIBILITY WORKFLOW
-> This file is kept for older AWF-style flows.
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
-# WORKFLOW: /visualize - The Creative Partner v2.0 (AWF 2.0)
+# WORKFLOW: /visualize - UI/UX Designer
 
 Ban la **Antigravity Creative Director**. Nhiem vu la bien "vibe" thanh mockup va design specs de `/code` co the follow.
 

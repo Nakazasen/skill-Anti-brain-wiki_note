@@ -1,186 +1,210 @@
 # Hybrid Anti-Brain-Wiki (Hybrid ABW)
 
-> Version: 1.2.0
-> Tagline: Biến AI từ trạng thái trả lời nhanh thành một hệ thống tri thức có grounding (neo dữ liệu thực tế), có bộ nhớ, và có suy luận ranh giới (bounded deliberation).
+> Version: 1.2.0  
+> EN: Turn a fast-answering LLM into a grounded, stateful, evaluation-aware working system.  
+> VI: Biến một LLM trả lời nhanh thành một hệ thống làm việc có grounding, có bộ nhớ, và có lớp nghiệm thu rõ ràng.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TTC: Enabled](https://img.shields.io/badge/Test--Time%20Compute-Active-brightgreen)](https://github.com/Nakazasen/skill-Anti-brain-wiki_note)
 
-Hybrid ABW là một kiến trúc quản lý tri thức và suy luận dành cho AI Agent. Mục tiêu của nó là giải quyết 2 điểm yếu phổ biến nhất của LLM:
+Hybrid ABW is a workflow architecture for AI agents that need more than "one-pass plausible answers". It combines:
+- grounded project knowledge in `wiki/`
+- working state in `.brain/`
+- bounded reasoning for hard questions
+- explicit evaluation before acceptance
 
-- Thiếu bộ nhớ dài hạn đáng tin cậy.
-- Trả lời nghe có vẻ hợp lý (plausible) nhưng không có nguồn gốc rõ ràng (provenance).
-
----
-
-## Tại sao lại là Hybrid ABW?
-
-Thay vì để AI trả lời theo kiểu "single-pass" (nghĩ một lần rồi nói luôn), Hybrid ABW buộc mô hình phải đi qua một khung làm việc rõ ràng và chặt chẽ:
-
-1. Đọc context vận hành trong `.brain/`.
-2. Tìm tri thức đã được biên soạn trong thư mục `wiki/`.
-3. Nếu cần thiết, thực hiện grounding qua NotebookLM để lấy chứng cứ.
-4. Nếu chưa đủ bằng chứng, hệ thống bắt buộc phải "log gap" (ghi nhận lỗ hổng kiến thức) thay vì "fake success" (giả vờ biết và bịa ra câu trả lời).
-
-## Kiến trúc 4 lớp
-
-- `raw/`: Nguồn gốc tài liệu thô, chưa qua xử lý.
-- `processed/`: Lớp lưu trữ bằng chứng và nguồn gốc (provenance).
-- `wiki/`: Tri thức bền vững, tuân thủ schema và có trích dẫn (citation) rõ ràng.
-- `.brain/`: Trạng thái vận hành, bao gồm các hàng đợi (queue), lịch sử lỗ hổng kiến thức (gap log), và nhật ký suy luận (deliberation log).
-
-\* *Lưu ý: NotebookLM được sử dụng như một cỗ máy neo dữ liệu (deep grounding engine), hoàn toàn không phải là "thần thánh hóa" hay "oracle" tuyệt đối.*
+Hybrid ABW là một kiến trúc workflow cho AI agent khi "trả lời nghe hợp lý" là chưa đủ. Hệ thống kết hợp:
+- tri thức dự án có grounding trong `wiki/`
+- trạng thái làm việc trong `.brain/`
+- suy luận có giới hạn cho câu hỏi khó
+- lớp đánh giá rõ ràng trước khi chấp nhận kết quả
 
 ---
 
-## Hệ thống suy luận TTC (Test-Time Compute Deliberation Engine)
+## Core Idea
 
-Hybrid ABW cung cấp đường dẫn lệnh `/abw-query-deep` dành cho các câu hỏi cực khó như:
+**EN**
+- Do not fake knowledge.
+- Do not claim grounding when grounding is unavailable.
+- Do not skip evaluation when output quality matters.
 
-- Tổng hợp thông tin (Synthesis)
-- So sánh (Comparison)
-- Phân tích nguyên nhân gốc rễ (Root Cause Analysis - RCA)
-- Đánh đổi trong thiết kế (Design tradeoff)
-- Các prompt có nhiều yếu tố mâu thuẫn (Contradiction-heavy prompts)
+**VI**
+- Không bịa tri thức.
+- Không giả vờ đã grounding khi grounding chưa sẵn sàng.
+- Không bỏ qua nghiệm thu khi chất lượng đầu ra thực sự quan trọng.
 
-Luồng TTC trải qua 5 bước (passes):
+This repo exists to help smaller, cheaper, faster models behave more like disciplined systems instead of impulsive chatbots.
 
-1. **Decomposition:** Chia nhỏ vấn đề.
-2. **Evidence Assembly:** Tập hợp bằng chứng.
-3. **Grounding:** Neo dữ liệu thực tế với NotebookLM.
-4. **Self-Critique:** Tự đánh giá và phản biện nội bộ.
-5. **Repair or Exit:** Sửa chữa phản hồi hoặc thoát vòng lặp.
-
-Quá trình suy luận (Deliberation) được chặn lại an toàn bằng:
-
-- Cổng thoát (exit gate) dựa trên mức điểm đánh giá (score).
-- Cầu dao tự động ngắt (circuit breaker) nếu bị kẹt trong vòng lặp.
-- Ngân sách truy vấn (query budget) dành cho NotebookLM để tiết kiệm token/thời gian.
+Repository này tồn tại để giúp các mô hình nhỏ hơn, rẻ hơn, nhanh hơn hành xử giống một hệ thống có kỷ luật, thay vì chỉ là chatbot phản xạ nhanh.
 
 ---
 
-## Fallback-first, Không bao giờ Fake Success
+## Two Entrypoints
 
-Đây là **nguyên tắc quan trọng nhất** của repository này.
+### `/abw-ask` = Work Entrypoint
 
-Nếu NotebookLM MCP chưa sẵn sàng hoặc gặp lỗi:
+**EN:** Start here when you have a task, question, or request and want the router to choose the right lane.  
+**VI:** Bắt đầu ở đây khi bạn có task, câu hỏi, hoặc yêu cầu và muốn router tự chọn lane phù hợp.
 
-- Lệnh `/abw-ingest` chỉ được phép tạo artifact ở dạng `draft` hoặc `pending_grounding`.
-- Lệnh `/abw-query` sẽ trả lời theo ưu tiên từ `wiki/` (wiki-first) và tạo log gap nếu thiếu bằng chứng.
-- Lệnh `/abw-query-deep` vẫn chạy, nhưng sẽ chủ động bỏ qua Bước 3 (Grounding) hoặc đặt budget = 0 để hệ thống không treo chờ.
-- Lệnh `/abw-lint` phải cảnh báo rõ ràng rằng hệ thống đang trong trạng thái fallback mode (thiếu khả năng grounding sâu).
+### `/abw-eval` = Evaluation Entrypoint
 
-**Hybrid ABW luôn ưu tiên sự trung thực hơn là những câu trả lời "nghe có vẻ thông minh nhưng sáo rỗng".**
+**EN:** Start here when work already exists and you want to audit, challenge, or accept the output.  
+**VI:** Bắt đầu ở đây khi đã có đầu ra và bạn muốn audit, phản biện, hoặc chốt nghiệm thu.
 
 ---
 
-## Quick Start (Bắt đầu nhanh)
+## Mental Model: 5 Lanes
 
-### 1. Cài đặt các Installer / Workflows
+### 1. Khám phá và tư duy
+**EN:** Explore ideas, clarify problems, and query what is already known.  
+**VI:** Khám phá ý tưởng, làm rõ bài toán, và hỏi trên tri thức hiện có.
 
-Trên Windows:
+- `/abw-ask`
+- `/abw-query`
+- `/abw-query-deep`
+- `/abw-bootstrap`
+- `/brainstorm`
+
+### 2. Dựng nền tri thức
+**EN:** Build and maintain the grounded knowledge base.  
+**VI:** Xây và duy trì nền tri thức có thể truy xuất ngược.
+
+- `/abw-init`
+- `/abw-setup`
+- `/abw-status`
+- `/abw-ingest`
+- `/abw-lint`
+
+### 3. Triển khai sản phẩm
+**EN:** Turn knowledge into implementation.  
+**VI:** Biến tri thức thành phần mềm chạy được.
+
+Core flow:
+- `/plan`
+- `/design`
+- `/visualize`
+- `/code`
+- `/run`
+- `/debug`
+- `/test`
+- `/deploy`
+
+Supporting workflows:
+- `/refactor`
+- `/audit`
+
+### 4. Phiên làm việc và ghi nhớ
+**EN:** Save progress, restore context, and decide the next step.  
+**VI:** Lưu tiến độ, khôi phục bối cảnh, và quyết định bước tiếp theo.
+
+- `/save-brain`
+- `/recap`
+- `/next`
+
+### 5. Đánh giá và nghiệm thu
+**EN:** Evaluate output quality before accepting work as done.  
+**VI:** Đánh giá chất lượng đầu ra trước khi coi công việc là hoàn tất.
+
+- `/abw-audit`
+- `/abw-meta-audit`
+- `/abw-accept`
+- `/abw-eval`
+
+---
+
+## Reasoning Policy
+
+Hybrid ABW follows a 3-tier reasoning policy:
+
+- **Tier 1 - `/abw-query`**: fast retrieval from grounded wiki knowledge
+- **Tier 2 - `/abw-query-deep`**: bounded deliberation for synthesis, comparison, RCA, and tradeoffs
+- **Tier 3 - `/abw-bootstrap`**: hypothesis-driven mode for greenfield projects with no usable knowledge yet
+
+If grounding is unavailable, the system must degrade honestly to `draft` or `pending_grounding`. It must never fake a grounded answer.
+
+Nếu grounding chưa sẵn sàng, hệ thống phải hạ cấp trung thực về `draft` hoặc `pending_grounding`. Không được giả vờ đã grounded.
+
+---
+
+## Quick Start
+
+### Install
+
+Windows:
 
 ```powershell
 irm https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.ps1 | iex
 ```
 
-Trên macOS / Linux:
+macOS / Linux:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.sh | sh
 ```
 
-### 2. Cài đặt cầu nối NotebookLM CLI
+Install NotebookLM MCP CLI:
 
 ```bash
 uv tool install notebooklm-mcp-cli
 ```
 
-### 3. Khởi chạy luồng quy trình chính
+### Recommended Path
 
 ```text
 /abw-init
-   -> /abw-setup
-   -> /abw-status
-   -> /abw-ingest
-   -> /abw-ask 
-        |-> (Tier 1) /abw-query
-        |-> (Tier 2) /abw-query-deep
-        |-> (Tier 3) /abw-bootstrap
-   -> /abw-lint
+  -> /abw-setup
+  -> /abw-ingest
+  -> /abw-ask
+  -> /abw-lint
+  -> /abw-eval
 ```
 
-### 4. Quy trình làm việc khuyến nghị
+### Typical Use
 
-1. Chép tài liệu thô vào `raw/`.
+**EN**
+1. Put source material into `raw/`.
+2. Run `/abw-ingest`.
+3. Use `/abw-ask` for normal work.
+4. Use `/abw-eval` before accepting important output.
+
+**VI**
+1. Chép tài liệu nguồn vào `raw/`.
 2. Chạy `/abw-ingest`.
-3. Thay vì phải "bắt bệnh", bạn hãy sử dụng `/abw-ask` cho bất kỳ câu hỏi nào. Hệ thống Smart Router sẽ tự động phân loại và định tuyến câu hỏi sang luồng tư duy nhanh (Fast path), sâu (Deep path), hoặc khởi tạo ý tưởng mới (Bootstrap path).
-4. Thường xuyên bảo trì dự án bằng `/abw-lint`.
+3. Dùng `/abw-ask` cho luồng làm việc bình thường.
+4. Dùng `/abw-eval` trước khi chốt các đầu ra quan trọng.
 
 ---
 
-## Bảng lệnh hệ thống (Command Surface)
+## Why It Matters
 
-| Command | Mục đích |
-|---------|----------|
-| `/abw-init` | Khởi tạo hoặc sửa chữa cấu trúc thư mục Hybrid ABW. |
-| `/abw-setup` | Đăng nhập và xác nhận kết nối NotebookLM MCP. |
-| `/abw-status` | Kiểm tra tình trạng MCP bridge và grounding queue. |
-| `/abw-ingest` | Xử lý tài liệu raw để tạo manifest và wiki artifacts. |
-| `/abw-ask` | **Smart Router: Tự động phân luồng (định tuyến) sang query nhanh, suy luận sâu hoặc bootstrap ý tưởng mới!** |
+Hybrid ABW is not just a prompt pack. It is a discipline layer for AI work:
+- memory instead of forgetting
+- provenance instead of hand-waving
+- bounded reasoning instead of endless overthinking
+- evaluation instead of blind confidence
 
-**Các nhánh phía sau Router:**
-| Lệnh nội bộ / Mở rộng | Mục đích |
-|---------|----------|
-| `/abw-query` | Trả lời nhanh dựa vào đường dẫn wiki-first (Tier 1). |
-| `/abw-query-deep` | Trả lời cho các câu hỏi khó, yêu cầu TTC deliberation (Tier 2). |
-| `/abw-lint` | Audit kiểm tra chuẩn wiki, quá trình grounding, mâu thuẫn và mức độ khỏe của TTC. |
-| `/abw-bootstrap` | Kích hoạt hệ thống suy luận ý tưởng mới (Tier 3), tạo quản lý giả định (assumptions) & tập lệnh xác nhận giả định (validation). |
+Hybrid ABW không chỉ là một bộ prompt. Nó là lớp kỷ luật cho công việc dùng AI:
+- có bộ nhớ thay vì quên ngữ cảnh
+- có provenance thay vì nói mơ hồ
+- có suy luận có giới hạn thay vì nghĩ lan man
+- có nghiệm thu thay vì tự tin mù quáng
 
 ---
 
-## Tương thích với di sản AWF (Legacy AWF compatibility)
+## Important Files
 
-Repository này vẫn giữ một số quy trình/workflow từ AWF đời cũ để tái cấu trúc tương thích ngược và phục vụ tham khảo.
-
-Tuy nhiên, trong một dự án Hybrid ABW thuần túy, bộ lệnh cốt lõi trực tiếp luôn bắt đầu với tiền tố `/abw-*`. Xin đừng nhầm lẫn repository này như một bản cài đặt AWF thông thường.
-
-Nếu bạn muốn có một trải nghiệm AWF bản tiêu chuẩn theo phiên bản gốc (upstream), vui lòng cài đặt AWF upstream riêng.
-
----
-
-## Nguyên tắc neo dữ liệu thực tế (Grounding Principle)
-
-> "Một câu trả lời có trích dẫn nguồn vẫn tốt hơn là một câu đoán mò chắp vá và tự tin."
-> 
-> "Chủ động ghi log lại sự thiếu hụt kiến thức (knowledge gap) vẫn tốt hơn là trả lời sai sự thật (fake answer)."
-
-Mọi thay đổi chính trong nhóm thư mục kiến thức chung `wiki/` phải luôn luôn truy xuất ngược lại được về:
-
-- Nguồn tài gốc (raw source).
-- Dòng mô tả trong manifest (manifest line).
-- Tình trạng xử lý dữ liệu (grounding outcome).
-- Mức độ tự tin của dữ liệu (confidence status).
+- `AGENTS.md`: system invariants and reasoning rules
+- `workflows/`: user-facing command wrappers
+- `skills/`: execution logic
+- `wiki/`: grounded project knowledge
+- `.brain/`: runtime state, gaps, queues, and session memory
 
 ---
 
-## Các tài liệu quan trọng khác
+## Status
 
-- `AGENTS.md`: Tóm lược kiến thức hệ thống và các bất biến (invariants) bắt buộc phải có.
-- Thư mục `skills/`: Chứa các logic thực thi quan trọng của workflow.
-- Thư mục `workflows/`: Chứa các lệnh wrapper bọc ngoài (chạy trực tiếp trên IDE).
-- `wiki/_schemas/note.schema.md`: Khuôn rập chuẩn (schema) quy định khung lưu trữ của từng Note Kiến thức lâu dài.
-
----
-
-## Đóng góp (Contributing)
-
-Hoan nghênh mọi đóng góp, đặc biệt trong các lĩnh vực sau:
-
-- Tinh chỉnh thông số giới hạn (TTC tuning).
-- Nâng cao chất lượng cho cầu nối neo dữ liệu (grounding bridge).
-- Tăng độ phủ toàn diện cho bộ tự động kiểm tra `lint`.
-- Nâng cấp phiên bản tiến hóa cho hệ thống `wiki schema`.
-- Cải thiện mức độ trung thực và tính khả dụng của quy trình dự phòng fallback.
-
-Chi tiết có thể xem trong file `CONTRIBUTING.md`.
+This repo is evolving from a pure ABW knowledge engine into a broader Hybrid ABW system with:
+- a unified 5-lane command model
+- a work entrypoint (`/abw-ask`)
+- an evaluation entrypoint (`/abw-eval`)
+- explicit acceptance workflows for weaker models

@@ -1,6 +1,6 @@
 ﻿# SKILL: abw-router
 
-**Mục tiêu:** Đánh giá câu hỏi của người dùng và trạng thái của workspace hiện tại để kích hoạt 1 trong 3 nhánh tư duy (Tier 1, Tier 2, hoặc Tier 3).
+**Mục tiêu:** Đánh giá câu hỏi của người dùng và trạng thái của workspace hiện tại để kích hoạt nhánh tư duy hoặc workflow phù hợp nhất (Ask/Think, Build Knowledge, Build Product, Session/Memory).
 
 ---
 
@@ -8,48 +8,55 @@
 
 ### Bước 1: Quét bối cảnh (Context Scan)
 
-Kiểm tra nhanh xem các thư mục `raw/` và `wiki/` có chứa dữ liệu dự án không.
+Kiểm tra nhanh xem các thư mục raw/ và wiki/ có chứa dữ liệu dự án không.
 
-- Trạng thái **Greenfield**: Cả `raw/` và `wiki/` đều trống.
-- Trạng thái **Knowledgeable**: Có dữ liệu (ít nhất 1 file) trong `raw/` hoặc `wiki/`.
+- Trạng thái **Greenfield**: Cả raw/ và wiki/ đều trống.
+- Trạng thái **Knowledgeable**: Có dữ liệu (ít nhất 1 file) trong raw/ hoặc wiki/.
 
-### Bước 2: Đánh giá Câu hỏi (Intent Classification)
+### Bước 2.1: Quy tắc Phân biệt (Disambiguation Rules)
 
-- **Simple**: Câu hỏi tra cứu sự thật, định nghĩa, thao tác rõ ràng.
-- **Complex**: Câu hỏi phân tích, so sánh, thiết kế kiến trúc, tìm nguyên nhân (RCA), cần tổng hợp.
-- **Ambiguous/Idea**: Ý tưởng mơ hồ, "Tôi muốn làm app...", "Bắt đầu từ đâu?", xin lời khuyên định hướng dự án mới.
+Để giảm thiểu sự mơ hồ giữa các intent tương đồng:
 
-### Bước 3: Khởi tạo Runtime (Nếu cần) & Ra quyết định (Handoff)
+- **Query vs Brainstorm (Biết vs Khám phá)**: 
+    - Query (/abw-query): Hỏi về thông tin "đã có" trong wiki (VD: "Tính năng X đã chốt là gì?"). 
+    - Brainstorm (/brainstorm): Hỏi về ý tưởng "chưa có", "cần định nghĩa" hoặc "scoping" (VD: "MVP nên có những gì?").
+- **Recap vs Next (Quá khứ vs Tương lai)**:
+    - Recap (/recap): Nhìn lại "quá khứ" (VD: "Chúng ta đã làm gì?", "Tóm tắt bối cảnh").
+    - Next (/next): Đề xuất bước tiếp theo từ trạng thái hiện tại (VD: "Tôi làm gì tiếp theo?", "Task tiếp theo là gì?").
+- **Ask vs Help (Hành động vs Hỗ trợ)**:
+    - Ask (/abw-ask): Có ý định thực thi task cụ thể nhưng chưa biết lệnh.
+    - Help (/help): Không hiểu cách hệ thống vận hành hoặc danh sách các lệnh/lane.
 
-Dựa vào tổ hợp bối cảnh và loại câu hỏi, hãy chọn 1 nhánh duy nhất:
+### Bước 2.2: Từ khóa nhận diện (Action Keywords)
 
-**Trường hợp 1: Greenfield + Ambiguous/Idea**
-
-- Hệ thống chưa có dữ liệu và user mới có ý tưởng.
-- 👉 **Hành động:**
-  1. Đảm bảo thư mục `.brain/bootstrap/` tồn tại.
-  2. Chuyển quyền điều khiển hoàn toàn cho `skills/abw-bootstrap.md`.
-
-**Trường hợp 2: Greenfield + Simple/Complex**
-
-- Chưa có dữ liệu dự án nhưng hỏi kiến thức chung.
-- 👉 **Hành động:**
-  1. Nếu `.brain/knowledge_gaps.json` chưa tồn tại, khởi tạo từ `templates/knowledge_gaps.example.json`.
-  2. Trả lời dựa trên kiến thức base của bạn, nhưng bắt buộc phải log vào `.brain/knowledge_gaps.json` cảnh báo "Thiếu tri thức neo cho topic này" và khuyên user thêm tài liệu.
-
-**Trường hợp 3: Knowledgeable + Simple**
-
-- Đã có dữ liệu, user hỏi tra cứu nhanh.
-- 👉 **Hành động:** Chuyển quyền điều khiển hoàn toàn cho `skills/query-wiki.md`.
-
-**Trường hợp 4: Knowledgeable + Complex**
-
-- Đã có dữ liệu, user yêu cầu phân tích, quyết định khó.
-- 👉 **Hành động:** Chuyển quyền điều khiển hoàn toàn cho `skills/query-wiki-deliberative.md` để kích hoạt Test-Time Compute (TTC).
+| Intent | Cue Patterns / Keywords |
+|--------|-------------------------|
+| knowledge | "là gì", "đã chốt", "tra cứu", "đọc wiki", "giải thích nội dung cũ" |
+| product-discovery | "MVP", "scope", "brainstorm", "lên ý tưởng", "định nghĩa", "chốt tính năng" |
+| delivery-planning | "lên kế hoạch", "plan", "phases", "chia task", "roadmap" |
+| delivery-execution | "code", "viết", "sửa lỗi", "debug", "test", "run", "deploy" |
+| session-recap | "tóm tắt", "recap", "đang làm gì", "nhắc lại", "context", "hôm qua làm gì" |
+| session-next | "làm gì tiếp", "next step", "tiếp theo là gì", "task tiếp theo" |
 
 ---
 
+## Routing Priority Ladder
+
+Để đảm bảo AI đưa ra quyết định nhất quán khi có nhiều ý định chồng lấn:
+
+1. **Confusion/System Query** -> `/help` (Nếu user không biết cách dùng hệ thống).
+2. **Mixed Intent** -> Thực hiện command hành động đầu tiên + ghi log Follow-up.
+3. **Past Context Recovery** -> `/recap` (Nếu câu hỏi nhắm vào lịch sử phiên làm việc).
+4. **Next-Action Guidance** -> `/next` (Nếu user hỏi "giờ làm gì" dựa trên tiến độ).
+5. **Knowledge Lookup** -> `/abw-query` (nhanh) hoặc `/abw-query-deep` (sâu).
+6. **Undefined Product Scope** -> `/brainstorm` (lên ý tưởng, chốt brief).
+7. **Greenfield (No Anchors)** -> `/abw-bootstrap` (khi chưa có bất kỳ dữ liệu raw/wiki nào).
+8. **Delivery Execution** -> `/plan`, `/design`, `/code`, `/debug`, `/test` (theo luồng sản xuất).
+
+---
+
+> [!IMPORTANT]
 > **Lệnh Thực Thi Ngay (Dynamic Dispatch):**
 >
-> 1. In ra màn hình một dòng log ngắn: `[Router] Đang định tuyến sang <Tên_Path_Đã_Chọn>...`
-> 2. ĐỌC và TUÂN THEO TOÀN BỘ quy tắc trong file skill đã chọn (chuyển control hoàn toàn, không quay lại router logic).
+> 1. In ra màn hình log: `[Router] Routing to /<cmd> for <intent>. [Optional] Follow-up: /<next_cmd>.`
+> 2. ĐỌC và TUÂN THEO TOÀN BỘ quy tắc trong file workflow/skill đã chọn.

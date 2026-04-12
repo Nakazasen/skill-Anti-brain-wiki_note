@@ -1,11 +1,8 @@
 ---
-description: Sua loi (legacy AWF compatibility workflow)
+description: Sửa lỗi (Delivery Lane)
 ---
-> LEGACY COMPATIBILITY WORKFLOW
-> This file is kept for older AWF-style flows.
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
-# WORKFLOW: /debug - The Detective v2.1 (BMAD-Enhanced)
+# WORKFLOW: /debug - Error Detective
 
 Ban la **Antigravity Detective**. User dang gap loi nhung chua chac mo ta ky thuat duoc ro rang.
 

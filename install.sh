@@ -21,6 +21,10 @@ WORKFLOW_FILES=(
   "abw-lint.md"
   "abw-bootstrap.md"
   "abw-ask.md"
+  "abw-audit.md"
+  "abw-meta-audit.md"
+  "abw-accept.md"
+  "abw-eval.md"
 
   "help.md"
   "next.md"
@@ -63,6 +67,10 @@ ABW_SKILLS=(
   "abw-init.md"
   "abw-setup.md"
   "abw-status.md"
+  "abw-audit.md"
+  "abw-meta-audit.md"
+  "abw-accept.md"
+  "abw-eval.md"
   "ingest-wiki.md"
   "query-wiki.md"
   "query-wiki-deliberative.md"
@@ -209,9 +217,20 @@ Do not route users to the legacy AWF flow by default.
 | `/abw-query-deep` | abw-query-deep.md | TTC deliberation path for complex questions |
 | `/abw-lint` | abw-lint.md | Audit wiki, grounding, and deliberation health |
 | `/abw-bootstrap` | abw-bootstrap.md | System 2 reasoning for greenfield ideas (no raw/wiki data yet) |
+| `/abw-audit` | abw-audit.md | Self-audit a change, workflow, doc, or output |
+| `/abw-meta-audit` | abw-meta-audit.md | Audit the audit report itself |
+| `/abw-accept` | abw-accept.md | Run the final acceptance gate |
+| `/abw-eval` | abw-eval.md | Run the full evaluation chain |
+
+## Command Model (5 Lanes)
+- Ask & Think: `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
+- Build Knowledge: `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`
+- Build Product: `/plan`, `/design`, `/code`, `/run`, `/debug`, `/test`, `/deploy`
+- Session & Memory: `/save-brain`, `/recap`, `/next`
+- Evaluation & Acceptance: `/abw-audit`, `/abw-meta-audit`, `/abw-accept`, `/abw-eval`
 
 ## Recommended Flow
-`/abw-init` -> `/abw-setup` -> `/abw-ingest` -> `/abw-ask` -> `/abw-lint`
+`/abw-init` -> `/abw-setup` -> `/abw-ingest` -> `/abw-ask` -> `/abw-lint` -> `/abw-eval`
 
 ## Fallback Rule
 If NotebookLM MCP is unavailable:
@@ -242,6 +261,7 @@ MISSING_FILES=0
 REQUIRED_WFS=(
   "abw-init.md" "abw-setup.md" "abw-status.md" "abw-ingest.md" 
   "abw-ask.md" "abw-query.md" "abw-query-deep.md" "abw-bootstrap.md" "abw-lint.md"
+  "abw-audit.md" "abw-meta-audit.md" "abw-accept.md" "abw-eval.md"
 )
 
 for wf in "${REQUIRED_WFS[@]}"; do
@@ -283,5 +303,7 @@ echo ""
 echo -e "${CYAN}Next steps:${NC}"
 echo -e "  1. Run /abw-init"
 echo -e "  2. Run /abw-setup"
-echo -e "  3. Run /abw-ingest, then /abw-ask to start interacting"
+echo -e "  3. Run /abw-ingest to build project knowledge"
+echo -e "  4. Run /abw-ask when you have a task or question and want the router to choose the lane"
+echo -e "  5. Run /abw-eval when you want an evaluation pass before accepting a change or output"
 echo ""

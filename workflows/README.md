@@ -1,105 +1,93 @@
-# Hybrid ABW Workflow Surface
+# Hybrid ABW: Mô hình lệnh thống nhất
 
-This directory currently contains two layers:
+Hybrid ABW cung cấp một mental model thống nhất cho người phát triển, đi từ giai đoạn khám phá ban đầu, dựng nền tri thức, triển khai sản phẩm, quản lý phiên làm việc, cho tới đánh giá và nghiệm thu. Hệ thống hiện được tổ chức thành **5 lane chức năng**.
 
-- **Primary surface:** the `/abw-*` workflows for Hybrid Anti-Brain-Wiki
-- **Legacy layer:** older AWF workflows kept for compatibility and reuse
+## Bắt đầu từ đâu?
 
-If you are reading this repository for the first time, treat **`/abw-*` as the main product surface**.
-
----
-
-## Primary Commands
-
-| Command | Purpose |
-| --------- | --------- |
-| `/abw-init` | Bootstrap or repair the Hybrid ABW project structure |
-| `/abw-setup` | Activate NotebookLM MCP and verify fallback state |
-| `/abw-status` | Check MCP bridge and grounding queue status |
-| `/abw-ingest` | Ingest source material into processed/wiki artifacts |
-| `/abw-ask` | **Smart Router: Default entrypoint for any question** |
-| `/abw-query` | Tier 1: Fast wiki-first retrieval path |
-| `/abw-query-deep` | Tier 2: Bounded TTC query path for synthesis and hard questions |
-| `/abw-bootstrap` | Tier 3: Greenfield reasoning and hypothesis generation |
-| `/abw-lint` | Audit wiki, manifest, queue, and deliberation health |
+- **`/abw-ask`**: Entry mặc định để làm việc. Dùng khi bạn có task hoặc câu hỏi và muốn router chọn lane phù hợp.
+- **`/abw-eval`**: Entry mặc định để nghiệm thu. Dùng khi đã có đầu ra và muốn đánh giá trước khi chấp nhận.
+- **`/next`**: Gợi ý bước hợp lý tiếp theo dựa trên trạng thái hiện tại.
+- **`/help`**: Bản đồ hệ thống và danh sách lệnh.
 
 ---
 
-## Recommended ABW Flow
+## 5 lane của hệ thống
 
-```text
-/abw-init
-   -> /abw-setup
-   -> /abw-status
-   -> /abw-ingest
-   -> /abw-ask 
-        |-> (Tier 1) /abw-query
-        |-> (Tier 2) /abw-query-deep
-        |-> (Tier 3) /abw-bootstrap
-   -> /abw-lint
-```
+### 1. Khám phá và tư duy
+Tập trung vào việc hình thành ý tưởng, làm rõ bài toán, hoặc hỏi trên tri thức hiện có.
+- **`/abw-ask`** : **Entry chính của toàn hệ thống (Master Router)**.
+- `/abw-query` : Tier 1, tra cứu nhanh trên tri thức đã có.
+- `/abw-query-deep` : Tier 2, suy luận sâu và phân tích nhiều lớp.
+- `/abw-bootstrap` : Tier 3, tư duy giả thuyết cho bài toán greenfield.
+- `/brainstorm` : Khám phá sản phẩm và chốt phạm vi vấn đề.
 
-### Short Interpretation
+### 2. Dựng nền tri thức
+Tập trung vào việc duy trì nền dữ liệu đáng tin của dự án.
+- `/abw-init` : Khởi tạo workspace và cấu trúc ABW.
+- `/abw-setup` : Cấu hình MCP.
+- `/abw-status` : Kiểm tra kết nối và trạng thái hệ thống.
+- `/abw-ingest` : Nạp tri thức vào wiki.
+- `/abw-lint` : Audit chất lượng nền tri thức.
 
-- start with `/abw-init`
-- activate NotebookLM using `/abw-setup`
-- check status using `/abw-status`
-- ingest knowledge using `/abw-ingest`
-- use `/abw-ask` as the default router for any question you have
-- (the router will internally bypass or direct you to `/abw-query`, `/abw-query-deep`, or `/abw-bootstrap`)
-- use `/abw-lint` to keep the knowledge base healthy
+### 3. Triển khai sản phẩm
+Tập trung vào việc biến tri thức thành phần mềm chạy được.
 
----
+Luồng delivery chính:
+- `/plan` : Lập kế hoạch kỹ thuật và task.
+- `/design` : Thiết kế kiến trúc và cơ sở dữ liệu.
+- `/visualize` : Dựng mockup UI/UX và đặc tả màn hình.
+- `/code` : Cài đặt tính năng.
+- `/run` : Chạy ứng dụng cục bộ.
+- `/debug` : Sửa lỗi.
+- `/test` : Kiểm tra chất lượng.
+- `/deploy` : Triển khai lên môi trường đích.
 
-## Fallback-First Behavior
+Workflow hỗ trợ trong delivery:
+- `/refactor` : Dọn code an toàn sau khi đã hiểu rõ hành vi.
+- `/audit` : Rà soát sản phẩm, code, hoặc bảo mật trong vòng delivery.
 
-Hybrid ABW is intentionally honest when MCP is unavailable.
+### 4. Phiên làm việc và ghi nhớ
+Tập trung vào việc quản lý phiên làm việc và khôi phục bối cảnh.
+- `/save-brain` : Lưu phiên và chuẩn bị handover.
+- `/recap` : Khôi phục bối cảnh.
+- `/next` : Gợi ý bước tiếp theo.
 
-If NotebookLM is not active:
-
-- ingest produces `draft` artifacts, not fake `grounded` artifacts
-- query falls back to wiki-first answers plus gap logging
-- grounding operations are queued in `.brain/grounding_queue.json`
-
-This is by design.
-
----
-
-## Legacy AWF Workflows
-
-This repository still contains legacy AWF workflows such as `/init`, `/plan`, `/design`, `/code`, `/debug`, and `/deploy`.
-These files are kept because:
-
-- some users still run a mixed ABW + AWF setup
-- some helper flows remain useful outside the ABW command surface
-- the repository still bundles AWF helper skills for session restore, autosave, onboarding, and error translation
-
-However, **legacy AWF workflows are not the primary public command surface of this repository**.
-
-If you want the full upstream AWF experience, install upstream AWF separately.
+### 5. Đánh giá và nghiệm thu
+Tập trung vào việc đánh giá đầu ra, kiểm tra chất lượng lập luận, và quyết định có nên chấp nhận thay đổi hay không.
+- `/abw-audit` : Tự audit một thay đổi hoặc artifact.
+- `/abw-meta-audit` : Audit lại chính báo cáo audit.
+- `/abw-accept` : Chạy cổng nghiệm thu cuối cùng.
+- `/abw-eval` : Chạy toàn bộ chuỗi evaluation.
 
 ---
 
-## Mapping: Intent -> ABW Command
+## Luồng khuyến nghị
 
-| Intent | Use |
-| -------- | ----- |
-| Create ABW structure | `/abw-init` |
-| Connect NotebookLM | `/abw-setup` |
-| Check whether ABW is in fallback mode | `/abw-status` |
-| Turn raw sources into wiki knowledge | `/abw-ingest` |
-| Ask the system any general question | `/abw-ask` |
-| Ask a quick grounded question directly | `/abw-query` |
-| Ask a hard synthesis or comparison question directly | `/abw-query-deep` |
-| Formulate hypotheses for a greenfield project directly | `/abw-bootstrap` |
-| Audit wiki and grounding health | `/abw-lint` |
+1. **Khám phá và tư duy**: Bắt đầu với `/brainstorm` hoặc `/abw-ask`.
+2. **Dựng nền tri thức**: Chạy `/abw-init` và `/abw-ingest` để xây wiki cho dự án.
+3. **Triển khai**: Chuyển sang `/plan`, `/design`, `/visualize`, rồi `/code` khi nền tri thức đã đủ rõ.
+4. **Handover**: Dùng `/save-brain` trước khi kết thúc phiên.
+5. **Nghiệm thu**: Dùng `/abw-audit`, `/abw-accept`, hoặc `/abw-eval` trước khi coi công việc là hoàn tất.
 
 ---
 
-## Notes for Maintainers
+## Định tuyến thông minh
 
-If you continue evolving this repository toward ABW-first positioning:
+Lệnh **`/abw-ask`** là entry mặc định cho hầu hết tương tác làm việc. Nó đánh giá intent của bạn và trạng thái hiện tại của dự án để chuyển tiếp sang workflow hoặc skill phù hợp nhất.
 
-1. keep `/abw-*` documentation in sync with installer behavior
-2. keep legacy AWF docs clearly labeled as secondary or compatibility-only
-3. avoid presenting `/plan`, `/design`, and `/code` as the primary path unless the repo intentionally pivots back to full AWF
+Ví dụ handoff:
+- "Auth flow hiện tại là gì?" -> `[Router] Routing to /abw-query for knowledge-simple.`
+- "Tôi muốn làm một marketplace" -> `[Router] Routing to /brainstorm for product-discovery.`
+- "Giúp tôi lên kế hoạch API" -> `[Router] Routing to /plan for delivery-planning.`
+
+Evaluation Layer tách riêng khỏi `/abw-ask`. Dùng nó sau khi đã có đầu ra:
+- `/abw-audit` để tự rà soát
+- `/abw-meta-audit` để chất vấn báo cáo audit
+- `/abw-accept` để quyết định pass/fail
+- `/abw-eval` để chạy toàn bộ chuỗi nghiệm thu
+
+---
+
+## Thiết kế ưu tiên trung thực
+
+Hybrid ABW ưu tiên **trung thực** hơn là trả lời cho có. Nếu NotebookLM MCP bị lỗi hoặc grounding queue đang tắc, hệ thống phải báo rõ trạng thái như `draft` hoặc `pending_grounding`, thay vì giả vờ đã grounded.

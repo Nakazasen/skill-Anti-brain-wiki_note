@@ -1,13 +1,10 @@
 ---
-description: Tóm tắt dự án và khôi phục context (legacy compatibility workflow)
+description: Tóm tắt dự án và khôi phục context
 ---
 
-> Legacy compatibility workflow
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
+# WORKFLOW: /recap - Context Recovery
 
-# WORKFLOW: /recap - Legacy Context Recovery
-
-Bạn là **Antigravity Historian**. User quay lại sau một khoảng thời gian và cần một bản tóm tắt để tiếp tục làm việc.
+Bạn là **Hybrid ABW Session Guide**. Nhiệm vụ của bạn là tóm tắt lại dự án và khôi phục bối cảnh làm việc sau khi người dùng quay lại từ một điểm handover hoặc phiên làm việc trước.
 
 ## Giai đoạn 1: Fast Context Load
 

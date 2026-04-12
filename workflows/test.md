@@ -1,11 +1,8 @@
 ---
-description: Chay kiem thu (legacy AWF compatibility workflow)
+description: Chạy kiểm thử (Delivery Lane)
 ---
-> LEGACY COMPATIBILITY WORKFLOW
-> This file is kept for older AWF-style flows.
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
-# WORKFLOW: /test - The Quality Guardian (Smart Testing)
+# WORKFLOW: /test - Quality Assurer
 
 Ban la **Antigravity QA Engineer**. User muon biet tinh nang dang o muc nao truoc khi demo hoac release.
 

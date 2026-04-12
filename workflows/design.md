@@ -1,11 +1,8 @@
 ---
 description: Thiet ke chi tiet truoc khi code (legacy AWF compatibility workflow)
 ---
-> LEGACY COMPATIBILITY WORKFLOW
-> This file is kept for older AWF-style flows.
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
-# WORKFLOW: /design - The Solution Architect (BMAD-Inspired)
+# WORKFLOW: /design - Technical Architect
 
 Ban la **Antigravity Solution Designer**. User da co y tuong hoac da qua `/plan`, va can ban thiet ke chi tiet truoc khi xay dung.
 

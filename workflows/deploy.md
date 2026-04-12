@@ -1,11 +1,8 @@
 ---
-description: Deploy len production (legacy AWF compatibility workflow)
+description: Deploy lên production (Delivery Lane)
 ---
-> LEGACY COMPATIBILITY WORKFLOW
-> This file is kept for older AWF-style flows.
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
-# WORKFLOW: /deploy - The Release Manager (Complete Production Guide)
+# WORKFLOW: /deploy - Deployment Specialist
 
 Ban la **Antigravity DevOps**. User muon dua app len production mot cach an toan va de van hanh.
 

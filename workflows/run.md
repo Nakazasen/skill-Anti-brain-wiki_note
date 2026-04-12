@@ -1,11 +1,8 @@
 ---
-description: Chay ung dung va xac nhan trang thai (legacy compatibility workflow)
+description: Chạy ứng dụng và xác nhận trạng thái (Delivery Lane)
 ---
 
-> Legacy compatibility workflow
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
-
-# WORKFLOW: /run - Legacy Application Launcher
+# WORKFLOW: /run - Local Runner
 
 Bạn là **Antigravity Operator**. User muốn chạy app và xác nhận trạng thái một cách an toàn.
 

@@ -1,119 +1,105 @@
----
-description: Hybrid ABW help and command guide
+﻿---
+description: Hướng dẫn lệnh và sơ đồ hệ thống Hybrid ABW
 ---
 
 # WORKFLOW: /help
 
-You are the Hybrid ABW guide. Your job is to orient the user quickly and steer them toward the correct **ABW-first** command, not to dump the full legacy AWF menu by default.
+Bạn là người hướng dẫn của Hybrid ABW. Nhiệm vụ của bạn là giúp người dùng định hướng thật nhanh. Bề mặt lệnh hiện được tổ chức thành 5 lane chức năng.
 
 ---
 
-## Core Rule
+## Bắt đầu nhanh
 
-When the user asks for help, present the `/abw-*` command surface first.
-Only mention legacy AWF workflows if the user explicitly asks about them or their task clearly belongs to the older AWF flow.
+Nếu bạn sắp bắt đầu làm việc, hãy đi từ một trong hai entrypoint này:
+
+- **`/abw-ask`** : Entry mặc định để làm việc. Dùng khi bạn có task, câu hỏi, hoặc yêu cầu nhưng chưa biết nên đi lane nào.
+- **`/abw-eval`** : Entry mặc định để nghiệm thu. Dùng khi đã có đầu ra và bạn muốn audit hoặc chốt accept trước khi coi là xong.
+
+### Khi nào dùng lệnh nào?
+
+- **Dùng `/abw-ask`** khi bạn có một việc cụ thể cần làm hoặc một câu hỏi cụ thể nhưng chưa nhớ chính xác lệnh nào.
+- **Dùng `/abw-eval`** khi bạn muốn chạy vòng đánh giá cho một thay đổi, workflow, tài liệu, hoặc đầu ra của mô hình trước khi chấp nhận.
+- **Dùng `/next`** khi bạn đang ở giữa dự án và cần gợi ý bước hợp lý tiếp theo dựa trên trạng thái hiện tại.
+- **Dùng `/help`** khi bạn cần hiểu sơ đồ hệ thống, xem toàn bộ danh sách lệnh, hoặc học mental model 5 lane.
 
 ---
 
-## Primary Help Menu
+## Mô hình lệnh (5 lane)
 
-Show this menu first unless the user asks for something else:
+### 1. Khám phá và tư duy
+
+Dùng nhóm này khi cần khám phá ý tưởng hoặc hỏi trên tri thức hiện có.
+
+- `/abw-ask` : Entry chính, tự định tuyến theo intent
+- `/abw-query` : Tra cứu nhanh trên wiki
+- `/abw-query-deep` : Suy luận sâu và tổng hợp nhiều lớp
+- `/abw-bootstrap` : Tư duy cho bài toán greenfield
+- `/brainstorm` : Chốt brief sản phẩm và phạm vi MVP
+
+### 2. Dựng nền tri thức
+
+Dùng nhóm này để duy trì nền tri thức của dự án và sức khỏe MCP.
+
+- `/abw-init` : Khởi tạo cấu trúc ABW
+- `/abw-setup` : Cấu hình NotebookLM MCP
+- `/abw-status` : Kiểm tra MCP và hàng đợi
+- `/abw-ingest` : Xử lý raw thành wiki
+- `/abw-lint` : Audit sức khỏe wiki và manifest
+
+### 3. Triển khai sản phẩm
+
+Dùng nhóm này để biến tri thức thành phần mềm chạy được.
+
+Luồng delivery chính:
+
+- `/plan` : Lập kế hoạch thực thi tính năng
+- `/design` : Thiết kế kỹ thuật và cơ sở dữ liệu
+- `/visualize` : Dựng mockup UI/UX và đặc tả màn hình
+- `/code` : Cài đặt tính năng
+- `/run` : Chạy ứng dụng cục bộ
+- `/debug` : Sửa lỗi có hệ thống
+- `/test` : Chạy test và kiểm tra chất lượng
+- `/deploy` : Triển khai lên môi trường đích
+
+Workflow hỗ trợ trong delivery:
+
+- `/refactor` : Dọn code an toàn sau khi đã hiểu rõ hành vi
+- `/audit` : Rà soát sản phẩm, code, hoặc bảo mật trong vòng delivery
+
+### 4. Phiên làm việc và ghi nhớ
+
+Dùng nhóm này để quản lý phiên làm việc và khôi phục bối cảnh.
+
+- `/save-brain` : Lưu tiến độ và chuẩn bị handover
+- `/recap` : Khôi phục bối cảnh từ phiên trước
+- `/next` : Gợi ý bước tiếp theo một cách thông minh
+
+### 5. Đánh giá và nghiệm thu
+
+Dùng nhóm này để đánh giá đầu ra, chất vấn lập luận yếu, và quyết định có nên chấp nhận thay đổi hay không.
+
+- `/abw-audit` : Tự audit một thay đổi, workflow, tài liệu, hoặc đầu ra
+- `/abw-meta-audit` : Audit lại chính báo cáo audit
+- `/abw-accept` : Chạy cổng nghiệm thu cuối cùng
+- `/abw-eval` : Chạy toàn bộ chuỗi evaluation từ đầu đến cuối
+
+---
+
+## Ví dụ phản hồi
+
+### User: "Tôi nên bắt đầu từ đâu?"
 
 ```text
-HYBRID ABW HELP
-
-Primary commands:
-- /abw-init       bootstrap the ABW workspace
-- /abw-setup      activate NotebookLM MCP
-- /abw-status     check MCP and queue state
-- /abw-ingest     ingest source files into wiki knowledge
-- /abw-ask        (Router) ask any question here first
-- /abw-query      (Tier 1) ask a fast wiki-first question
-- /abw-query-deep (Tier 2) ask a hard TTC question
-- /abw-bootstrap  (Tier 3) greenfield projects/ideas
-- /abw-lint       audit wiki, manifest, and deliberation health
+1. Chạy /abw-init để khởi tạo workspace.
+2. Chạy /abw-setup để kết nối NotebookLM.
+3. Nếu dự án còn mơ hồ, dùng /brainstorm để chốt brief.
+4. Hoặc đơn giản dùng /abw-ask và nói: "Tôi muốn bắt đầu dự án X".
 ```
 
----
-
-## Context-Aware Guidance
-
-### If there is no ABW structure yet
-
-Recommend:
-
-- `/abw-init`
-
-### If MCP is not active yet
-
-Recommend:
-
-- `/abw-setup`
-- then `/abw-status`
-
-### If the user has source material in `raw/`
-
-Recommend:
-
-- `/abw-ingest`
-
-### If the user wants to ask any question
-
-Recommend:
-
-- `/abw-ask` (let the router handle it)
-
-### If the user explicitly wants to bypass the router for a specific Tier
-
-Recommend:
-
-- `/abw-query` for fast answers from existing knowledge
-- `/abw-query-deep` for comparison, synthesis, RCA, or design reasoning
-- `/abw-bootstrap` for greenfield ideas without existing context
-
-### If the user wants to inspect repo health
-
-Recommend:
-
-- `/abw-lint`
-
----
-
-## Example Responses
-
-### User: "toi nen bat dau tu dau?"
-
-Answer with:
+### User: "Làm sao để viết code cho tính năng này?"
 
 ```text
-Bat dau bang /abw-init.
-Sau do dung /abw-setup de xac nhan NotebookLM MCP.
-Neu da co tai lieu trong raw/, chay /abw-ingest.
+1. Đảm bảo đã có tri thức về tính năng đó trong wiki hoặc dùng /abw-ask để kiểm tra.
+2. Dùng /plan để lên cấu trúc file và task.
+3. Chạy /code để thực thi kế hoạch.
 ```
-
-### User: "MCP da ket noi chua?"
-
-Answer with:
-
-```text
-Dung /abw-status de kiem tra MCP bridge, fallback mode, va grounding queue.
-```
-
-### User: "toi muon hoi nhanh ve tri thuc da ingest"
-
-Answer with:
-
-```text
-Nen dung /abw-ask de he thong tu dong dinh tuyen.
-Neu ban muon chu dong chon nhanh: dung /abw-query.
-Neu cau hoi can tong hop nhieu nguon hoac can tu phan bien, dung /abw-query-deep.
-Neu du an hoan toan moi (greenfield), dung /abw-bootstrap.
-```
-
----
-
-## Legacy Note
-
-This repo still contains legacy AWF workflows such as `/init`, `/plan`, `/design`, and `/code`.
-Do not present them as the default help surface.
-Treat them as compatibility workflows unless the user explicitly asks for AWF-style planning and coding flows.

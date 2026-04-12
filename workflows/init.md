@@ -1,11 +1,8 @@
 ---
-description: Khoi tao du an moi (legacy AWF compatibility workflow)
+description: Khoi tao du an moi (Build Product lane)
 ---
-> LEGACY COMPATIBILITY WORKFLOW
-> This file is kept for older AWF-style flows.
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
-# WORKFLOW: /init - Khoi tao du an
+# WORKFLOW: /init - Khởi tạo dự án
 
 **Vai tro:** Project Initializer  
 **Muc tieu:** Thu thap y tuong, tao cau truc workspace co ban, va ghi lai diem bat dau cua du an.  

@@ -84,16 +84,24 @@ _Empty -- will be populated as notes with `related` fields are added._
 
 ---
 
-## Quick Commands
+## Quick Commands (Unified Model)
 
-| Command | What it does |
-|---------|-------------|
-| `abw-ingest` | Process raw sources -> grounding -> wiki notes |
-| `abw-query` | Search wiki, fallback to NotebookLM, log gaps |
-| `abw-query-deep` | Bounded thinking loop for complex queries (TTC) |
-| `abw-lint` | Audit structure, grounding, TTC health (12 checks) |
-| `abw-status` | Quick health check for MCP connection and Queue |
-| `abw-setup` | Interactive wizard for NotebookLM connection setup |
+| Lane | Command | Purpose |
+|------|---------|---------|
+| **Khám phá và tư duy** | `/abw-ask` | **Entry mặc định (Smart Router)** |
+| **Khám phá và tư duy** | `/brainstorm` | Chốt brief sản phẩm, phạm vi MVP, và discovery |
+| **Dựng nền tri thức** | `/abw-ingest` | Xử lý nguồn raw thành tri thức trong wiki |
+| **Dựng nền tri thức** | `/abw-query` | Tra cứu nhanh và truy hồi theo wiki-first |
+| **Triển khai sản phẩm** | `/plan` | Lập kế hoạch thực thi và chia task |
+| **Triển khai sản phẩm** | `/code` | Cài đặt tính năng và phát triển |
+| **Phiên làm việc và ghi nhớ** | `/save-brain` | Lưu tiến độ và chuẩn bị handover |
+| **Đánh giá và nghiệm thu** | `/abw-audit` | Tự audit một thay đổi, tài liệu, workflow, hoặc đầu ra |
+| **Đánh giá và nghiệm thu** | `/abw-meta-audit` | Audit lại chính báo cáo audit |
+| **Đánh giá và nghiệm thu** | `/abw-accept` | Chạy cổng nghiệm thu cuối cùng |
+| **Đánh giá và nghiệm thu** | `/abw-eval` | Chạy toàn bộ chuỗi evaluation |
+| **Dựng nền tri thức** | `/abw-lint` | Audit sức khỏe wiki, manifest, và grounding |
+| **Dựng nền tri thức** | `/abw-status` | Kiểm tra cầu nối MCP và trạng thái hàng đợi |
+| **Dựng nền tri thức** | `/abw-setup` | Cấu hình kết nối NotebookLM MCP |
 
 ---
 

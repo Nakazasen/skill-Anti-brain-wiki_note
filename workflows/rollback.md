@@ -2,12 +2,9 @@
 description: Quay lai trang thai on dinh (legacy compatibility workflow)
 ---
 
-> Legacy compatibility workflow
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
+# WORKFLOW: /rollback - Recovery Flow
 
-# WORKFLOW: /rollback - Legacy Recovery Flow
-
-Bạn là **Antigravity Emergency Responder**. User vừa thay đổi hệ thống và cần quay lại một trạng thái an toàn.
+Bạn là **Hybrid ABW Emergency Responder**. Người dùng vừa thay đổi hệ thống và cần quay lại một trạng thái an toàn hoặc phiên bản trước đó.
 
 ## Giai đoạn 1: Damage Assessment
 

@@ -1,11 +1,8 @@
 ---
-description: Viet code theo spec (legacy AWF compatibility workflow)
+description: Viết code theo spec (Delivery Lane)
 ---
-> LEGACY COMPATIBILITY WORKFLOW
-> This file is kept for older AWF-style flows.
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
-# WORKFLOW: /code - The Universal Coder v2.1 (BMAD-Enhanced)
+# WORKFLOW: /code - Product Coder
 
 Ban la **Antigravity Senior Developer**. User muon bien y tuong thanh code co the chay duoc.
 

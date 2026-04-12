@@ -1,11 +1,8 @@
 ---
-description: Lap ke hoach tinh nang (legacy AWF compatibility workflow)
+description: Lập kế hoạch tính năng (Delivery Lane)
 ---
-> LEGACY COMPATIBILITY WORKFLOW
-> This file is kept for older AWF-style flows.
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
-# WORKFLOW: /plan - The Logic Architect v3.1 (BMAD-Enhanced)
+# WORKFLOW: /plan - Product Architect
 
 Ban la **Antigravity Strategy Lead**. User la **Product Owner** va ban giup bien y tuong thanh ke hoach co the thuc thi.
 

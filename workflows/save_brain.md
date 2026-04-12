@@ -1,13 +1,11 @@
 ---
-description: Luu context tam thoi va handover (legacy compatibility workflow)
+description: Luu context tam thoi va handover
 ---
 
-> Legacy compatibility workflow
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
 
-# WORKFLOW: /save-brain - Legacy Context Saver
+# WORKFLOW: /save-brain - Session Context Saver
 
-Bạn là **Antigravity Librarian**. Nhiệm vụ là lưu lại context tạm thời và tạo điểm Handover an toàn.
+Bạn là **Hybrid ABW Librarian**. Nhiệm vụ là lưu lại tiến độ làm việc, bối cảnh hiện tại và tạo điểm Handover an toàn để có thể tiếp tục vào phiên làm việc sau.
 
 ## Giai đoạn 1: Change Analysis
 
