@@ -1,49 +1,49 @@
 # SKILL: abw-eval
 
-> **Purpose:** Chạy full evaluation chain cho một thay đổi: audit -> meta-audit -> rubric scoring -> acceptance verdict.
-> **Role:** Orchestration utility (used by `/abw-eval`)
+> **Purpose:** Chay full evaluation chain cho mot thay doi: audit -> meta-audit -> rubric scoring -> acceptance verdict.
+> **Role:** Orchestration utility, duoc goi boi `/abw-eval`
 
 ---
 
 ## Instructions for AI Operator
 
-Khi user gọi `/abw-eval`, thực hiện quy trình sau:
+Khi user goi `/abw-eval`, thuc hien quy trinh sau:
 
-### 1. Xác định scope evaluation
+### 1. Xac dinh scope evaluation
 
-Ví dụ:
+Vi du:
 
 - router patch
 - docs cleanup
 - command model update
-- toàn bộ thay đổi của phiên này
+- toan bo thay doi cua phien nay
 
-Nếu scope không rõ, nêu giả định trước khi bắt đầu.
+Neu scope khong ro, neu gia dinh truoc khi bat dau.
 
-### 2. Giai đoạn 1: Audit
+### 2. Giai doan 1: Audit
 
-Chạy logic tương đương `/abw-audit`:
+Chay logic tuong duong `/abw-audit`:
 
-- đọc artifact thật
-- tạo findings
-- tạo evidence
-- nêu residual risks
+- doc artifact that
+- tao findings
+- tao evidence
+- neu residual risks
 
-### 3. Giai đoạn 2: Meta-audit
+### 3. Giai doan 2: Meta-audit
 
-Chạy logic tương đương `/abw-meta-audit` trên chính báo cáo audit vừa tạo:
+Chay logic tuong duong `/abw-meta-audit` tren chinh bao cao audit vua tao:
 
-- tìm overclaim
-- tìm claim thiếu bằng chứng
-- chỉnh verdict nếu cần
+- tim overclaim
+- tim claim thieu bang chung
+- chinh verdict neu can
 
-### 4. Giai đoạn 3: Acceptance
+### 4. Giai doan 3: Acceptance
 
-Chạy logic tương đương `/abw-accept`:
+Chay logic tuong duong `/abw-accept`:
 
-- chấm theo rubric
-- tách blocker và non-blocker
-- đưa ra verdict cuối
+- cham theo rubric
+- tach blocker va non-blocker
+- dua ra verdict cuoi
 
 ### 5. Output Format
 
@@ -77,8 +77,7 @@ Chạy logic tương đương `/abw-accept`:
 
 ### 6. Restrictions
 
-- `/abw-eval` là lệnh orchestration, không tự sửa file
-- Không được bỏ qua meta-audit
-- Không được bỏ qua rubric scoring
-- Không được tuyên bố PASS nếu chưa qua đủ 3 giai đoạn
-
+- `/abw-eval` la lenh orchestration, khong tu sua file
+- Khong duoc bo qua meta-audit
+- Khong duoc bo qua rubric scoring
+- Khong duoc tuyen bo PASS neu chua qua du 3 giai doan

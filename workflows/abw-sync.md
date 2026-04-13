@@ -1,24 +1,24 @@
 ---
-description: Dry-run or execute NotebookLM sync for an ABW package
+description: Dry-run hoac execute NotebookLM sync cho mot ABW package
 ---
 
 # WORKFLOW: /abw-sync
 
-**Mục đích:** Đồng bộ một package đã sinh bởi `/abw-pack` lên NotebookLM bằng `nlm`, với `dry-run` là mặc định. Lệnh này không xóa nguồn NotebookLM và không upload nếu người dùng chưa yêu cầu `--execute`.
+**Muc dich:** Dong bo mot package duoc sinh boi `/abw-pack` len NotebookLM bang `nlm`, voi `dry-run` la mac dinh. Lenh nay khong xoa source trong NotebookLM va khong upload neu nguoi dung chua yeu cau `--execute`.
 
-## Hướng dẫn cho AI
+## Huong dan cho AI
 
-1. Xác định package cần sync, ví dụ `notebooks/packages/test_final_clean`.
-2. Xác định NotebookLM notebook ID hoặc alias. Nếu người dùng chưa cung cấp, hỏi đúng một câu ngắn để lấy notebook ID.
-3. Chạy dry-run trước:
+1. Xac dinh package can sync, vi du `notebooks/packages/<package_id>`.
+2. Xac dinh NotebookLM notebook ID hoac alias. Neu user chua cung cap, hoi mot cau ngan de lay dung notebook ID.
+3. Chay dry-run truoc:
 
 ```powershell
-python "$env:USERPROFILE\.gemini\antigravity\scripts\abw_sync.py" `
+python "$env:USERPROFILE\\.gemini\\antigravity\\scripts\\abw_sync.py" `
   --package-dir notebooks/packages/<package_id> `
   --notebook-id <notebook_id>
 ```
 
-Bash/macOS/Linux:
+Bash / macOS / Linux:
 
 ```bash
 python "$HOME/.gemini/antigravity/scripts/abw_sync.py" \
@@ -26,25 +26,25 @@ python "$HOME/.gemini/antigravity/scripts/abw_sync.py" \
   --notebook-id <notebook_id>
 ```
 
-4. Đọc JSON stdout và `sync_report.json`, rồi báo cáo:
+4. Doc JSON stdout va `sync_report.json`, roi bao cao:
    - package ID
    - `qa_status`
-   - số source sẽ upload
-   - danh sách source
-   - trạng thái `dry_run`, `blocked`, hoặc `synced`
-5. Chỉ chạy upload thật khi người dùng xác nhận rõ:
+   - so source se upload
+   - danh sach source
+   - trang thai `dry_run`, `blocked`, hoac `synced`
+5. Chi chay upload that khi nguoi dung xac nhan ro:
 
 ```powershell
-python "$env:USERPROFILE\.gemini\antigravity\scripts\abw_sync.py" `
+python "$env:USERPROFILE\\.gemini\\antigravity\\scripts\\abw_sync.py" `
   --package-dir notebooks/packages/<package_id> `
   --notebook-id <notebook_id> `
   --execute
 ```
 
-## Quy tắc an toàn
+## Quy tac an toan
 
-- Không sync package `fail`.
-- Không sync package `needs_review` trừ khi người dùng yêu cầu rõ và dùng `--allow-needs-review`.
-- Không xóa nguồn NotebookLM trong Phase 4.
-- Không tự tạo notebook mới nếu người dùng chưa yêu cầu rõ.
-- Nếu `nlm` lỗi auth/network, báo lỗi và dừng; không retry hung hăng.
+- Khong sync package `fail`
+- Khong sync package `needs_review` tru khi user yeu cau ro va dung `--allow-needs-review`
+- Khong xoa source NotebookLM trong phase nay
+- Khong tu tao notebook moi neu user chua yeu cau ro
+- Neu `nlm` loi auth hoac network, bao loi va dung; khong retry hung huc

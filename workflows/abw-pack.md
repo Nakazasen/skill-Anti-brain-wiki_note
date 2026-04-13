@@ -1,22 +1,23 @@
 ---
-description: Nén tri thức và giảm tải cho NotebookLM (Orchestrator Mode)
+description: Dong goi tri thuc cho NotebookLM (Orchestrator Mode)
 ---
 
 # WORKFLOW: /abw-pack
 
-**Muc dich:** Giải quyết giới hạn source limit của NotebookLM (tối đa 50 nguồn) bằng quy trình đóng gói tất định (Deterministic Compaction). Lệnh này gọi script Python lõi để tổng hợp các note `wiki/` thành các Wiki Packages rút gọn nhưng bảo lưu 100% bằng chứng truy vết.
+**Muc dich:** Giai quyet gioi han source cua NotebookLM bang quy trinh dong goi xac dinh. Lenh nay goi script Python de tong hop cac note trong `wiki/` thanh cac package gon nhung van giu truy vet.
 
-**Hướng dẫn dành cho AI (Orchestrator):**
-Kể từ Phase 2, bạn KHÔNG TỰ tay parse file hay sinh file bằng LLM nữa. Nhiệm vụ của bạn là chạy Script Python và cung cấp **Approval Menu** cho Người dùng.
+**Huong dan danh cho AI (Orchestrator):**
+Tu phase nay tro di, khong tu tay parse wiki va tao package bang LLM. Nhiem vu cua ban la chay script Python va trinh bay Approval Menu cho nguoi dung.
 
 ---
 
-## Các bước thực hiện
+## Cac buoc thuc hien
 
-### 1. Khởi chạy Packager Script
-Sử dụng công cụ `run_command` để chạy đoạn script Python cài sẵn:
+### 1. Khoi chay packager script
 
-**Bash / macOS / Linux:**
+Su dung script da cai san:
+
+**Bash / macOS / Linux**
 ```bash
 POLICY_FILE=".brain/pack_policy.json"
 if [ ! -f "$POLICY_FILE" ]; then
@@ -30,38 +31,44 @@ python ~/.gemini/antigravity/scripts/abw_pack.py \
   --package-id auto
 ```
 
-**PowerShell / Windows:**
+**PowerShell / Windows**
 ```powershell
-$PolicyFile = ".brain\pack_policy.json"
+$PolicyFile = ".brain\\pack_policy.json"
 if (-not (Test-Path $PolicyFile)) {
-    $PolicyFile = "$env:USERPROFILE\.gemini\antigravity\templates\notebook_pack_policy.example.json"
+    $PolicyFile = "$env:USERPROFILE\\.gemini\\antigravity\\templates\\notebook_pack_policy.example.json"
 }
 
-python "$env:USERPROFILE\.gemini\antigravity\scripts\abw_pack.py" `
+python "$env:USERPROFILE\\.gemini\\antigravity\\scripts\\abw_pack.py" `
   --workspace . `
   --policy $PolicyFile `
   --output notebooks/packages `
   --package-id auto
 ```
-*Lưu ý: Nếu bạn đang chạy trực tiếp trên kho phát triển `skill-Anti-brain-wiki_note-main`, thay đường dẫn script bằng `scripts/abw_pack.py`.*
 
-### 2. Đọc Exit Code và Báo Cáo
-Phân tích Exit code từ terminal:
-- `0`: Pass hoàn hảo.
-- `1`: Script gặp lỗi Runtime. Cần Debug.
-- `2`: Needs review (Có thể do chạm mức Soft-limit).
-- `3`: Fail (Có thể do vượt Hard-limit, hoặc Node/Manifest mismatch).
+Neu dang chay truc tiep trong repo local, co the thay duong dan script bang `scripts/abw_pack.py`.
 
-Dịch STDOUT JSON của script thành một báo cáo ngắn gọn (Operator Report):
-> 📊 **BÁO CÁO CỤM TRI THỨC (ABW-PACK)**
-> - X sources detected -> Y Critical kept
-> - M compressed into N wiki files
-> - Z packages need review...
+### 2. Doc exit code va bao cao
 
-### 3. Phục vụ Approval Menu
-Hiển thị Menu hành động cho người dùng. Dừng lại chờ quyết định:
-- 🟢 `approve package`: Duyệt, đóng khóa package chuẩn bị cho Phase 4.
-- 🔴 `reject package`: Từ chối gói (Bạn hãy sửa `package_manifest.json` cập nhật `"package_status": "rejected"` - Không tự xóa thư mục).
-- ⚙️ `force keep <file>` / `force compress <file>`: Cập nhật Policy. Bạn hãy tạo/sửa file `.brain/pack_policy.json` cho Người dùng và chạy lại script.
+Phan tich exit code:
 
-Bạn hãy tuân thủ triệt để [skills/notebooklm-knowledge-packager.md](../skills/notebooklm-knowledge-packager.md) để giải thích lỗi QA nếu xảy ra.
+- `0`: pass
+- `1`: runtime error
+- `2`: needs review
+- `3`: fail
+
+Doc JSON stdout cua script va tom tat thanh operator report:
+
+- so source da phat hien
+- so file critical duoc giu nguyen
+- so package da tao
+- package nao can review
+
+### 3. Phuc vu Approval Menu
+
+Dung lai cho nguoi dung quyet dinh:
+
+- `approve package`: duyet package cho phase sync
+- `reject package`: cap nhat `package_manifest.json` thanh `package_status: rejected`
+- `force keep <file>` / `force compress <file>`: tao hoac sua `.brain/pack_policy.json`, sau do chay lai script
+
+Neu QA bao loi, tham chieu `skills/notebooklm-knowledge-packager.md` de giai thich ro ly do.
