@@ -21,29 +21,6 @@ Hybrid ABW là một kiến trúc workflow cho AI agent khi "trả lời nghe h�
 
 ---
 
-## Repo Boundary: Skill OS vs Project Workspace
-
-This repository is the **Hybrid ABW OS / skill distribution**. It contains commands, workflows, skills, schemas, templates, and runtime scripts that can be installed globally into Antigravity/Gemini.
-
-This repository is **not** a business project repository. A project such as `MES-MOM-AMS-VN-Integration` is a **workspace that uses ABW OS**. That workspace owns its own `raw/`, `processed/manifest.jsonl`, `wiki/`, `.brain/`, and `notebooks/packages/` runtime state.
-
-**VI**
-
-Repo này là **bộ Hybrid ABW OS / skill distribution**. Nó chứa lệnh, workflow, skill, schema, template và runtime script để cài global vào Antigravity/Gemini.
-
-Repo này **không phải** repo nghiệp vụ. Một dự án như `MES-MOM-AMS-VN-Integration` là **workspace sử dụng ABW OS**. Workspace đó sở hữu dữ liệu riêng của nó: `raw/`, `processed/manifest.jsonl`, `wiki/`, `.brain/`, và `notebooks/packages/`.
-
-**Do not mix the two layers:**
-
-| Layer | Repository | Owns |
-|---|---|---|
-| OS / skill layer | `Nakazasen/skill-Anti-brain-wiki_note` | Commands, workflows, skills, installers, schemas, templates, scripts |
-| Project data layer | `Nakazasen/MES-MOM-AMS-VN-Integration` or any user workspace | Source documents, manifests, wiki notes, package outputs, project memory |
-
-Generated project data should stay in the project workspace. Improvements to ABW commands and skills should be made in this repo.
-
----
-
 ## Core Idea
 
 **EN**
@@ -241,20 +218,6 @@ Account safety for `/abw-setup`:
 - `/abw-setup` must ask for the exact Google email you want to use with NotebookLM.
 - ABW must not infer the account from your Windows username, IDE profile, browser profile, notebook list, git config, or workspace files.
 - If `nlm` opens the browser with a different account, switch to the exact Google account you provided before marking setup as authenticated.
-
-### Using ABW OS inside a project workspace
-
-When using this skill inside a real project such as `MES-MOM-AMS-VN-Integration`, keep this lifecycle:
-
-```text
-ABW OS repo:
-  install/update commands and skills
-
-Project workspace:
-  raw/ -> processed/manifest.jsonl -> wiki/ -> /abw-pack -> notebooks/packages/ -> /abw-sync dry-run -> explicit sync
-```
-
-The packager and sync scripts are installed from this repo, but they operate on the active workspace you run them in. That is the intended separation.
 
 ### Recommended Path
 
