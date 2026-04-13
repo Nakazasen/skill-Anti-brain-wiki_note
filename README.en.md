@@ -1,6 +1,6 @@
 # Hybrid Anti-Brain-Wiki (Hybrid ABW)
 
-> Version: 1.3.0
+> Version: 1.3.1
 > Tagline: Transforming AI from a fast-response state into a grounded knowledge system with memory and bounded deliberation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -111,13 +111,13 @@ ABW OS is not a prompt bundle. It is an operating discipline for agentic work:
 On Windows:
 
 ```powershell
-irm https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.0/install.ps1 | iex
+irm https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.1/install.ps1 | iex
 ```
 
 On macOS / Linux:
 
 ```bash
-curl -fsSL https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.0/install.sh | sh
+curl -fsSL https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.1/install.sh | sh
 ```
 
 ### 2. Install NotebookLM CLI Bridge

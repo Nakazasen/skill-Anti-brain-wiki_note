@@ -1,6 +1,6 @@
 # Hybrid Anti-Brain-Wiki (Hybrid ABW)
 
-> Version: 1.3.0  
+> Version: 1.3.1  
 > EN: Turn a fast-answering LLM into a grounded, stateful, evaluation-aware working system.  
 > VI: Biến một LLM trả lời nhanh thành một hệ thống làm việc có grounding, có bộ nhớ, và có lớp nghiệm thu rõ ràng.
 
@@ -221,13 +221,13 @@ Nếu grounding chưa sẵn sàng, hệ thống phải hạ cấp trung thực v
 Windows:
 
 ```powershell
-irm https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.0/install.ps1 | iex
+irm https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.1/install.ps1 | iex
 ```
 
 macOS / Linux:
 
 ```bash
-curl -fsSL https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.0/install.sh | sh
+curl -fsSL https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.1/install.sh | sh
 ```
 
 Install NotebookLM MCP CLI:
