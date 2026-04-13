@@ -1,23 +1,23 @@
 ---
-description: Dong goi tri thuc cho NotebookLM (Orchestrator Mode)
+description: Đóng gói tri thức cho NotebookLM (Orchestrator Mode)
 ---
 
 # WORKFLOW: /abw-pack
 
-**Muc dich:** Giai quyet gioi han source cua NotebookLM bang quy trinh dong goi xac dinh. Lenh nay goi script Python de tong hop cac note trong `wiki/` thanh cac package gon nhung van giu truy vet.
+**Mục đích:** Giải quyết giới hạn source của NotebookLM bằng quy trình đóng gói xác định. Lệnh này gọi script Python để tổng hợp các note trong `wiki/` thành các package gọn nhưng vẫn giữ truy vết.
 
-**Huong dan danh cho AI (Orchestrator):**
-Tu phase nay tro di, khong tu tay parse wiki va tao package bang LLM. Nhiem vu cua ban la chay script Python va trinh bay Approval Menu cho nguoi dung.
+**Hướng dẫn dành cho AI (Orchestrator):**
+Từ phase này trở đi, không tự tay parse wiki và tạo package bằng LLM. Nhiệm vụ của bạn là chạy script Python và trình bày Approval Menu cho người dùng.
 
-> Luu y: Tren clone sach, muon `/abw-pack` dat `pass` thi can chay `/abw-ingest` truoc hoac phai co `processed/manifest.jsonl` hop le.
+> Lưu ý: Trên clone sạch, muốn `/abw-pack` đạt `pass` thì cần chạy `/abw-ingest` trước hoặc phải có `processed/manifest.jsonl` hợp lệ.
 
 ---
 
-## Cac buoc thuc hien
+## Các bước thực hiện
 
-### 1. Khoi chay packager script
+### 1. Khởi chạy packager script
 
-Su dung script da cai san:
+Sử dụng script đã cài sẵn:
 
 **Bash / macOS / Linux**
 ```bash
@@ -47,30 +47,30 @@ python "$env:USERPROFILE\\.gemini\\antigravity\\scripts\\abw_pack.py" `
   --package-id auto
 ```
 
-Neu dang chay truc tiep trong repo local, co the thay duong dan script bang `scripts/abw_pack.py`.
+Nếu đang chạy trực tiếp trong repo local, có thể thay đường dẫn script bằng `scripts/abw_pack.py`.
 
-### 2. Doc exit code va bao cao
+### 2. Đọc exit code và báo cáo
 
-Phan tich exit code:
+Phân tích exit code:
 
 - `0`: pass
 - `1`: runtime error
 - `2`: needs review
 - `3`: fail
 
-Doc JSON stdout cua script va tom tat thanh operator report:
+Đọc JSON stdout của script và tóm tắt thành operator report:
 
-- so source da phat hien
-- so file critical duoc giu nguyen
-- so package da tao
-- package nao can review
+- số source đã phát hiện
+- số file critical được giữ nguyên
+- số package đã tạo
+- package nào cần review
 
-### 3. Phuc vu Approval Menu
+### 3. Phục vụ Approval Menu
 
-Dung lai cho nguoi dung quyet dinh:
+Dừng lại cho người dùng quyết định:
 
-- `approve package`: duyet package cho phase sync
-- `reject package`: cap nhat `package_manifest.json` thanh `package_status: rejected`
-- `force keep <file>` / `force compress <file>`: tao hoac sua `.brain/pack_policy.json`, sau do chay lai script
+- `approve package`: duyệt package cho phase sync
+- `reject package`: cập nhật `package_manifest.json` thành `package_status: rejected`
+- `force keep <file>` / `force compress <file>`: tạo hoặc sửa `.brain/pack_policy.json`, sau đó chạy lại script
 
-Neu QA bao loi, tham chieu `skills/notebooklm-knowledge-packager.md` de giai thich ro ly do.
+Nếu QA báo lỗi, tham chiếu `skills/notebooklm-knowledge-packager.md` để giải thích rõ lý do.

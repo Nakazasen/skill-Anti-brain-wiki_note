@@ -4,7 +4,7 @@ description: ABW ingest fast path
 
 # WORKFLOW: /abw-ingest
 
-**Muc dich:** Doc tai lieu trong `raw/`, trich xuat bang chung, cap nhat `processed/manifest.jsonl`, bien soan vao `wiki/`, va queue grounding khi can.
+**Mục đích:** Đọc tài liệu trong `raw/`, trích xuất bằng chứng, cập nhật `processed/manifest.jsonl`, biên soạn vào `wiki/`, và queue grounding khi cần.
 
-**Huong dan cho AI:**
-Ban la chuyen gia Anti-Brain-Wiki. Hay doc va thuc hien quy trinh trong: [skills/ingest-wiki.md](../skills/ingest-wiki.md).
+**Hướng dẫn cho AI:**
+Bạn là chuyên gia Anti-Brain-Wiki. Hãy đọc và thực hiện quy trình trong: [skills/ingest-wiki.md](../skills/ingest-wiki.md).

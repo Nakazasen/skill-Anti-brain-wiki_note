@@ -4,7 +4,7 @@ description: ABW lint and audit workflow
 
 # WORKFLOW: /abw-lint
 
-**Muc dich:** Audit cau truc wiki, link integrity, contradictions, grounding health, va TTC signals.
+**Mục đích:** Audit cấu trúc wiki, link integrity, contradictions, grounding health, và TTC signals.
 
-**Huong dan cho AI:**
-Ban la chuyen gia Anti-Brain-Wiki. Hay doc va thuc hien quy trinh trong: [skills/lint-wiki.md](../skills/lint-wiki.md).
+**Hướng dẫn cho AI:**
+Bạn là chuyên gia Anti-Brain-Wiki. Hãy đọc và thực hiện quy trình trong: [skills/lint-wiki.md](../skills/lint-wiki.md).

@@ -1,157 +1,157 @@
 ---
-description: Huong dan lenh va sua de he thong Hybrid ABW
+description: Hướng dẫn lệnh và sơ đồ hệ thống Hybrid ABW
 ---
 
 # WORKFLOW: /help
 
-Ban la nguoi huong dan cua Hybrid ABW. Nhiem vu cua ban la giup nguoi dung dinh huong that nhanh. Be mat lenh hien duoc to chuc thanh 5 lane chuc nang va 2 entrypoint chinh.
+Bạn là người hướng dẫn của Hybrid ABW. Nhiệm vụ của bạn là giúp người dùng định hướng thật nhanh. Bề mặt lệnh hiện được tổ chức thành 5 lane chức năng và 2 entrypoint chính.
 
 ---
 
-## Bat dau nhanh
+## Bắt đầu nhanh
 
-Neu ban sap bat dau lam viec, hay di tu mot trong hai entrypoint nay:
+Nếu bạn sắp bắt đầu làm việc, hãy đi từ một trong hai entrypoint này:
 
-- **`/abw-ask`**: entrypoint mac dinh de lam viec. Dung khi ban co task, cau hoi, hoac yeu cau nhung chua biet nen vao lane nao.
-- **`/abw-eval`**: entrypoint mac dinh de nghiem thu. Dung khi da co dau ra va ban muon audit, challenge, hoac chap nhan truoc khi coi la xong.
+- **`/abw-ask`**: entrypoint mặc định để làm việc. Dùng khi bạn có task, câu hỏi, hoặc yêu cầu nhưng chưa biết nên vào lane nào.
+- **`/abw-eval`**: entrypoint mặc định để nghiệm thu. Dùng khi đã có đầu ra và bạn muốn audit, challenge, hoặc chấp nhận trước khi coi là xong.
 
-## Khi nao dung lenh nao?
+## Khi nào dùng lệnh nào?
 
-- **Dung `/abw-ask`** khi ban co viec can lam hoac cau hoi cu the nhung chua chac lenh nao phu hop.
-- **Dung `/abw-eval`** khi ban muon chay vong danh gia cho thay doi, workflow, tai lieu, hoac dau ra cua mo hinh.
-- **Dung `/abw-start`** khi ban muon mo phien lam viec theo cach co kiem tra trang thai va grounding path.
-- **Dung `/abw-wrap`** khi ban muon chot phien, chuan bi handover, va nhac phan can ingest hoac nghiem thu.
-- **Dung `/next`** khi ban dang o giua du an va can goi y buoc tiep theo dua tren trang thai hien tai.
-- **Dung `/help`** khi ban can hieu mo hinh he thong, danh sach lenh, hoac mental model 5 lane.
-- **Dung `/abw-update`** khi ban muon keo ban moi nhat cua command surface ABW vao Gemini runtime local.
+- **Dùng `/abw-ask`** khi bạn có việc cần làm hoặc câu hỏi cụ thể nhưng chưa chắc lệnh nào phù hợp.
+- **Dùng `/abw-eval`** khi bạn muốn chạy vòng đánh giá cho thay đổi, workflow, tài liệu, hoặc đầu ra của mô hình.
+- **Dùng `/abw-start`** khi bạn muốn mở phiên làm việc theo cách có kiểm tra trạng thái và grounding path.
+- **Dùng `/abw-wrap`** khi bạn muốn chốt phiên, chuẩn bị handover, và nhắc phần cần ingest hoặc nghiệm thu.
+- **Dùng `/next`** khi bạn đang ở giữa dự án và cần gợi ý bước tiếp theo dựa trên trạng thái hiện tại.
+- **Dùng `/help`** khi bạn cần hiểu mô hình hệ thống, danh sách lệnh, hoặc mental model 5 lane.
+- **Dùng `/abw-update`** khi bạn muốn kéo bản mới nhất của command surface ABW vào Gemini runtime local.
 
-## Muon lam X thi go gi dau tien?
+## Muốn làm X thì gõ gì đầu tiên?
 
-| Truong hop | Lenh go dau tien |
+| Trường hợp | Lệnh gõ đầu tiên |
 |---|---|
-| Khong biet nen bat dau tu dau | `/abw-ask` |
-| Co cau hoi du an nhung chua ro nen tra cuu hay brainstorm | `/abw-ask` |
-| Can tra cuu nhanh mot fact da co trong wiki | `/abw-query` |
-| Can phan tich sau, so sanh, RCA, tradeoff | `/abw-query-deep` |
-| Du an con greenfield, chua co raw/wiki | `/abw-bootstrap` |
-| Muon chot y tuong, scope, hoac MVP | `/brainstorm` |
-| Muon dung nen tri thuc tu tai lieu nguon | `/abw-ingest` |
-| Muon dong goi tri thuc cho NotebookLM | `/abw-pack` |
-| Muon dry-run hoac sync package da duyet len NotebookLM | `/abw-sync` |
-| Muon kiem tra suc khoe wiki, grounding, manifest | `/abw-lint` |
-| Muon kiem tra MCP hoac trang thai hang doi | `/abw-status` |
-| Muon lap ke hoach tinh nang hoac chia task | `/plan` |
-| Muon thiet ke ky thuat hoac DB | `/design` |
-| Muon dung mockup UI/UX hoac dac ta man hinh | `/visualize` |
-| Muon bat tay vao code | `/code` |
-| Muon chay app cuc bo | `/run` |
-| Muon sua bug | `/debug` |
-| Muon kiem tra bang test | `/test` |
-| Muon trien khai len moi truong dich | `/deploy` |
-| Muon refactor legacy code nhung chua ro pham vi | `/abw-ask` |
-| Muon refactor khi da ro pham vi | `/refactor` |
-| Muon review code hoac hien trang truoc khi audit nang hon | `/abw-review` |
-| Muon audit thay doi hoac artifact | `/abw-audit` |
-| Muon audit lai chinh bao cao audit | `/abw-meta-audit` |
-| Muon quay lai trang thai an toan sau mot thay doi sai | `/abw-rollback` |
-| Muon chot pass/fail cuoi cung | `/abw-accept` |
-| Muon chay toan bo chuoi nghiem thu | `/abw-eval` |
-| Muon mo phien lam viec co kiem tra trang thai | `/abw-start` |
-| Muon luu tien do va chuan bi handover | `/save-brain` |
-| Muon khoi phuc boi canh tu phien truoc | `/recap` |
-| Muon biet buoc tiep theo nen lam gi | `/next` |
-| Muon chot phien va wrap lai thay doi | `/abw-wrap` |
-| Muon cap nhat command surface ABW len ban moi nhat | `/abw-update` |
+| Không biết nên bắt đầu từ đâu | `/abw-ask` |
+| Có câu hỏi dự án nhưng chưa rõ nên tra cứu hay brainstorm | `/abw-ask` |
+| Cần tra cứu nhanh một fact đã có trong wiki | `/abw-query` |
+| Cần phân tích sâu, so sánh, RCA, tradeoff | `/abw-query-deep` |
+| Dự án còn greenfield, chưa có raw/wiki | `/abw-bootstrap` |
+| Muốn chốt ý tưởng, scope, hoặc MVP | `/brainstorm` |
+| Muốn dựng nền tri thức từ tài liệu nguồn | `/abw-ingest` |
+| Muốn đóng gói tri thức cho NotebookLM | `/abw-pack` |
+| Muốn dry-run hoặc sync package đã duyệt lên NotebookLM | `/abw-sync` |
+| Muốn kiểm tra sức khỏe wiki, grounding, manifest | `/abw-lint` |
+| Muốn kiểm tra MCP hoặc trạng thái hàng đợi | `/abw-status` |
+| Muốn lập kế hoạch tính năng hoặc chia task | `/plan` |
+| Muốn thiết kế kỹ thuật hoặc DB | `/design` |
+| Muốn dựng mockup UI/UX hoặc đặc tả màn hình | `/visualize` |
+| Muốn bắt tay vào code | `/code` |
+| Muốn chạy app cục bộ | `/run` |
+| Muốn sửa bug | `/debug` |
+| Muốn kiểm tra bằng test | `/test` |
+| Muốn triển khai lên môi trường đích | `/deploy` |
+| Muốn refactor legacy code nhưng chưa rõ phạm vi | `/abw-ask` |
+| Muốn refactor khi đã rõ phạm vi | `/refactor` |
+| Muốn review code hoặc hiện trạng trước khi audit nặng hơn | `/abw-review` |
+| Muốn audit thay đổi hoặc artifact | `/abw-audit` |
+| Muốn audit lại chính báo cáo audit | `/abw-meta-audit` |
+| Muốn quay lại trạng thái an toàn sau một thay đổi sai | `/abw-rollback` |
+| Muốn chốt pass/fail cuối cùng | `/abw-accept` |
+| Muốn chạy toàn bộ chuỗi nghiệm thu | `/abw-eval` |
+| Muốn mở phiên làm việc có kiểm tra trạng thái | `/abw-start` |
+| Muốn lưu tiến độ và chuẩn bị handover | `/save-brain` |
+| Muốn khôi phục bối cảnh từ phiên trước | `/recap` |
+| Muốn biết bước tiếp theo nên làm gì | `/next` |
+| Muốn chốt phiên và wrap lại thay đổi | `/abw-wrap` |
+| Muốn cập nhật command surface ABW lên bản mới nhất | `/abw-update` |
 
 ---
 
-## Mo hinh lenh (5 lane)
+## Mô hình lệnh (5 lane)
 
-### 1. Kham pha va tu duy
+### 1. Khám phá và tư duy
 
-Dung nhom nay khi can kham pha y tuong hoac hoi tren tri thuc hien co.
+Dùng nhóm này khi cần khám phá ý tưởng hoặc hỏi trên tri thức hiện có.
 
-- `/abw-ask` : Entry chinh, tu dinh tuyen theo intent
-- `/abw-query` : Tra cuu nhanh tren wiki
-- `/abw-query-deep` : Suy luan sau va tong hop nhieu lop
-- `/abw-bootstrap` : Tu duy cho bai toan greenfield
-- `/brainstorm` : Chot brief san pham va pham vi MVP
+- `/abw-ask` : Entry chính, tự định tuyến theo intent
+- `/abw-query` : Tra cứu nhanh trên wiki
+- `/abw-query-deep` : Suy luận sâu và tổng hợp nhiều lớp
+- `/abw-bootstrap` : Tư duy cho bài toán greenfield
+- `/brainstorm` : Chốt brief sản phẩm và phạm vi MVP
 
-### 2. Dung nen tri thuc
+### 2. Dựng nền tri thức
 
-Dung nhom nay de xay va duy tri nen tri thuc co grounding.
+Dùng nhóm này để xây và duy trì nền tri thức có grounding.
 
-- `/abw-init` : Khoi tao cau truc ABW
-- `/abw-setup` : Cau hinh NotebookLM MCP
-- `/abw-status` : Kiem tra MCP va hang doi
-- `/abw-ingest` : Xu ly raw thanh wiki
-- `/abw-pack` : Dong goi tri thuc thanh package gon cho NotebookLM
-- `/abw-sync` : Dry-run hoac sync package da duyet len NotebookLM
-- `/abw-lint` : Audit suc khoe wiki va manifest
+- `/abw-init` : Khởi tạo cấu trúc ABW
+- `/abw-setup` : Cấu hình NotebookLM MCP
+- `/abw-status` : Kiểm tra MCP và hàng đợi
+- `/abw-ingest` : Xử lý raw thành wiki
+- `/abw-pack` : Đóng gói tri thức thành package gọn cho NotebookLM
+- `/abw-sync` : Dry-run hoặc sync package đã duyệt lên NotebookLM
+- `/abw-lint` : Audit sức khỏe wiki và manifest
 
-### 3. Trien khai san pham
+### 3. Triển khai sản phẩm
 
-Dung nhom nay de bien tri thuc thanh phan mem chay duoc.
+Dùng nhóm này để biến tri thức thành phần mềm chạy được.
 
-Luong delivery chinh:
+Luồng delivery chính:
 
-- `/plan` : Lap ke hoach thuc thi tinh nang
-- `/design` : Thiet ke ky thuat va co so du lieu
-- `/visualize` : Dung mockup UI/UX va dac ta man hinh
-- `/code` : Cai dat tinh nang
-- `/run` : Chay ung dung cuc bo
-- `/debug` : Sua loi co he thong
-- `/test` : Chay test va kiem tra chat luong
-- `/deploy` : Trien khai len moi truong dich
+- `/plan` : Lập kế hoạch thực thi tính năng
+- `/design` : Thiết kế kỹ thuật và cơ sở dữ liệu
+- `/visualize` : Dựng mockup UI/UX và đặc tả màn hình
+- `/code` : Cài đặt tính năng
+- `/run` : Chạy ứng dụng cục bộ
+- `/debug` : Sửa lỗi có hệ thống
+- `/test` : Chạy test và kiểm tra chất lượng
+- `/deploy` : Triển khai lên môi trường đích
 
-Workflow ho tro trong delivery:
+Workflow hỗ trợ trong delivery:
 
-- `/refactor` : Don code an toan sau khi da hieu ro hanh vi
-- `/audit` : Ra soat san pham, code, hoac bao mat trong vong delivery
+- `/refactor` : Dọn code an toàn sau khi đã hiểu rõ hành vi
+- `/audit` : Rà soát sản phẩm, code, hoặc bảo mật trong vòng delivery
 
-### 4. Phien lam viec va ghi nho
+### 4. Phiên làm việc và ghi nhớ
 
-Dung nhom nay de quan ly phien lam viec va khoi phuc boi canh.
+Dùng nhóm này để quản lý phiên làm việc và khôi phục bối cảnh.
 
-- `/abw-start` : Mo phien lam viec va kiem tra trang thai he thong
-- `/save-brain` : Luu tien do va chuan bi handover
-- `/recap` : Khoi phuc boi canh tu phien truoc
-- `/next` : Goi y buoc tiep theo mot cach thong minh
-- `/abw-wrap` : Chot phien, tong ket, va chuan bi quay lai
+- `/abw-start` : Mở phiên làm việc và kiểm tra trạng thái hệ thống
+- `/save-brain` : Lưu tiến độ và chuẩn bị handover
+- `/recap` : Khôi phục bối cảnh từ phiên trước
+- `/next` : Gợi ý bước tiếp theo một cách thông minh
+- `/abw-wrap` : Chốt phiên, tổng kết, và chuẩn bị quay lại
 
-### 5. Danh gia va nghiem thu
+### 5. Đánh giá và nghiệm thu
 
-Dung nhom nay de danh gia dau ra, chat van lap luan, va quyet dinh co nen chap nhan thay doi hay khong.
+Dùng nhóm này để đánh giá đầu ra, chất vấn lập luận, và quyết định có nên chấp nhận thay đổi hay không.
 
-- `/abw-review` : Review code, thay doi, hoac hien trang du an
-- `/abw-audit` : Tu audit workflow, tai lieu, thay doi, hoac dau ra
-- `/abw-meta-audit` : Audit lai chinh bao cao audit
-- `/abw-rollback` : Quay ve trang thai an toan sau thay doi loi
-- `/abw-accept` : Chay cong nghiem thu cuoi cung
-- `/abw-eval` : Chay toan bo chuoi evaluation tu dau den cuoi
+- `/abw-review` : Review code, thay đổi, hoặc hiện trạng dự án
+- `/abw-audit` : Tự audit workflow, tài liệu, thay đổi, hoặc đầu ra
+- `/abw-meta-audit` : Audit lại chính báo cáo audit
+- `/abw-rollback` : Quay về trạng thái an toàn sau thay đổi lỗi
+- `/abw-accept` : Chạy cổng nghiệm thu cuối cùng
+- `/abw-eval` : Chạy toàn bộ chuỗi evaluation từ đầu đến cuối
 
 ### Utility
 
-- `/help` : Ban do he thong va decision table
-- `/abw-update` : Cap nhat command surface ABW vao Gemini runtime local
+- `/help` : Bản đồ hệ thống và decision table
+- `/abw-update` : Cập nhật command surface ABW vào Gemini runtime local
 
 ---
 
-## Vi du phan hoi
+## Ví dụ phản hồi
 
-### User: "Toi nen bat dau tu dau?"
+### User: "Tôi nên bắt đầu từ đâu?"
 
 ```text
-1. Chay /abw-init de khoi tao workspace.
-2. Chay /abw-setup de ket noi NotebookLM.
-3. Neu du an con mo ho, dung /brainstorm de chot brief.
-4. Hoac don gian dung /abw-ask va noi: "Toi muon bat dau du an X".
+1. Chạy /abw-init để khởi tạo workspace.
+2. Chạy /abw-setup để kết nối NotebookLM.
+3. Nếu dự án còn mơ hồ, dùng /brainstorm để chốt brief.
+4. Hoặc đơn giản dùng /abw-ask và nói: "Tôi muốn bắt đầu dự án X".
 ```
 
-### User: "Lam sao de viet code cho tinh nang nay?"
+### User: "Làm sao để viết code cho tính năng này?"
 
 ```text
-1. Dam bao da co tri thuc ve tinh nang do trong wiki, hoac dung /abw-ask de kiem tra.
-2. Dung /plan de len cau truc file va task.
-3. Chay /code de thuc thi ke hoach.
+1. Đảm bảo đã có tri thức về tính năng đó trong wiki, hoặc dùng /abw-ask để kiểm tra.
+2. Dùng /plan để lên cấu trúc file và task.
+3. Chạy /code để thực thi kế hoạch.
 ```

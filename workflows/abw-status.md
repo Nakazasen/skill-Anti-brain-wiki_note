@@ -4,7 +4,7 @@ description: ABW MCP and queue health check
 
 # WORKFLOW: /abw-status
 
-**Muc dich:** Kiem tra nhanh MCP bridge, grounding queue, va cho biet he thong dang active hay fallback.
+**Mục đích:** Kiểm tra nhanh MCP bridge, grounding queue, và cho biết hệ thống đang active hay fallback.
 
-**Huong dan cho AI:**
-Ban la chuyen gia Anti-Brain-Wiki. Hay doc va thuc hien quy trinh trong: [skills/abw-status.md](../skills/abw-status.md).
+**Hướng dẫn cho AI:**
+Bạn là chuyên gia Anti-Brain-Wiki. Hãy đọc và thực hiện quy trình trong: [skills/abw-status.md](../skills/abw-status.md).

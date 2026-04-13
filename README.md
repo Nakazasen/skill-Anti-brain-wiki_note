@@ -2,7 +2,7 @@
 
 > Version: 1.3.1  
 > EN: Turn a fast-answering LLM into a grounded, stateful, evaluation-aware working system.  
-> VI: Bien mot LLM tra loi nhanh thanh mot he thong lam viec co grounding, co bo nho, va co lop nghiem thu ro rang.
+> VI: Biến một LLM trả lời nhanh thành một hệ thống làm việc có grounding, có bộ nhớ, và có lớp nghiệm thu rõ ràng.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TTC: Enabled](https://img.shields.io/badge/Test--Time%20Compute-Active-brightgreen)](https://github.com/Nakazasen/skill-Anti-brain-wiki_note)
@@ -14,12 +14,12 @@ Hybrid ABW is an operating discipline for AI work. It combines:
 - bounded reasoning for hard questions
 - explicit evaluation before acceptance
 
-Hybrid ABW la mot ky luat van hanh cho agent AI. He thong ket hop:
+Hybrid ABW là một kỷ luật vận hành cho agent AI. Hệ thống kết hợp:
 
-- tri thuc du an co grounding trong `wiki/`
-- trang thai lam viec trong `.brain/`
-- suy luan co gioi han cho cau hoi kho
-- lop danh gia truoc khi chap nhan dau ra
+- tri thức dự án có grounding trong `wiki/`
+- trạng thái làm việc trong `.brain/`
+- suy luận có giới hạn cho câu hỏi khó
+- lớp đánh giá trước khi chấp nhận đầu ra
 
 ---
 
@@ -33,13 +33,13 @@ Hybrid ABW la mot ky luat van hanh cho agent AI. He thong ket hop:
 
 **VI**
 
-- Khong duoc bia tri thuc.
-- Khong duoc nhan la da grounding neu grounding khong san sang.
-- Khong duoc bo qua nghiem thu khi chat luong dau ra quan trong.
+- Không được bịa tri thức.
+- Không được nhận là đã grounding nếu grounding không sẵn sàng.
+- Không được bỏ qua nghiệm thu khi chất lượng đầu ra quan trọng.
 
 This repo exists to help smaller, cheaper, faster models behave more like disciplined systems instead of impulsive chatbots.
 
-Repo nay ton tai de giup cac mo hinh nho hon, re hon, nhanh hon hanh xu giong he thong co ky luat thay vi chatbot phan xa nhanh.
+Repo này tồn tại để giúp các mô hình nhỏ hơn, rẻ hơn, nhanh hơn hành xử giống hệ thống có kỷ luật thay vì chatbot phản xạ nhanh.
 
 ---
 
@@ -49,31 +49,31 @@ Repo nay ton tai de giup cac mo hinh nho hon, re hon, nhanh hon hanh xu giong he
 
 Start here when you have a task, question, or request and want the router to choose the right lane.
 
-Bat dau o day khi ban co task, cau hoi, hoac yeu cau va muon router chon lane phu hop.
+Bắt đầu ở đây khi bạn có task, câu hỏi, hoặc yêu cầu và muốn router chọn lane phù hợp.
 
 ### `/abw-eval` = Evaluation Entrypoint
 
 Start here when work already exists and you want to audit, challenge, or accept the output.
 
-Bat dau o day khi da co dau ra va ban muon audit, challenge, hoac chap nhan truoc khi coi la xong.
+Bắt đầu ở đây khi đã có đầu ra và bạn muốn audit, challenge, hoặc chấp nhận trước khi coi là xong.
 
 ---
 
 ## Mental Model: 5 Lanes
 
-1. **Kham pha va tu duy**  
+1. **Khám phá và tư duy**  
    `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
 
-2. **Dung nen tri thuc**  
+2. **Dựng nền tri thức**  
    `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-pack`, `/abw-sync`, `/abw-lint`
 
-3. **Trien khai san pham**  
+3. **Triển khai sản phẩm**  
    `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
 
-4. **Phien lam viec va ghi nho**  
+4. **Phiên làm việc và ghi nhớ**  
    `/abw-start`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
 
-5. **Danh gia va nghiem thu**  
+5. **Đánh giá và nghiệm thu**  
    `/abw-review`, `/abw-audit`, `/abw-meta-audit`, `/abw-rollback`, `/abw-accept`, `/abw-eval`
 
 ---
@@ -82,7 +82,7 @@ Bat dau o day khi da co dau ra va ban muon audit, challenge, hoac chap nhan truo
 
 Clone repo, then run the installer to register all Hybrid ABW commands into Gemini. Cloning alone does not activate the command surface.
 
-Hay clone repo, sau do chay installer de dang ky toan bo lenh Hybrid ABW vao Gemini. Chi clone repo thi chua kich hoat command surface.
+Hãy clone repo, sau đó chạy installer để đăng ký toàn bộ lệnh Hybrid ABW vào Gemini. Chỉ clone repo thì chưa kích hoạt command surface.
 
 ### Windows
 
@@ -96,12 +96,12 @@ irm https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/
 curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.sh | sh
 ```
 
-Sau khi cai xong:
+Sau khi cài xong:
 
-1. Chay `/abw-setup` de cau hinh grounding.
-2. Dung `/abw-ask` cho moi task hoac cau hoi chua ro lane.
-3. Dung `/abw-eval` khi muon nghiem thu thay doi hoac dau ra.
-4. Dung `/abw-update` khi muon keo ban command moi nhat vao Gemini runtime local.
+1. Chạy `/abw-setup` để cấu hình grounding.
+2. Dùng `/abw-ask` cho mọi task hoặc câu hỏi chưa rõ lane.
+3. Dùng `/abw-eval` khi muốn nghiệm thu thay đổi hoặc đầu ra.
+4. Dùng `/abw-update` khi muốn kéo bản command mới nhất vào Gemini runtime local.
 
 ---
 

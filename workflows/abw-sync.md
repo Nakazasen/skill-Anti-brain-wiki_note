@@ -1,16 +1,16 @@
 ---
-description: Dry-run hoac execute NotebookLM sync cho mot ABW package
+description: Dry-run hoặc execute NotebookLM sync cho một ABW package
 ---
 
 # WORKFLOW: /abw-sync
 
-**Muc dich:** Dong bo mot package duoc sinh boi `/abw-pack` len NotebookLM bang `nlm`, voi `dry-run` la mac dinh. Lenh nay khong xoa source trong NotebookLM va khong upload neu nguoi dung chua yeu cau `--execute`.
+**Mục đích:** Đồng bộ một package được sinh bởi `/abw-pack` lên NotebookLM bằng `nlm`, với `dry-run` là mặc định. Lệnh này không xóa source trong NotebookLM và không upload nếu người dùng chưa yêu cầu `--execute`.
 
-## Huong dan cho AI
+## Hướng dẫn cho AI
 
-1. Xac dinh package can sync, vi du `notebooks/packages/<package_id>`.
-2. Xac dinh NotebookLM notebook ID hoac alias. Neu user chua cung cap, hoi mot cau ngan de lay dung notebook ID.
-3. Chay dry-run truoc:
+1. Xác định package cần sync, ví dụ `notebooks/packages/<package_id>`.
+2. Xác định NotebookLM notebook ID hoặc alias. Nếu user chưa cung cấp, hỏi một câu ngắn để lấy đúng notebook ID.
+3. Chạy dry-run trước:
 
 ```powershell
 python "$env:USERPROFILE\\.gemini\\antigravity\\scripts\\abw_sync.py" `
@@ -26,13 +26,13 @@ python "$HOME/.gemini/antigravity/scripts/abw_sync.py" \
   --notebook-id <notebook_id>
 ```
 
-4. Doc JSON stdout va `sync_report.json`, roi bao cao:
+4. Đọc JSON stdout và `sync_report.json`, rồi báo cáo:
    - package ID
    - `qa_status`
-   - so source se upload
-   - danh sach source
-   - trang thai `dry_run`, `blocked`, hoac `synced`
-5. Chi chay upload that khi nguoi dung xac nhan ro:
+   - số source sẽ upload
+   - danh sách source
+   - trạng thái `dry_run`, `blocked`, hoặc `synced`
+5. Chỉ chạy upload thật khi người dùng xác nhận rõ:
 
 ```powershell
 python "$env:USERPROFILE\\.gemini\\antigravity\\scripts\\abw_sync.py" `
@@ -41,10 +41,10 @@ python "$env:USERPROFILE\\.gemini\\antigravity\\scripts\\abw_sync.py" `
   --execute
 ```
 
-## Quy tac an toan
+## Quy tắc an toàn
 
-- Khong sync package `fail`
-- Khong sync package `needs_review` tru khi user yeu cau ro va dung `--allow-needs-review`
-- Khong xoa source NotebookLM trong phase nay
-- Khong tu tao notebook moi neu user chua yeu cau ro
-- Neu `nlm` loi auth hoac network, bao loi va dung; khong retry hung huc
+- Không sync package `fail`
+- Không sync package `needs_review` trừ khi user yêu cầu rõ và dùng `--allow-needs-review`
+- Không xóa source NotebookLM trong phase này
+- Không tự tạo notebook mới nếu user chưa yêu cầu rõ
+- Nếu `nlm` lỗi auth hoặc network, báo lỗi và dừng; không retry hung hăng

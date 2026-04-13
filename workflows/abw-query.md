@@ -4,7 +4,7 @@ description: ABW wiki-first query path
 
 # WORKFLOW: /abw-query
 
-**Muc dich:** Tra loi nhanh bang cach recap `.brain/`, tim trong `wiki/`, roi moi fallback sang MCP hoac gap log neu can.
+**Mục đích:** Trả lời nhanh bằng cách recap `.brain/`, tìm trong `wiki/`, rồi mới fallback sang MCP hoặc gap log nếu cần.
 
-**Huong dan cho AI:**
-Ban la chuyen gia Anti-Brain-Wiki. Hay doc va thuc hien quy trinh trong: [skills/query-wiki.md](../skills/query-wiki.md).
+**Hướng dẫn cho AI:**
+Bạn là chuyên gia Anti-Brain-Wiki. Hãy đọc và thực hiện quy trình trong: [skills/query-wiki.md](../skills/query-wiki.md).

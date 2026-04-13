@@ -1,25 +1,25 @@
 ---
-description: Cap nhat command surface ABW vao Gemini runtime local
+description: Cập nhật command surface ABW vào Gemini runtime local
 ---
 
 # WORKFLOW: /abw-update
 
-**Muc dich:** Cap nhat Antigravity Brain Wiki OS / Hybrid ABW len ban moi nhat cua repo va dang ky lai command surface vao Gemini runtime local.
+**Mục đích:** Cập nhật Antigravity Brain Wiki OS / Hybrid ABW lên bản mới nhất của repo và đăng ký lại command surface vào Gemini runtime local.
 
-## Huong dan cho AI
+## Hướng dẫn cho AI
 
-Khi user goi `/abw-update`, thuc hien theo trinh tu:
+Khi user gọi `/abw-update`, thực hiện theo trình tự:
 
-1. Noi ro lenh nay dung de cap nhat command surface ABW tu repo hien tai vao Gemini runtime local.
-2. Neu user da goi truc tiep `/abw-update` hoac noi ro muon update ngay, xem do la xac nhan du de thuc hien.
-3. Neu moi truong cho phep chay lenh, uu tien **chay lai installer tu dong** thay vi chi dua command de user tu copy-paste.
-4. Thu tu uu tien khi update:
+1. Nói rõ lệnh này dùng để cập nhật command surface ABW từ repo hiện tại vào Gemini runtime local.
+2. Nếu user đã gọi trực tiếp `/abw-update` hoặc nói rõ muốn update ngay, xem đó là xác nhận đủ để thực hiện.
+3. Nếu môi trường cho phép chạy lệnh, ưu tiên **chạy lại installer tự động** thay vì chỉ đưa command để user tự copy-paste.
+4. Thứ tự ưu tiên khi update:
 
-- Neu dang o trong local clone cua repo tren Windows: chay `powershell -ExecutionPolicy Bypass -File .\\install.ps1`
-- Neu dang o trong local clone cua repo tren macOS/Linux: chay `bash ./install.sh`
-- Neu khong co local clone hoac khong the chay shell, dua dung lenh installer remote de user tu chay
+- Nếu đang ở trong local clone của repo trên Windows: chạy `powershell -ExecutionPolicy Bypass -File .\\install.ps1`
+- Nếu đang ở trong local clone của repo trên macOS/Linux: chạy `bash ./install.sh`
+- Nếu không có local clone hoặc không thể chạy shell, đưa đúng lệnh installer remote để user tự chạy
 
-5. Khi can dua lenh remote, dung dung lenh sau:
+5. Khi cần đưa lệnh remote, dùng đúng lệnh sau:
 
 ### Windows
 
@@ -33,17 +33,17 @@ irm https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/
 curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.sh | sh
 ```
 
-6. Sau khi update, nhac user reload IDE hoac restart Gemini extension neu slash menu chua refresh.
-7. Nhac user go lai `/help` hoac `/abw` de kiem tra command surface moi.
-8. Bao cao ro ket qua:
+6. Sau khi update, nhắc user reload IDE hoặc restart Gemini extension nếu slash menu chưa refresh.
+7. Nhắc user gõ lại `/help` hoặc `/abw` để kiểm tra command surface mới.
+8. Báo cáo rõ kết quả:
 
-- installer co chay thanh cong hay khong
-- command nao da duoc dang ky lai
-- co can reload IDE hay khong
+- installer có chạy thành công hay không
+- command nào đã được đăng ký lại
+- có cần reload IDE hay không
 
-## Quy tac
+## Quy tắc
 
-- Khong goi day la update AWF.
-- Khong tu dong gia dinh user muon cap nhat runtime khac ngoai Gemini local.
-- Khong tu nhan update thanh cong neu installer chua thuc su duoc chay.
-- Neu user chi hoi cach update ma khong yeu cau thuc hien, luc do moi dung che do huong dan.
+- Không gọi đây là update AWF.
+- Không tự động giả định user muốn cập nhật runtime khác ngoài Gemini local.
+- Không tự nhận update thành công nếu installer chưa thực sự được chạy.
+- Nếu user chỉ hỏi cách update mà không yêu cầu thực hiện, lúc đó mới dùng chế độ hướng dẫn.

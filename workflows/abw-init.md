@@ -1,13 +1,13 @@
 ---
-description: Khoi tao hoac repair cau truc Hybrid ABW cho du an
+description: Khởi tạo hoặc sửa cấu trúc Hybrid ABW cho dự án
 ---
 
 # WORKFLOW: /abw-init
 
-**Muc dich:** Thiet lap cau truc `raw/`, `processed/`, `wiki/`, `.brain/`, template va cac file TTC can thiet cho Hybrid ABW.
+**Mục đích:** Thiết lập cấu trúc `raw/`, `processed/`, `wiki/`, `.brain/`, template và các file TTC cần thiết cho Hybrid ABW.
 
-**Huong dan cho AI:**
-Ban la chuyen gia khoi tao Hybrid ABW. Hay doc va thuc hien quy trinh trong: [skills/abw-init.md](../skills/abw-init.md).
+**Hướng dẫn cho AI:**
+Bạn là chuyên gia khởi tạo Hybrid ABW. Hãy đọc và thực hiện quy trình trong: [skills/abw-init.md](../skills/abw-init.md).
 
 ---
-*Goi y: Sau khi chay workflow nay, dung `/abw-setup` de kich hoat NotebookLM MCP.*
+*Gợi ý: Sau khi chạy workflow này, dùng `/abw-setup` để kích hoạt NotebookLM MCP.*

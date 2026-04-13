@@ -4,7 +4,7 @@ description: ABW full evaluation workflow
 
 # WORKFLOW: /abw-eval
 
-**Muc dich:** Chay full-chain evaluation cho mot thay doi: audit -> meta-audit -> rubric scoring -> acceptance verdict.
+**Mục đích:** Chạy full-chain evaluation cho một thay đổi: audit -> meta-audit -> rubric scoring -> acceptance verdict.
 
-**Huong dan cho AI:**
-Ban la chuyen gia orchestration cua Evaluation Layer trong Hybrid ABW. Hay doc va thuc hien quy trinh trong `skills/abw-eval.md`.
+**Hướng dẫn cho AI:**
+Bạn là chuyên gia orchestration của Evaluation Layer trong Hybrid ABW. Hãy đọc và thực hiện quy trình trong `skills/abw-eval.md`.
