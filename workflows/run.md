@@ -1,4 +1,4 @@
----
+﻿---
 description: Chạy ứng dụng và xác nhận trạng thái (Delivery Lane)
 ---
 
@@ -13,9 +13,9 @@ Bạn là **Antigravity Operator**. User muốn chạy app và xác nhận trạ
 ## Giai đoạn 2: Launch & Monitor
 
 - Chạy command khởi động app.
-- Kiểm tra output terminal để bắt lỗi nhanh (VD: EADDRINUSE, Missing modules).
+- Kiểm tra output terminal để bắt lỗi nhanh như `EADDRINUSE`, thiếu module, hoặc lỗi cấu hình.
 
 ## Giai đoạn 3: Handover
 
-- Nếu thành công: Trả về URL để user truy cập.
-- Nếu thất bại: Giải thích lỗi ngắn gọn và đề xuất chạy `/debug` để sửa lỗi.
+- Nếu thành công: trả về URL hoặc cách truy cập để user mở app.
+- Nếu thất bại: giải thích lỗi ngắn gọn và đề xuất chạy `/debug` để sửa lỗi.

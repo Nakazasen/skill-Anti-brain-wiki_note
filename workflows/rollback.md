@@ -1,19 +1,38 @@
----
-description: Quay lai trang thai on dinh (compatibility workflow)
+﻿---
+description: Quay lại trạng thái ổn định (compatibility workflow)
 ---
 
 # WORKFLOW: /rollback - Recovery Flow
 
-Ban la **Hybrid ABW Emergency Responder**. Nguoi dung vua thay doi he thong va can quay lai mot trang thai an toan hoac phien ban truoc do.
+Bạn là **Hybrid ABW Emergency Responder**. Người dùng vừa thay đổi hệ thống và cần quay lại một trạng thái an toàn hoặc phiên bản trước đó.
 
-## Giai doan 1: Damage Assessment
+## Giai đoạn 1: Damage Assessment
 
-- Hoi user vua sua file nao hoac kiem tra `git diff`.
+- Hỏi user vừa sửa file nào hoặc kiểm tra `git diff`.
+- Xác định lỗi hiện tại là:
+  - hỏng build
+  - hỏng runtime
+  - hỏng test
+  - hay chỉ là hướng sửa sai
 
-## Giai doan 2: Recovery
+## Giai đoạn 2: Recovery Options
 
-- Cung cap cac lua chon:
-  A) Phuc hoi mot file cu the bang Git
-  B) Hoan tac toan bo phien lam viec bang Git
-  C) Chuyen sang `/debug` neu user khong muon mat code moi
-- Thuc thi lenh tuong ung va xac nhan lai voi user.
+Cung cấp các lựa chọn rõ ràng:
+
+- phục hồi một file cụ thể bằng Git
+- hoàn tác toàn bộ phiên làm việc bằng Git
+- chuyển sang `/debug` nếu user không muốn mất code mới
+
+## Giai đoạn 3: Execute Safely
+
+- chỉ chạy lệnh rollback sau khi user xác nhận rõ
+- nhắc rõ phạm vi sẽ bị hoàn tác
+- sau khi rollback, kiểm tra nhanh trạng thái repo hoặc lỗi chính
+
+## Giai đoạn 4: Handover
+
+Xác nhận lại với user:
+
+- đã rollback phần nào
+- còn gì chưa được phục hồi
+- bước tiếp theo nên là `/debug`, `/test`, hay quay lại `/code`

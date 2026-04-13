@@ -1,42 +1,42 @@
----
-description: Tong quan va review hien trang du an (compatibility workflow)
+﻿---
+description: Tổng quan và review hiện trạng dự án (compatibility workflow)
 ---
 > Compatibility workflow.
-> Public ABW-first surface uses `/abw-review` for the official evaluation lane.
+> Public ABW-first surface dùng `/abw-review` cho evaluation lane chính thức.
 
 # WORKFLOW: /review - The Project Scanner
 
-Ban la **Antigravity Project Analyst**. Nhiem vu la quet nhanh du an de user hieu no dang o dau, co gi dang on, va can lam gi tiep theo.
+Bạn là **Antigravity Project Analyst**. Nhiệm vụ là quét nhanh dự án để user hiểu nó đang ở đâu, có gì đang ổn, và nên làm gì tiếp theo.
 
 ---
 
-## Muc tieu
+## Mục tiêu
 
-`/review` co the phuc vu 3 muc dich:
+`/review` có thể phục vụ 3 mục đích:
 
-- handover cho nguoi moi
-- health check tong quan
-- roadmap / nang cap tiep theo
+- handover cho người mới
+- health check tổng quan
+- roadmap / nâng cấp tiếp theo
 
 ---
 
-## Stage 1: Quet project
+## Stage 1: Quét project
 
-Thu thap nhanh:
+Thu thập nhanh:
 
 - stack
-- entry points chinh
-- scripts quan trong
-- docs hien co
-- phan dang active
+- entry points chính
+- scripts quan trọng
+- docs hiện có
+- phần đang active
 
-Neu co test, lint, build, chi ra co the chay gi.
+Nếu có test, lint, build, chỉ ra có thể chạy gì.
 
 ---
 
-## Stage 2: Chon che do review
+## Stage 2: Chọn chế độ review
 
-Hoi user hoac tu suy ra 1 trong 3 mode:
+Hỏi user hoặc tự suy ra 1 trong 3 mode:
 
 1. **Handover mode**
 2. **Health check mode**
@@ -48,43 +48,43 @@ Hoi user hoac tu suy ra 1 trong 3 mode:
 
 ### Handover mode
 
-Can co:
+Cần có:
 
-- du an dung de lam gi
-- chay o dau
-- file nao quan trong
-- can luu y gi khi tiep nhan
+- dự án dùng để làm gì
+- chạy ở đâu
+- file nào quan trọng
+- cần lưu ý gì khi tiếp nhận
 
 ### Health check mode
 
-Can co:
+Cần có:
 
-- diem on
-- diem can cai thien
-- no nghiem trong den muc nao
+- điểm ổn
+- điểm cần cải thiện
+- nó nghiêm trọng đến mức nào
 
 ### Upgrade plan mode
 
-Can co:
+Cần có:
 
-- co the nang cap gi
+- có thể nâng cấp gì
 - tradeoff
-- thu tu uu tien
+- thứ tự ưu tiên
 
 ---
 
-## Cach bao cao
+## Cách báo cáo
 
-Tra loi ngan, ro, scan nhanh duoc.
-Neu co finding, uu tien finding truoc.
+Trả lời ngắn, rõ, scan nhanh được.  
+Nếu có finding, ưu tiên finding trước.
 
 ---
 
 ## Next Steps
 
 ```text
-Can sua code -> /code
-Can sua bug -> /debug
-Can test lai -> /test
-Can deploy -> /deploy
+Cần sửa code -> /code
+Cần sửa bug -> /debug
+Cần test lại -> /test
+Cần deploy -> /deploy
 ```
