@@ -237,7 +237,7 @@ foreach ($skill in $AwfHelperSkills) {
 
 Write-Host "Installing runtime scripts..." -ForegroundColor Cyan
 # Runtime scripts are copied explicitly to avoid publishing __pycache__ artifacts.
-$sourceScriptDir = Join-Path $PSScriptRoot "scripts"
+$sourceScriptDir = if ($isLocalRepo) { Join-Path $PSScriptRoot "scripts" } else { $null }
 if ($isLocalRepo -and (Test-Path "$sourceScriptDir\abw_pack.py") -and (Test-Path "$sourceScriptDir\abw_sync.py")) {
     $Null = New-Item -ItemType Directory -Force -Path $ScriptsDir
     try {
