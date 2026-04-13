@@ -49,7 +49,7 @@ WORKFLOW_FILES=(
   "help.md"
   "next.md"
   "README.md"
-  "awf-update.md"
+  "abw-update.md"
 )
 
 SCHEMA_FILES=(
@@ -339,7 +339,7 @@ REQUIRED_WFS=(
   "abw-start.md" "abw-wrap.md" "abw-review.md" "abw-rollback.md"
   "brainstorm.md" "plan.md" "design.md" "visualize.md" "code.md" "run.md"
   "debug.md" "test.md" "deploy.md" "refactor.md" "audit.md" "save_brain.md"
-  "recap.md" "next.md" "help.md" "README.md" "awf-update.md"
+  "recap.md" "next.md" "help.md" "README.md" "abw-update.md"
 )
 
 for wf in "${REQUIRED_WFS[@]}"; do

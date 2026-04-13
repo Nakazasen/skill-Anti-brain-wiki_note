@@ -1,114 +1,91 @@
-# Hybrid ABW: Mô hình lệnh thống nhất
+# Hybrid ABW Command Model
 
-Hybrid ABW cung cấp một mental model thống nhất cho người phát triển, đi từ giai đoạn khám phá ban đầu, dựng nền tri thức, triển khai sản phẩm, quản lý phiên làm việc, cho tới đánh giá và nghiệm thu. Hệ thống hiện được tổ chức thành **5 lane chức năng**.
+Tai lieu nay mo ta command surface chinh thuc cua Hybrid ABW trong repo.
 
-## Bắt đầu từ đâu?
+## Bat dau tu dau?
 
-- **`/abw-ask`**: Entry mặc định để làm việc. Dùng khi bạn có task hoặc câu hỏi và muốn router chọn lane phù hợp.
-- **`/abw-eval`**: Entry mặc định để nghiệm thu. Dùng khi đã có đầu ra và muốn đánh giá trước khi chấp nhận.
-- **`/abw-start`**: Entry mở phiên khi muốn kiểm tra trạng thái hệ thống trước khi làm.
-- **`/abw-wrap`**: Entry đóng phiên khi muốn chốt tiến độ và chuẩn bị handover.
-- **`/next`**: Gợi ý bước hợp lý tiếp theo dựa trên trạng thái hiện tại.
-- **`/help`**: Bản đồ hệ thống và danh sách lệnh.
+- **`/abw-ask`**: entrypoint mac dinh cho moi task, cau hoi, va yeu cau chua ro lane.
+- **`/abw-eval`**: entrypoint mac dinh cho danh gia va nghiem thu.
+- **`/abw-start`**: mo phien lam viec co kiem tra trang thai va grounding path.
+- **`/abw-update`**: cap nhat command surface ABW vao Gemini runtime local.
 
----
+## 5 lane
 
-## 5 lane của hệ thống
+### 1. Kham pha va tu duy
 
-### 1. Khám phá và tư duy
-Tập trung vào việc hình thành ý tưởng, làm rõ bài toán, hoặc hỏi trên tri thức hiện có.
-- **`/abw-ask`** : **Entry chính của toàn hệ thống (Master Router)**.
-- `/abw-query` : Tier 1, tra cứu nhanh trên tri thức đã có.
-- `/abw-query-deep` : Tier 2, suy luận sâu và phân tích nhiều lớp.
-- `/abw-bootstrap` : Tier 3, tư duy giả thuyết cho bài toán greenfield.
-- `/brainstorm` : Khám phá sản phẩm và chốt phạm vi vấn đề.
+- `/abw-ask` : Router chinh theo intent
+- `/abw-query` : Tra cuu nhanh tren wiki
+- `/abw-query-deep` : Phan tich sau, tradeoff, RCA
+- `/abw-bootstrap` : Tu duy cho bai toan greenfield
+- `/brainstorm` : Chot brief san pham va MVP
 
-### 2. Dựng nền tri thức
-Tập trung vào việc duy trì nền dữ liệu đáng tin của dự án.
-- `/abw-init` : Khởi tạo workspace và cấu trúc ABW.
-- `/abw-setup` : Cấu hình MCP.
-- `/abw-status` : Kiểm tra kết nối và trạng thái hệ thống.
-- `/abw-ingest` : Nạp tri thức vào wiki.
-- `/abw-pack` : Đóng gói tri thức thành các tệp tin nén theo miền nhằm tuân thủ giới hạn NotebookLM.
-- `/abw-sync` : Dry-run hoặc đồng bộ package đã duyệt lên NotebookLM.
-- `/abw-lint` : Audit chất lượng nền tri thức.
+### 2. Dung nen tri thuc
 
-### 3. Triển khai sản phẩm
-Tập trung vào việc biến tri thức thành phần mềm chạy được.
+- `/abw-init` : Khoi tao cau truc ABW
+- `/abw-setup` : Cau hinh NotebookLM MCP
+- `/abw-status` : Kiem tra MCP va queue
+- `/abw-ingest` : Xu ly raw thanh wiki
+- `/abw-pack` : Dong goi tri thuc thanh package gon
+- `/abw-sync` : Dry-run hoac sync package da duyet len NotebookLM
+- `/abw-lint` : Audit suc khoe wiki, grounding, va manifest
 
-Luồng delivery chính:
-- `/plan` : Lập kế hoạch kỹ thuật và task.
-- `/design` : Thiết kế kiến trúc và cơ sở dữ liệu.
-- `/visualize` : Dựng mockup UI/UX và đặc tả màn hình.
-- `/code` : Cài đặt tính năng.
-- `/run` : Chạy ứng dụng cục bộ.
-- `/debug` : Sửa lỗi.
-- `/test` : Kiểm tra chất lượng.
-- `/deploy` : Triển khai lên môi trường đích.
+### 3. Trien khai san pham
 
-Workflow hỗ trợ trong delivery:
-- `/refactor` : Dọn code an toàn sau khi đã hiểu rõ hành vi.
-- `/audit` : Rà soát sản phẩm, code, hoặc bảo mật trong vòng delivery.
+Luong delivery chinh:
 
-### 4. Phiên làm việc và ghi nhớ
-Tập trung vào việc quản lý phiên làm việc và khôi phục bối cảnh.
-- `/abw-start` : Mở phiên và kiểm tra trạng thái.
-- `/save-brain` : Lưu phiên và chuẩn bị handover.
-- `/recap` : Khôi phục bối cảnh.
-- `/next` : Gợi ý bước tiếp theo.
-- `/abw-wrap` : Chốt phiên và chuẩn bị quay lại.
+- `/plan` : Lap ke hoach thuc thi tinh nang
+- `/design` : Thiet ke ky thuat va co so du lieu
+- `/visualize` : Dung mockup UI/UX va dac ta man hinh
+- `/code` : Cai dat tinh nang
+- `/run` : Chay ung dung cuc bo
+- `/debug` : Sua loi co he thong
+- `/test` : Chay test va kiem tra chat luong
+- `/deploy` : Trien khai len moi truong dich
 
-### 5. Đánh giá và nghiệm thu
-Tập trung vào việc đánh giá đầu ra, kiểm tra chất lượng lập luận, và quyết định có nên chấp nhận thay đổi hay không.
-- `/abw-review` : Review code, thay đổi, hoặc hiện trạng dự án.
-- `/abw-audit` : Tự audit một thay đổi hoặc artifact.
-- `/abw-meta-audit` : Audit lại chính báo cáo audit.
-- `/abw-rollback` : Quay về trạng thái an toàn.
-- `/abw-accept` : Chạy cổng nghiệm thu cuối cùng.
-- `/abw-eval` : Chạy toàn bộ chuỗi evaluation.
+Workflow ho tro:
 
----
+- `/refactor` : Don code an toan sau khi da hieu ro hanh vi
+- `/audit` : Ra soat san pham, code, hoac bao mat trong vong delivery
+
+### 4. Phien lam viec va ghi nho
+
+- `/abw-start` : Mo phien lam viec va kiem tra trang thai
+- `/save-brain` : Luu tien do va chuan bi handover
+- `/recap` : Khoi phuc boi canh tu phien truoc
+- `/next` : Goi y buoc tiep theo
+- `/abw-wrap` : Chot phien va wrap lai thay doi
+
+### 5. Danh gia va nghiem thu
+
+- `/abw-review` : Review code, thay doi, hoac hien trang du an
+- `/abw-audit` : Tu audit workflow, tai lieu, thay doi, hoac dau ra
+- `/abw-meta-audit` : Audit lai chinh bao cao audit
+- `/abw-rollback` : Quay ve trang thai an toan sau thay doi loi
+- `/abw-accept` : Chot pass/fail cuoi cung
+- `/abw-eval` : Chay toan bo chuoi evaluation tu dau den cuoi
+
+### Utility
+
+- `/help` : Ban do he thong va decision table
+- `/abw-update` : Keo ban moi nhat cua command surface ABW vao Gemini runtime local
+
+## First Command Cheat Sheet
+
+| Muon lam gi | Lenh dau tien |
+|---|---|
+| Khong biet nen bat dau tu dau | `/abw-ask` |
+| Muon nghiem thu dau ra | `/abw-eval` |
+| Muon refactor legacy code nhung chua ro pham vi | `/abw-ask` |
+| Muon refactor khi da ro pham vi | `/refactor` |
+| Muon mo phien lam viec co kiem tra trang thai | `/abw-start` |
+| Muon chot phien va handover | `/abw-wrap` |
+| Muon cap nhat command surface local | `/abw-update` |
 
 ## Naming Policy
 
-- Dùng tiền tố **`/abw-*`** cho các lệnh thuộc lớp protocol, system state, grounding, routing, evaluation, recovery, hoặc session orchestration.
-- Giữ **verb ngắn** cho các lệnh delivery thao tác trực tiếp như `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`.
-- Giữ **`/save-brain`**, `/recap`, và `/next` như session verbs ngắn; không tự đổi sang dạng `abw-*` nếu chưa có quyết định kiến trúc mới.
-- Không tự rename command chỉ để “đồng bộ thương hiệu” nếu việc đổi tên không đi kèm thay đổi rõ ràng về capability hoặc public surface.
-- Không xóa command cũ chỉ vì đã có command mới, trừ khi đã xác nhận chiến lược migration, alias, hoặc deprecation.
-- Với các lệnh ở vùng ranh giới discovery như `/brainstorm`, chỉ được thêm alias branded như `/abw-brainstorm` khi có quyết định rõ; không tự thay command chính.
-- Mọi thay đổi command surface phải cập nhật đồng thời: workflow file, skill file, installer, `GEMINI.md` injection text, `help.md`, `workflows/README.md`, và root `README.md`.
-- Một command chỉ được xem là “đã đổi tên thành công” khi clean install vẫn hiện đúng command mới trong runtime local.
-
----
-
-## Luồng khuyến nghị
-
-1. **Khám phá và tư duy**: Bắt đầu với `/brainstorm` hoặc `/abw-ask`.
-2. **Dựng nền tri thức**: Chạy `/abw-init` và `/abw-ingest` để xây wiki cho dự án.
-3. **Triển khai**: Chuyển sang `/plan`, `/design`, `/visualize`, rồi `/code` khi nền tri thức đã đủ rõ.
-4. **Handover**: Dùng `/save-brain` trước khi kết thúc phiên.
-5. **Nghiệm thu**: Dùng `/abw-audit`, `/abw-accept`, hoặc `/abw-eval` trước khi coi công việc là hoàn tất.
-
----
-
-## Định tuyến thông minh
-
-Lệnh **`/abw-ask`** là entry mặc định cho hầu hết tương tác làm việc. Nó đánh giá intent của bạn và trạng thái hiện tại của dự án để chuyển tiếp sang workflow hoặc skill phù hợp nhất.
-
-Ví dụ handoff:
-- "Auth flow hiện tại là gì?" -> `[Router] Routing to /abw-query for knowledge-simple.`
-- "Tôi muốn làm một marketplace" -> `[Router] Routing to /brainstorm for product-discovery.`
-- "Giúp tôi lên kế hoạch API" -> `[Router] Routing to /plan for delivery-planning.`
-
-Evaluation Layer tách riêng khỏi `/abw-ask`. Dùng nó sau khi đã có đầu ra:
-- `/abw-audit` để tự rà soát
-- `/abw-meta-audit` để chất vấn báo cáo audit
-- `/abw-accept` để quyết định pass/fail
-- `/abw-eval` để chạy toàn bộ chuỗi nghiệm thu
-
----
-
-## Thiết kế ưu tiên trung thực
-
-Hybrid ABW ưu tiên **trung thực** hơn là trả lời cho có. Nếu NotebookLM MCP bị lỗi hoặc grounding queue đang tắc, hệ thống phải báo rõ trạng thái như `draft` hoặc `pending_grounding`, thay vì giả vờ đã grounded.
+- Lenh thuoc public surface chinh cua he thong nen uu tien tien to `abw-`.
+- Lenh `abw-*` dung cho router, grounding, session, evaluation, va nhung capability ABW-first.
+- Ten lenh nen ngan, ro dong tu, va phan anh dung muc dich.
+- Khong tu y rename lenh dang o public surface neu chua cap nhat installer, docs, va runtime registration cung luc.
+- Workflow cu chi giu ten khong `abw-` neu do la compatibility path co gia tri thuc te hoac la verb rat tu nhien nhu `/plan`, `/code`, `/test`.
+- Neu sau nay them alias, alias chi la lop phu; source of truth van la ten lenh chinh trong `workflows/` va installer.

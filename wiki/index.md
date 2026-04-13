@@ -108,6 +108,7 @@ _Empty -- will be populated as notes with `related` fields are added._
 | **Dựng nền tri thức** | `/abw-lint` | Audit sức khỏe wiki, manifest, và grounding |
 | **Dựng nền tri thức** | `/abw-status` | Kiểm tra cầu nối MCP và trạng thái hàng đợi |
 | **Dựng nền tri thức** | `/abw-setup` | Cấu hình kết nối NotebookLM MCP |
+| **Tiện ích** | `/abw-update` | Cập nhật command surface ABW vào Gemini runtime local |
 
 ---
 
