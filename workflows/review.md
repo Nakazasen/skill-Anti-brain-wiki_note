@@ -1,9 +1,8 @@
 ---
-description: Tong quan va ban giao du an (legacy AWF compatibility workflow)
+description: Tong quan va review hien trang du an (compatibility workflow)
 ---
-> LEGACY COMPATIBILITY WORKFLOW
-> This file is kept for older AWF-style flows.
-> Public ABW-first surface centers on `/abw-ask`, with `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`, and tier-specific paths `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`.
+> Compatibility workflow.
+> Public ABW-first surface uses `/abw-review` for the official evaluation lane.
 
 # WORKFLOW: /review - The Project Scanner
 

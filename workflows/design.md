@@ -1,5 +1,5 @@
 ---
-description: Thiet ke chi tiet truoc khi code (legacy AWF compatibility workflow)
+description: Thiet ke chi tiet truoc khi code (delivery workflow)
 ---
 
 # WORKFLOW: /design - Technical Architect

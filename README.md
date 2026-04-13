@@ -146,3 +146,10 @@ Sau khi cai xong:
 - `install.ps1`, `install.sh`: installer that registers commands into Gemini runtime
 
 For the command model in Vietnamese, see `workflows/README.md`.
+
+## Maintainer Docs
+
+- `docs/ARCHITECTURE.md`: source of truth for public surface, compatibility layer, internal artifacts, and runtime assembly
+- `docs/RELEASE_CHECKLIST.md`: release gate before shipping ABW changes
+- `docs/GROUNDING_BACKENDS.md`: current grounding backend contract and future abstraction direction
+- `examples/hello-abw/`: minimal example workspace for ingest, pack, sync, and eval
