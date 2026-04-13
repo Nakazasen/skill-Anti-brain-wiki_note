@@ -9,7 +9,7 @@
 
 When the user calls `/abw-setup`, execute this interactive wizard. Do not print the whole file at once. Follow the stages step-by-step and wait for the user's response before proceeding.
 
-Tra loi bang tieng Viet ro rang, ngan gon.
+Trả lời bằng tiếng Việt rõ ràng, ngắn gọn.
 
 ### Account Safety Rule
 
@@ -27,22 +27,22 @@ The authenticated account is valid only when the user explicitly provides or con
 
 Ask the user:
 
-"Ban muon lien ket NotebookLM voi Google account nao? Hay tra loi bang email day du, vi du `buiducvinhct1102@gmail.com`."
+"Bạn muốn liên kết NotebookLM với Google account nào? Hãy trả lời bằng email đầy đủ, ví dụ `buiducvinhct1102@gmail.com`."
 
 Record the answer as `expected_google_account`.
 
 If the user does not provide a full email address, stop and explain:
 
-"Toi can email Google ro rang de tranh lien ket nham tai khoan. ABW se khong suy luan tu username Windows, IDE, browser, hay notebook list."
+"Tôi cần email Google rõ ràng để tránh liên kết nhầm tài khoản. ABW sẽ không suy luận từ username Windows, IDE, browser, hay notebook list."
 
 ### Stage 1: Check Pre-requisites
 
 Ask the user:
 
-"De kich hoat he thong Grounding va thoat Fallback Mode, ban can dang nhap Google NotebookLM thong qua CLI. Ban da cai `notebooklm-mcp` / `nlm` tren may chua?
+"Để kích hoạt hệ thống Grounding và thoát Fallback Mode, bạn cần đăng nhập Google NotebookLM thông qua CLI. Bạn đã cài `notebooklm-mcp` / `nlm` trên máy chưa?
 
-- [1] Roi, toi da cai.
-- [2] Chua, huong dan toi cai."
+- [1] Rồi, tôi đã cài.
+- [2] Chưa, hướng dẫn tôi cài."
 
 Wait for the user response.
 
@@ -72,33 +72,33 @@ If the user chooses [1], proceed to Stage 2.
 
 Tell the user:
 
-"Bay gio mo terminal trong dung moi truong ban dang dung va chay:
+"Bây giờ mở terminal trong đúng môi trường bạn đang dùng và chạy:
 
 ```bash
 nlm login <expected_google_account>
 ```
 
-Neu phien ban `nlm` cua ban khong nhan email argument, chay:
+Nếu phiên bản `nlm` của bạn không nhận email argument, chạy:
 
 ```bash
 nlm login
 ```
 
-Khi trinh duyet mo ra, hay chon dung tai khoan `<expected_google_account>`. Khong chon tai khoan Windows/IDE/browser neu no khac email nay.
+Khi trình duyệt mở ra, hãy chọn đúng tài khoản `<expected_google_account>`. Không chọn tài khoản Windows/IDE/browser nếu nó khác email này.
 
-Sau khi terminal bao dang nhap thanh cong, chay mot lenh chan doan neu CLI ho tro, vi du:
+Sau khi terminal báo đăng nhập thành công, chạy một lệnh chẩn đoán nếu CLI hỗ trợ, ví dụ:
 
 ```bash
 nlm auth status
 ```
 
-hoac:
+hoặc:
 
 ```bash
 nlm notebook list
 ```
 
-Quay lai day va dan output chan doan. Neu output khong hien email mong muon, noi ro la khong khop thay vi go 'Xong'."
+Quay lại đây và dán output chẩn đoán. Nếu output không hiện email mong muốn, nói rõ là không khớp thay vì gõ 'Xong'."
 
 Wait for the user to provide diagnostic output or say `Xong`.
 
@@ -121,7 +121,7 @@ When the account matches:
 
 1. As the Agent, attempt to run the MCP tool: `mcp_notebooklm_server_info`, `mcp_notebooklm_notebook_list`, `notebooklm_notebook_list`, or another available NotebookLM MCP list/info tool.
 2. If it connects successfully:
-   - Inform the user: "Ket noi MCP thanh cong va dung tai khoan Google da xac nhan."
+   - Inform the user: "Kết nối MCP thành công và đúng tài khoản Google đã xác nhận."
    - Update `skills/notebooklm-mcp-bridge.md`:
      - Change `mcp_status: "not_detected"` to `mcp_status: "active"`.
      - Change `auth_status: "not_authenticated"` to `auth_status: "authenticated"`.
@@ -129,7 +129,7 @@ When the account matches:
      - Set `last_auth` and `verified_at` when a reliable timestamp is available.
    - Proceed to Stage 5.
 3. If the MCP test fails:
-   - Inform the user: "Toi chua bat duoc tin hieu tu MCP. Dang nhap co the dung, nhung bridge NotebookLM MCP chua san sang."
+   - Inform the user: "Tôi chưa bắt được tín hiệu từ MCP. Đăng nhập có thể đúng, nhưng bridge NotebookLM MCP chưa sẵn sàng."
    - Ask the user to verify the Antigravity IDE MCP server configuration. The server should be named `notebooklm`.
    - Do not mark the bridge as authenticated unless both account match and MCP connectivity are verified.
 
@@ -137,4 +137,4 @@ When the account matches:
 
 If Stage 4 was successful, tell the user:
 
-"He thong Hybrid ABW da chay Active Mode voi NotebookLM MCP va dung tai khoan Google da xac nhan. Ban co the dung `/abw-status` bat cu luc nao de kiem tra lai trang thai ket noi."
+"Hệ thống Hybrid ABW đã chạy Active Mode với NotebookLM MCP và đúng tài khoản Google đã xác nhận. Bạn có thể dùng `/abw-status` bất cứ lúc nào để kiểm tra lại trạng thái kết nối."
