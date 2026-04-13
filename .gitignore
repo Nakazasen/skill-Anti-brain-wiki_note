@@ -40,6 +40,9 @@ processed/manifest.jsonl
 # --- wiki/ lint reports (generated output) ---
 wiki/_indexes/lint-report-*.md
 
+# --- notebooks/ packages (runtime output) ---
+notebooks/packages/
+
 # --- OS and IDE artifacts ---
 .DS_Store
 Thumbs.db

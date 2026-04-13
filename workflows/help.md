@@ -1,4 +1,4 @@
-﻿---
+---
 description: Hướng dẫn lệnh và sơ đồ hệ thống Hybrid ABW
 ---
 
@@ -35,6 +35,7 @@ Nếu bạn sắp bắt đầu làm việc, hãy đi từ một trong hai entryp
 | Dự án còn greenfield, chưa có raw/wiki | `/abw-bootstrap` |
 | Muốn chốt ý tưởng, scope, hoặc MVP | `/brainstorm` |
 | Muốn dựng nền tri thức từ tài liệu nguồn | `/abw-ingest` |
+| Muốn đồng bộ package đã duyệt lên NotebookLM | `/abw-sync` |
 | Muốn kiểm tra sức khỏe wiki / grounding / manifest | `/abw-lint` |
 | Muốn kiểm tra MCP hoặc trạng thái hàng đợi | `/abw-status` |
 | Muốn lên kế hoạch tính năng hoặc chia task | `/plan` |
@@ -81,6 +82,8 @@ Dùng nhóm này để duy trì nền tri thức của dự án và sức khỏe
 - `/abw-setup` : Cấu hình NotebookLM MCP
 - `/abw-status` : Kiểm tra MCP và hàng đợi
 - `/abw-ingest` : Xử lý raw thành wiki
+- `/abw-pack` : Đóng gói tri thức thành các tệp tin nén cho NotebookLM
+- `/abw-sync` : Dry-run hoặc đồng bộ package đã duyệt lên NotebookLM
 - `/abw-lint` : Audit sức khỏe wiki và manifest
 
 ### 3. Triển khai sản phẩm

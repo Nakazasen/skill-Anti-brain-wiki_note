@@ -1,0 +1,47 @@
+{
+  "package_id": "pkg_example_001",
+  "generated_at": "2026-04-13T12:00:00Z",
+  "total_sources_count": 48,
+  "qa_status": "needs_review",
+  "policy_snapshot": {
+    "soft_warning_limit": 45,
+    "hard_source_limit": 50
+  },
+  "retained_originals": 15,
+  "compressed_wikis": 33,
+  "excluded_sources": 5,
+  "grounding_warnings": [
+    "Source wiki/sources/draft-notes.md is marked as draft."
+  ],
+  "qa_checks": {
+    "source_limit_check": "needs_review",
+    "draft_grounding_check": "needs_review",
+    "technical_facts_coverage": "pass",
+    "contradiction_check": "needs_review",
+    "traceability_check": "pass",
+    "manifest_match_check": "pass"
+  },
+  "traceability_coverage_summary": {
+    "endpoints_covered": true,
+    "fields_covered": true,
+    "error_codes_covered": true,
+    "versions_covered": true,
+    "config_keys_covered": true,
+    "db_tables_columns_covered": true
+  },
+  "warnings": [
+    "Contradiction found in file XYZ regarding error code 500."
+  ],
+  "manifest_mapping": [
+    {
+      "output_file": "WIKI_COMPRESSED_API_Documentation.md",
+      "sources": [
+        {
+          "manifest_line": 12,
+          "raw_path": "raw/api_logs_2025.txt",
+          "wiki_source_ref": "wiki/sources/api-log-notes.md"
+        }
+      ]
+    }
+  ]
+}

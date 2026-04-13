@@ -5,6 +5,7 @@ $GlobalDir = "$env:USERPROFILE\.gemini\antigravity\global_workflows"
 $SchemasDir = "$env:USERPROFILE\.gemini\antigravity\schemas"
 $TemplatesDir = "$env:USERPROFILE\.gemini\antigravity\templates"
 $SkillsDir = "$env:USERPROFILE\.gemini\antigravity\skills"
+$ScriptsDir = "$env:USERPROFILE\.gemini\antigravity\scripts"
 $GeminiMd = "$env:USERPROFILE\.gemini\GEMINI.md"
 $AbwVersionFile = "$env:USERPROFILE\.gemini\abw_version"
 
@@ -13,6 +14,8 @@ $WorkflowFiles = @(
     "abw-setup.md",
     "abw-status.md",
     "abw-ingest.md",
+    "abw-pack.md",
+    "abw-sync.md",
     "abw-query.md",
     "abw-query-deep.md",
     "abw-lint.md",
@@ -49,7 +52,8 @@ $WorkflowFiles = @(
 $SchemaFiles = @(
     "brain.schema.json",
     "session.schema.json",
-    "preferences.schema.json"
+    "preferences.schema.json",
+    "notebook_package_manifest.schema.json"
 )
 
 $TemplateFiles = @(
@@ -65,7 +69,9 @@ $TemplateFiles = @(
     "assumptions.example.json",
     "hypotheses.example.json",
     "decision_log.example.jsonl",
-    "validation_backlog.example.json"
+    "validation_backlog.example.json",
+    "notebook_pack_policy.example.json",
+    "notebook_package_manifest.example.json"
 )
 
 $AwfHelperSkills = @(
@@ -90,6 +96,8 @@ $AbwSkills = @(
     "abw-review.md",
     "abw-rollback.md",
     "ingest-wiki.md",
+    "notebooklm-knowledge-packager.md",
+    "notebooklm-sync.md",
     "query-wiki.md",
     "query-wiki-deliberative.md",
     "lint-wiki.md",
@@ -227,6 +235,31 @@ foreach ($skill in $AwfHelperSkills) {
     }
 }
 
+Write-Host "Installing runtime scripts..." -ForegroundColor Cyan
+$sourceScriptDir = Join-Path $PSScriptRoot "scripts"
+if ($isLocalRepo -and (Test-Path "$sourceScriptDir\abw_pack.py") -and (Test-Path "$sourceScriptDir\abw_sync.py")) {
+    $Null = New-Item -ItemType Directory -Force -Path $ScriptsDir
+    try {
+        Copy-Item -Path "$sourceScriptDir\abw_pack.py" -Destination "$ScriptsDir\abw_pack.py" -Force
+        Copy-Item -Path "$sourceScriptDir\abw_sync.py" -Destination "$ScriptsDir\abw_sync.py" -Force
+        Write-Host "  [OK] Copied runtime scripts ($sourceScriptDir)" -ForegroundColor Green
+        $success++
+    }
+    catch {
+        Write-Host "  [X] FAILED: Could not copy runtime scripts" -ForegroundColor Red
+    }
+} elseif (-not $isLocalRepo) {
+    $Null = New-Item -ItemType Directory -Force -Path $ScriptsDir
+    try {
+        Invoke-WebRequest -Uri "$RepoBase/scripts/abw_pack.py" -OutFile "$ScriptsDir\abw_pack.py" -UseBasicParsing
+        Invoke-WebRequest -Uri "$RepoBase/scripts/abw_sync.py" -OutFile "$ScriptsDir\abw_sync.py" -UseBasicParsing
+        Write-Host "  [OK] Downloaded runtime scripts" -ForegroundColor Green
+        $success++
+    } catch {
+        Write-Host "  [X] FAILED: Could download runtime scripts" -ForegroundColor Red
+    }
+}
+
 Set-Content -Path $AbwVersionFile -Value $CurrentVersion -Encoding UTF8
 
 $abwInstructions = @"
@@ -243,6 +276,8 @@ Do not route users to the legacy AWF flow by default.
 | `/abw-setup` | abw-setup.md | Authenticate NotebookLM MCP and verify bridge status |
 | `/abw-status` | abw-status.md | Check MCP health and grounding queue state |
 | `/abw-ingest` | abw-ingest.md | Process raw sources into manifest and wiki artifacts |
+| `/abw-pack` | abw-pack.md | Package wiki into compressed files for NotebookLM limits |
+| `/abw-sync` | abw-sync.md | Dry-run or execute NotebookLM sync for an approved package |
 | `/abw-ask` | abw-ask.md | Smart default router: auto-selects fast, deep, or bootstrap path |
 
 | `/abw-query` | abw-query.md | Fast wiki-first query path |
@@ -278,7 +313,7 @@ Do not route users to the legacy AWF flow by default.
 
 ## Command Model (5 Lanes)
 - Ask & Think: `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
-- Build Knowledge: `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`
+- Build Knowledge: `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-pack`, `/abw-sync`, `/abw-lint`
 - Build Product: `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
 - Session & Memory: `/abw-start`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
 - Evaluation & Acceptance: `/abw-audit`, `/abw-meta-audit`, `/abw-accept`, `/abw-eval`, `/abw-review`, `/abw-rollback`
@@ -318,7 +353,7 @@ else {
 Write-Host "`nVerifying installation..." -ForegroundColor Cyan
 $missingFiles = 0
 $requiredWorkflows = @(
-    "abw-init.md", "abw-setup.md", "abw-status.md", "abw-ingest.md", "abw-ask.md",
+    "abw-init.md", "abw-setup.md", "abw-status.md", "abw-ingest.md", "abw-pack.md", "abw-sync.md", "abw-ask.md",
     "abw-query.md", "abw-query-deep.md", "abw-bootstrap.md", "abw-lint.md",
     "abw-audit.md", "abw-meta-audit.md", "abw-accept.md", "abw-eval.md",
     "abw-start.md", "abw-wrap.md", "abw-review.md", "abw-rollback.md",

@@ -8,6 +8,7 @@ GLOBAL_DIR="$HOME/.gemini/antigravity/global_workflows"
 SCHEMAS_DIR="$HOME/.gemini/antigravity/schemas"
 TEMPLATES_DIR="$HOME/.gemini/antigravity/templates"
 SKILLS_DIR="$HOME/.gemini/antigravity/skills"
+SCRIPTS_DIR="$HOME/.gemini/antigravity/scripts"
 GEMINI_MD="$HOME/.gemini/GEMINI.md"
 ABW_VERSION_FILE="$HOME/.gemini/abw_version"
 
@@ -16,6 +17,8 @@ WORKFLOW_FILES=(
   "abw-setup.md"
   "abw-status.md"
   "abw-ingest.md"
+  "abw-pack.md"
+  "abw-sync.md"
   "abw-query.md"
   "abw-query-deep.md"
   "abw-lint.md"
@@ -53,6 +56,7 @@ SCHEMA_FILES=(
   "brain.schema.json"
   "session.schema.json"
   "preferences.schema.json"
+  "notebook_package_manifest.schema.json"
 )
 
 TEMPLATE_FILES=(
@@ -69,6 +73,8 @@ TEMPLATE_FILES=(
   "hypotheses.example.json"
   "decision_log.example.jsonl"
   "validation_backlog.example.json"
+  "notebook_pack_policy.example.json"
+  "notebook_package_manifest.example.json"
 )
 
 AWF_HELPER_SKILLS=(
@@ -93,6 +99,8 @@ ABW_SKILLS=(
   "abw-review.md"
   "abw-rollback.md"
   "ingest-wiki.md"
+  "notebooklm-knowledge-packager.md"
+  "notebooklm-sync.md"
   "query-wiki.md"
   "query-wiki-deliberative.md"
   "lint-wiki.md"
@@ -217,6 +225,27 @@ for skill in "${AWF_HELPER_SKILLS[@]}"; do
   fi
 done
 
+echo -e "${CYAN}Installing runtime scripts...${NC}"
+if [ "$IS_LOCAL" -eq 1 ] && [ -f "$REPO_ROOT/scripts/abw_pack.py" ] && [ -f "$REPO_ROOT/scripts/abw_sync.py" ]; then
+  mkdir -p "$SCRIPTS_DIR"
+  if cp "$REPO_ROOT/scripts/abw_pack.py" "$SCRIPTS_DIR/abw_pack.py"; then
+    cp "$REPO_ROOT/scripts/abw_sync.py" "$SCRIPTS_DIR/abw_sync.py"
+    echo -e "  ${GREEN}[OK]${NC} Copied runtime scripts ($REPO_ROOT/scripts)"
+    success=$((success + 1))
+  else
+    echo -e "  ${RED}[X] FAILED: Could not copy runtime scripts${NC}"
+  fi
+elif [ "$IS_LOCAL" -eq 0 ]; then
+  mkdir -p "$SCRIPTS_DIR"
+  if curl -fsSL "$REPO_BASE/scripts/abw_pack.py" -o "$SCRIPTS_DIR/abw_pack.py" && \
+     curl -fsSL "$REPO_BASE/scripts/abw_sync.py" -o "$SCRIPTS_DIR/abw_sync.py"; then
+    echo -e "  ${GREEN}[OK]${NC} Downloaded runtime scripts"
+    success=$((success + 1))
+  else
+    echo -e "  ${RED}[X] FAILED: Could not download runtime scripts${NC}"
+  fi
+fi
+
 echo "$CURRENT_VERSION" > "$ABW_VERSION_FILE"
 
 ABW_INSTRUCTIONS='''# Hybrid ABW - Antigravity IDE Command Surface
@@ -232,6 +261,8 @@ Do not route users to the legacy AWF flow by default.
 | `/abw-setup` | abw-setup.md | Authenticate NotebookLM MCP and verify bridge status |
 | `/abw-status` | abw-status.md | Check MCP health and grounding queue state |
 | `/abw-ingest` | abw-ingest.md | Process raw sources into manifest and wiki artifacts |
+| `/abw-pack` | abw-pack.md | Package wiki into compressed files for NotebookLM limits |
+| `/abw-sync` | abw-sync.md | Dry-run or execute NotebookLM sync for an approved package |
 | `/abw-ask` | abw-ask.md | Smart default router: auto-selects fast, deep, or bootstrap path |
 
 | `/abw-query` | abw-query.md | Fast wiki-first query path |
@@ -267,7 +298,7 @@ Do not route users to the legacy AWF flow by default.
 
 ## Command Model (5 Lanes)
 - Ask & Think: `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
-- Build Knowledge: `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-lint`
+- Build Knowledge: `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-pack`, `/abw-sync`, `/abw-lint`
 - Build Product: `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
 - Session & Memory: `/abw-start`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
 - Evaluation & Acceptance: `/abw-audit`, `/abw-meta-audit`, `/abw-accept`, `/abw-eval`, `/abw-review`, `/abw-rollback`
@@ -302,7 +333,7 @@ fi
 echo -e "\n${CYAN}Verifying installation...${NC}"
 MISSING_FILES=0
 REQUIRED_WFS=(
-  "abw-init.md" "abw-setup.md" "abw-status.md" "abw-ingest.md" 
+  "abw-init.md" "abw-setup.md" "abw-status.md" "abw-ingest.md" "abw-pack.md" "abw-sync.md"
   "abw-ask.md" "abw-query.md" "abw-query-deep.md" "abw-bootstrap.md" "abw-lint.md"
   "abw-audit.md" "abw-meta-audit.md" "abw-accept.md" "abw-eval.md"
   "abw-start.md" "abw-wrap.md" "abw-review.md" "abw-rollback.md"

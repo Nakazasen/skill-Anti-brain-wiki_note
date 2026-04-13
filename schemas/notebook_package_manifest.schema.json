@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Notebook Package Manifest Schema",
+  "type": "object",
+  "required": [
+    "package_id",
+    "generated_at",
+    "total_sources_count",
+    "qa_status",
+    "policy_snapshot",
+    "retained_originals",
+    "compressed_wikis",
+    "excluded_sources",
+    "qa_checks",
+    "traceability_coverage_summary",
+    "manifest_mapping"
+  ],
+  "properties": {
+    "package_id": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "total_sources_count": { "type": "integer", "minimum": 0 },
+    "qa_status": { "type": "string", "enum": ["pass", "needs_review", "fail"] },
+    
+    "policy_snapshot": {
+      "type": "object",
+      "required": ["soft_warning_limit", "hard_source_limit"],
+      "properties": {
+        "soft_warning_limit": { "type": "integer" },
+        "hard_source_limit": { "type": "integer" }
+      }
+    },
+    
+    "retained_originals": {
+      "type": "integer",
+      "minimum": 0
+    },
+    
+    "compressed_wikis": {
+      "type": "integer",
+      "minimum": 0
+    },
+    
+    "excluded_sources": {
+      "type": "integer",
+      "minimum": 0
+    },
+
+    "grounding_warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "qa_checks": {
+      "type": "object",
+      "required": [
+        "source_limit_check",
+        "draft_grounding_check",
+        "technical_facts_coverage",
+        "contradiction_check",
+        "traceability_check",
+        "manifest_match_check"
+      ],
+      "properties": {
+        "source_limit_check": { "type": "string", "enum": ["pass", "needs_review", "fail"] },
+        "draft_grounding_check": { "type": "string", "enum": ["pass", "needs_review", "fail"] },
+        "technical_facts_coverage": { "type": "string", "enum": ["pass", "needs_review", "fail"] },
+        "contradiction_check": { "type": "string", "enum": ["pass", "needs_review", "fail"] },
+        "traceability_check": { "type": "string", "enum": ["pass", "needs_review", "fail"] },
+        "manifest_match_check": { "type": "string", "enum": ["pass", "needs_review", "fail"] }
+      }
+    },
+
+    "traceability_coverage_summary": {
+      "type": "object",
+      "properties": {
+        "endpoints_covered": { "type": "boolean" },
+        "fields_covered": { "type": "boolean" },
+        "error_codes_covered": { "type": "boolean" },
+        "versions_covered": { "type": "boolean" },
+        "config_keys_covered": { "type": "boolean" },
+        "db_tables_columns_covered": { "type": "boolean" }
+      }
+    },
+
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    
+    "manifest_mapping": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["output_file", "sources"],
+        "properties": {
+          "output_file": { "type": "string" },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["manifest_line", "raw_path"],
+              "properties": {
+                "manifest_line": { "type": "integer" },
+                "raw_path": { "type": "string" },
+                "wiki_source_ref": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

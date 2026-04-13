@@ -103,6 +103,8 @@ uv tool install notebooklm-mcp-cli
    -> /abw-setup
    -> /abw-status
    -> /abw-ingest
+   -> /abw-pack
+   -> /abw-sync
    -> /abw-ask 
         |-> (Tier 1) /abw-query
         |-> (Tier 2) /abw-query-deep
@@ -114,8 +116,10 @@ uv tool install notebooklm-mcp-cli
 
 1. Copy raw documents into `raw/`.
 2. Run `/abw-ingest`.
-3. Instead of trying to "diagnose" manually, use `/abw-ask` for any question. The Smart Router will automatically classify and route the request to a Fast path, Deep path, or Bootstrap path for new ideas.
-4. Maintain the project regularly with `/abw-lint`.
+3. If the workspace is approaching NotebookLM source limits, run `/abw-pack` to produce a safe local package under `notebooks/packages/<package_id>`.
+4. Run `/abw-sync` in dry-run mode first, then execute sync only after an operator explicitly approves the package and NotebookLM target.
+5. Instead of trying to "diagnose" manually, use `/abw-ask` for any question. The Smart Router will automatically classify and route the request to a Fast path, Deep path, or Bootstrap path for new ideas.
+6. Maintain the project regularly with `/abw-lint`.
 
 ---
 
@@ -127,6 +131,8 @@ uv tool install notebooklm-mcp-cli
 | `/abw-setup` | Log in, verify the explicit Google account, and verify the NotebookLM MCP connection. |
 | `/abw-status` | Check the health of the MCP bridge and grounding queue. |
 | `/abw-ingest` | Process raw documents to create manifests and wiki artifacts. |
+| `/abw-pack` | Package wiki knowledge into compressed, traceable NotebookLM source bundles. |
+| `/abw-sync` | Dry-run or explicitly sync an approved package to NotebookLM via `nlm`. |
 | `/abw-ask` | **Smart Router: Automatically routes to fast query, deep deliberation, or idea bootstrapping!** |
 
 **Internal/Extended Paths behind the Router:**

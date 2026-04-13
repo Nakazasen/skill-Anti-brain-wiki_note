@@ -63,6 +63,8 @@ Repository này tồn tại để giúp các mô hình nhỏ hơn, rẻ hơn, nh
 | work on a greenfield idea with no usable knowledge yet | `/abw-bootstrap` |
 | define product scope or MVP | `/brainstorm` |
 | ingest source material into project knowledge | `/abw-ingest` |
+| package wiki into compressed files for NotebookLM limits | `/abw-pack` |
+| dry-run or sync an approved package to NotebookLM | `/abw-sync` |
 | plan implementation | `/plan` |
 | design system / DB / structure | `/design` |
 | build UI/UX mockups or screen specs | `/visualize` |
@@ -102,6 +104,8 @@ Repository này tồn tại để giúp các mô hình nhỏ hơn, rẻ hơn, nh
 - `/abw-setup`
 - `/abw-status`
 - `/abw-ingest`
+- `/abw-pack`
+- `/abw-sync`
 - `/abw-lint`
 
 ### 3. Triển khai sản phẩm

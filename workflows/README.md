@@ -29,6 +29,8 @@ Tập trung vào việc duy trì nền dữ liệu đáng tin của dự án.
 - `/abw-setup` : Cấu hình MCP.
 - `/abw-status` : Kiểm tra kết nối và trạng thái hệ thống.
 - `/abw-ingest` : Nạp tri thức vào wiki.
+- `/abw-pack` : Đóng gói tri thức thành các tệp tin nén theo miền nhằm tuân thủ giới hạn NotebookLM.
+- `/abw-sync` : Dry-run hoặc đồng bộ package đã duyệt lên NotebookLM.
 - `/abw-lint` : Audit chất lượng nền tri thức.
 
 ### 3. Triển khai sản phẩm

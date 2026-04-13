@@ -1,0 +1,29 @@
+{
+  "limits": {
+    "soft_warning_limit": 45,
+    "hard_source_limit": 50
+  },
+  "critical_keep_rules": [
+    "AMS_Flow_Text\\.txt",
+    "ERD_Kho_Van\\.html"
+  ],
+  "force_keep": [],
+  "force_compress": [],
+  "exclude": [
+    "ARCHIVE",
+    "DEPRECATED"
+  ],
+  "domain_grouping_rules": {
+    "System_Architecture": [
+      "ams-system",
+      "mom-system"
+    ],
+    "Business_Concepts": [
+      "st-co-registration",
+      "allocation"
+    ],
+    "Database_Schemas": [
+      "database-schema"
+    ]
+  }
+}

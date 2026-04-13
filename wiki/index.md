@@ -91,6 +91,8 @@ _Empty -- will be populated as notes with `related` fields are added._
 | **Khám phá và tư duy** | `/abw-ask` | **Entry mặc định (Smart Router)** |
 | **Khám phá và tư duy** | `/brainstorm` | Chốt brief sản phẩm, phạm vi MVP, và discovery |
 | **Dựng nền tri thức** | `/abw-ingest` | Xử lý nguồn raw thành tri thức trong wiki |
+| **Dựng nền tri thức** | `/abw-pack` | Nén tri thức thành các tệp tin lưu lượng thấp phục vụ NotebookLM |
+| **Dựng nền tri thức** | `/abw-sync` | Dry-run hoặc đồng bộ package đã duyệt lên NotebookLM |
 | **Dựng nền tri thức** | `/abw-query` | Tra cứu nhanh và truy hồi theo wiki-first |
 | **Triển khai sản phẩm** | `/plan` | Lập kế hoạch thực thi và chia task |
 | **Triển khai sản phẩm** | `/code` | Cài đặt tính năng và phát triển |
