@@ -1,0 +1,40 @@
+name: installer-smoke-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  smoke-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run installer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\install.ps1
+          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-ask.md"
+          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-eval.md"
+          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-pack.md"
+          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-sync.md"
+          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-update.md"
+          Select-String -Path "$env:USERPROFILE\.gemini\GEMINI.md" -Pattern "Hybrid ABW - Antigravity IDE Command Surface"
+
+      - name: Run installer (Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          bash ./install.sh
+          test -f "$HOME/.gemini/antigravity/global_workflows/abw-ask.md"
+          test -f "$HOME/.gemini/antigravity/global_workflows/abw-eval.md"
+          test -f "$HOME/.gemini/antigravity/global_workflows/abw-pack.md"
+          test -f "$HOME/.gemini/antigravity/global_workflows/abw-sync.md"
+          test -f "$HOME/.gemini/antigravity/global_workflows/abw-update.md"
+          grep -q "Hybrid ABW - Antigravity IDE Command Surface" "$HOME/.gemini/GEMINI.md"
