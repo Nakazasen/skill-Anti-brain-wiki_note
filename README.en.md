@@ -81,13 +81,13 @@ If the NotebookLM MCP is not ready or encounters an error:
 On Windows:
 
 ```powershell
-irm https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/heads/main/install.ps1 | iex
+irm https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.0/install.ps1 | iex
 ```
 
 On macOS / Linux:
 
 ```bash
-curl -fsSL https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/heads/main/install.sh | sh
+curl -fsSL https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.0/install.sh | sh
 ```
 
 ### 2. Install NotebookLM CLI Bridge

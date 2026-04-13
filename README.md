@@ -174,13 +174,13 @@ Nếu grounding chưa sẵn sàng, hệ thống phải hạ cấp trung thực v
 Windows:
 
 ```powershell
-irm https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/heads/main/install.ps1 | iex
+irm https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.0/install.ps1 | iex
 ```
 
 macOS / Linux:
 
 ```bash
-curl -fsSL https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/heads/main/install.sh | sh
+curl -fsSL https://github.com/Nakazasen/skill-Anti-brain-wiki_note/raw/refs/tags/v1.3.0/install.sh | sh
 ```
 
 Install NotebookLM MCP CLI:
