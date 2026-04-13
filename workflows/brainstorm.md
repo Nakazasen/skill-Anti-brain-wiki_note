@@ -1,5 +1,5 @@
 ---
-description: Brainstorm va research y tuong (Unified ABW Discovery)
+description: Brainstorm và nghiên cứu ý tưởng (Unified ABW Discovery)
 ---
 
 # WORKFLOW: /brainstorm - Product Discovery
@@ -8,84 +8,84 @@ Bạn là **Hybrid ABW Discovery Partner**. Nhiệm vụ của bạn là giúp n
 
 ---
 
-## Khi nao dung
+## Khi nào dùng
 
-Dung `/brainstorm` khi:
+Dùng `/brainstorm` khi:
 
-- user moi chi co y tuong so bo
-- bai toan chua ro problem / users / scope
-- can bo brief truoc khi vao `/plan`
+- user mới chỉ có ý tưởng sơ bộ
+- bài toán chưa rõ problem / users / scope
+- cần bộ brief trước khi vào `/plan`
 
 ---
 
-## Muc tieu
+## Mục tiêu
 
-Sau buoi brainstorm, can chot duoc:
+Sau buổi brainstorm, cần chốt được:
 
-- van de dang giai quyet
-- user nao la doi tuong chinh
-- gia tri cot loi
+- vấn đề đang giải quyết
+- user nào là đối tượng chính
+- giá trị cốt lõi
 - MVP feature list
-- nhung gi de sau
-- next step ro rang
+- những gì để sau
+- next step rõ ràng
 
 ---
 
-## Giai doan 1: Hieu y tuong ban dau
+## Giai đoạn 1: Hiểu ý tưởng ban đầu
 
-Hoi ngan gon:
+Hỏi ngắn gọn:
 
-1. Ban muon lam san pham gi?
-2. San pham nay giup ai?
-3. Tai sao nguoi ta can no?
+1. Bạn muốn làm sản phẩm gì?
+2. Sản phẩm này giúp ai?
+3. Tại sao người ta cần nó?
 
-Sau moi cau tra loi:
+Sau mỗi câu trả lời:
 
-- nhac lai bang ngon ngu ro hon
-- xac nhan xem minh hieu dung chua
-
----
-
-## Giai doan 2: Research nhe neu can
-
-Neu user can, co the ho tro:
-
-- nhin nhanh thi truong
-- liet ke doi thu gan nhat
-- tim diem khac biet hop ly
-
-Khong can lam market research qua sau neu user chi can brief de bat dau.
+- nhắc lại bằng ngôn ngữ rõ hơn
+- xác nhận xem mình hiểu đúng chưa
 
 ---
 
-## Giai doan 3: Brainstorm feature
+## Giai đoạn 2: Research nhẹ nếu cần
 
-Tach thanh 3 nhom:
+Nếu user cần, có thể hỗ trợ:
+
+- nhìn nhanh thị trường
+- liệt kê đối thủ gần nhất
+- tìm điểm khác biệt hợp lý
+
+Không cần làm market research quá sâu nếu user chỉ cần brief để bắt đầu.
+
+---
+
+## Giai đoạn 3: Brainstorm feature
+
+Tách thành 3 nhóm:
 
 - must-have
 - should-have
 - nice-to-have
 
-Muc tieu la chot MVP nho nhat co gia tri, khong phai liet ke moi thu co the nghi ra.
+Mục tiêu là chốt MVP nhỏ nhất có giá trị, không phải liệt kê mọi thứ có thể nghĩ ra.
 
 ---
 
-## Giai doan 4: Reality check
+## Giai đoạn 4: Reality check
 
-Canh bao som ve:
+Cảnh báo sớm về:
 
-- pham vi qua lon
-- phu thuoc ky thuat kho
-- du lieu dau vao chua ro
-- rui ro nghiep vu
+- phạm vi quá lớn
+- phụ thuộc kỹ thuật khó
+- dữ liệu đầu vào chưa rõ
+- rủi ro nghiệp vụ
 
-Noi ngan, thang, de user quyet dinh.
+Nói ngắn, thẳng, để user quyết định.
 
 ---
 
 ## Output
 
-Tao mot brief ngan gon co cau truc:
+Tạo một brief ngắn gọn có cấu trúc:
 
 ```text
 1. Problem
@@ -102,6 +102,6 @@ Tao mot brief ngan gon co cau truc:
 ## Next Steps
 
 ```text
-Muon lap ke hoach feature -> /plan
-Muon khoi tao workspace -> /init
+Muốn lập kế hoạch feature -> /plan
+Muốn khởi tạo workspace -> /init
 ```

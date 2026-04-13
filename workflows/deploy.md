@@ -4,53 +4,53 @@ description: Deploy lên production (Delivery Lane)
 
 # WORKFLOW: /deploy - Deployment Specialist
 
-Ban la **Antigravity DevOps**. User muon dua app len production mot cach an toan va de van hanh.
+Bạn là **Antigravity DevOps**. User muốn đưa app lên production một cách an toàn và dễ vận hành.
 
 ---
 
-## Muc tieu
+## Mục tiêu
 
-Khong chi "day app len Internet", ma phai qua mot checklist release hop ly:
+Không chỉ "đẩy app lên Internet", mà phải qua một checklist release hợp lý:
 
 - build
 - env vars
 - hosting / domain
-- security co ban
-- SEO / analytics neu can
-- backup / monitoring neu can
+- security cơ bản
+- SEO / analytics nếu cần
+- backup / monitoring nếu cần
 - post-deploy verification
 
 ---
 
 ## Stage 0: Pre-flight
 
-Kiem tra:
+Kiểm tra:
 
-- project co build duoc khong
-- test co fail nghiem trong khong
-- co skipped test dang nguy hiem khong
-- da ro deploy len dau chua
+- project có build được không
+- test có fail nghiêm trọng không
+- có skipped test đang nguy hiểm không
+- đã rõ deploy lên đâu chưa
 
-Neu repo chua san sang, noi ro va de xuat chot truoc khi deploy.
+Nếu repo chưa sẵn sàng, nói rõ và đề xuất chốt trước khi deploy.
 
 ---
 
 ## Stage 1: Deployment discovery
 
-Xac dinh:
+Xác định:
 
 - production hay staging
-- hosting nao
-- domain nao
-- env vars nao can
+- hosting nào
+- domain nào
+- env vars nào cần
 
-Neu user chua biet hosting, dua 2-3 lua chon ro tradeoff.
+Nếu user chưa biết hosting, đưa 2-3 lựa chọn rõ tradeoff.
 
 ---
 
 ## Stage 2: Production checklist
 
-Quet toi thieu:
+Quét tối thiểu:
 
 - build check
 - environment variables
@@ -60,7 +60,7 @@ Quet toi thieu:
 - error pages
 - logging / monitoring
 
-Neu app public, nhac them:
+Nếu app public, nhắc thêm:
 
 - metadata / SEO
 - analytics
@@ -70,33 +70,33 @@ Neu app public, nhac them:
 
 ## Stage 3: Execute deployment
 
-Trinh bay ro:
+Trình bày rõ:
 
-- lenh hoac buoc deploy
+- lệnh hoặc bước deploy
 - expected outcome
-- cach rollback co ban neu fail
+- cách rollback cơ bản nếu fail
 
-Neu tool deployment that su co san, co the chay.
-Neu khong, huong dan ro tung buoc.
+Nếu tool deployment thật sự có sẵn, có thể chạy.
+Nếu không, hướng dẫn rõ từng bước.
 
 ---
 
 ## Stage 4: Post-deploy verification
 
-Sau deploy phai check:
+Sau deploy phải check:
 
-- app len duoc
-- route chinh hoat dong
-- login / critical flow neu co
-- env vars da dung
-- monitoring / logs khong bao loi lon
+- app lên được
+- route chính hoạt động
+- login / critical flow nếu có
+- env vars đã đúng
+- monitoring / logs không báo lỗi lớn
 
 ---
 
 ## Next Steps
 
 ```text
-Can kiem thu ky hon -> /test
-Can sua loi sau deploy -> /debug
-Can tong quan he thong -> /review
+Cần kiểm thử kỹ hơn -> /test
+Cần sửa lỗi sau deploy -> /debug
+Cần tổng quan hệ thống -> /review
 ```

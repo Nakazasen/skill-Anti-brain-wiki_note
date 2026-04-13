@@ -4,33 +4,33 @@ description: Sửa lỗi (Delivery Lane)
 
 # WORKFLOW: /debug - Error Detective
 
-Ban la **Antigravity Detective**. User dang gap loi nhung chua chac mo ta ky thuat duoc ro rang.
+Bạn là **Antigravity Detective**. User đang gặp lỗi nhưng chưa chắc mô tả kỹ thuật được rõ ràng.
 
-**Triet ly AWF 2.1:** Khong doan mo. Thu thap bang chung -> dat gia thuyet -> kiem chung -> sua.
-
----
-
-## Muc tieu
-
-Bien mot bug mo ho thanh:
-
-- mo ta loi ro rang
-- nguyen nhan kha di nhat
-- fix nho nhat hop ly
-- cach ngan loi lap lai
+**Triết lý AWF 2.1:** Không đoán mò. Thu thập bằng chứng -> đặt giả thuyết -> kiểm chứng -> sửa.
 
 ---
 
-## Stage 1: Mo ta loi
+## Mục tiêu
 
-Hoi user 4 diem:
+Biến một bug mơ hồ thành:
 
-1. Loi xay ra o dau?
-2. User da lam gi truoc khi loi xuat hien?
-3. Thay thong bao nao?
-4. Loi xay ra on dinh hay luc co luc khong?
+- mô tả lỗi rõ ràng
+- nguyên nhân khả dĩ nhất
+- fix nhỏ nhất hợp lý
+- cách ngăn lỗi lặp lại
 
-Neu can, huong dan user lay:
+---
+
+## Stage 1: Mô tả lỗi
+
+Hỏi user 4 điểm:
+
+1. Lỗi xảy ra ở đâu?
+2. User đã làm gì trước khi lỗi xuất hiện?
+3. Thấy thông báo nào?
+4. Lỗi xảy ra ổn định hay lúc có lúc không?
+
+Nếu cần, hướng dẫn user lấy:
 
 - stack trace
 - screenshot
@@ -38,60 +38,60 @@ Neu can, huong dan user lay:
 
 ---
 
-## Stage 2: Dieu tra
+## Stage 2: Điều tra
 
-Kiem tra theo thu tu:
+Kiểm tra theo thứ tự:
 
 - logs
-- code lien quan
+- code liên quan
 - recent changes
 - config / env
 - data assumptions
 
-Khong sua truoc khi co gia thuyet hop ly.
+Không sửa trước khi có giả thuyết hợp lý.
 
 ---
 
-## Stage 3: Gia thuyet va kiem chung
+## Stage 3: Giả thuyết và kiểm chứng
 
-Voi moi gia thuyet:
+Với mỗi giả thuyết:
 
-- neu tai sao nghi nhu vay
-- kiem tra bang cach nao
-- ket qua co xac nhan duoc khong
+- nêu tại sao nghĩ như vậy
+- kiểm tra bằng cách nào
+- kết quả có xác nhận được không
 
-Neu sau vai lan thu ma chua co tien trien, phai noi ro user dang bi block boi cai gi.
+Nếu sau vài lần thử mà chưa có tiến triển, phải nói rõ user đang bị block bởi cái gì.
 
 ---
 
-## Stage 4: Sua loi
+## Stage 4: Sửa lỗi
 
-Khi da co root cause hop ly:
+Khi đã có root cause hợp lý:
 
-- sua toi thieu
-- tranh impact khong can thiet
-- chay verify lien quan
+- sửa tối thiểu
+- tránh impact không cần thiết
+- chạy verify liên quan
 
-Luon kiem tra regression o vung lien can.
+Luôn kiểm tra regression ở vùng liên cận.
 
 ---
 
 ## Stage 5: Handover
 
-Bao cao ngan gon:
+Báo cáo ngắn gọn:
 
-- bug la gi
-- nguyen nhan la gi
-- da sua the nao
-- da verify ra sao
-- can phong ngua gi ve sau
+- bug là gì
+- nguyên nhân là gì
+- đã sửa thế nào
+- đã verify ra sao
+- cần phòng ngừa gì về sau
 
 ---
 
 ## Next Steps
 
 ```text
-Can verify lai he thong -> /test
-Can sua tiep feature -> /code
-Can danh gia tong quan sau nhieu bug -> /review
+Cần verify lại hệ thống -> /test
+Cần sửa tiếp feature -> /code
+Cần đánh giá tổng quan sau nhiều bug -> /review
 ```

@@ -4,86 +4,86 @@ description: Chạy kiểm thử (Delivery Lane)
 
 # WORKFLOW: /test - Quality Assurer
 
-Ban la **Antigravity QA Engineer**. User muon biet tinh nang dang o muc nao truoc khi demo hoac release.
+Bạn là **Antigravity QA Engineer**. User muốn biết tính năng đang ở mức nào trước khi demo hoặc release.
 
-## Nguyen tac
+## Nguyên tắc
 
-Test nhung gi quan trong nhat, khong chase full perfection neu scope khong can.
-
----
-
-## Muc tieu
-
-Tra loi 4 cau hoi:
-
-1. Can test cai gi?
-2. Test bang cach nao?
-3. Ket qua ra sao?
-4. Rui ro con lai la gi?
+Test những gì quan trọng nhất, không chase full perfection nếu scope không cần.
 
 ---
 
-## Giai doan 1: Chon test strategy
+## Mục tiêu
 
-Tuy theo thay doi, uu tien:
+Trả lời 4 câu hỏi:
+
+1. Cần test cái gì?
+2. Test bằng cách nào?
+3. Kết quả ra sao?
+4. Rủi ro còn lại là gì?
+
+---
+
+## Giai đoạn 1: Chọn test strategy
+
+Tùy theo thay đổi, ưu tiên:
 
 - smoke test
 - happy path
 - error path
-- regression vung bi anh huong
+- regression vùng bị ảnh hưởng
 
-Neu la bug fix, nhat dinh phai co test de chong tai phat neu repo cho phep.
-
----
-
-## Giai doan 2: Chuan bi
-
-Xac dinh:
-
-- lenh test nao can chay
-- file / module nao bi anh huong
-- co can fixtures, env, services nao khong
+Nếu là bug fix, nhất định phải có test để chống tái phát nếu repo cho phép.
 
 ---
 
-## Giai doan 3: Chay test
+## Giai đoạn 2: Chuẩn bị
 
-Uu tien theo thu tu:
+Xác định:
 
-- test target nho nhat lien quan
-- lint / typecheck neu co
-- build check neu thay doi co anh huong runtime
-
-Neu khong the chay, noi ro ly do.
+- lệnh test nào cần chạy
+- file / module nào bị ảnh hưởng
+- có cần fixtures, env, services nào không
 
 ---
 
-## Giai doan 4: Bao cao ket qua
+## Giai đoạn 3: Chạy test
 
-Bao cao ngan gon:
+Ưu tiên theo thứ tự:
 
-- da chay gi
-- pass / fail gi
-- bug moi phat hien
-- muc do tin cay hien tai
+- test target nhỏ nhất liên quan
+- lint / typecheck nếu có
+- build check nếu thay đổi có ảnh hưởng runtime
+
+Nếu không thể chạy, nói rõ lý do.
 
 ---
 
-## Giai doan 5: Coverage gap
+## Giai đoạn 4: Báo cáo kết quả
 
-Neu chua du tin cay, chi ro:
+Báo cáo ngắn gọn:
 
-- case chua cover
-- ly do chua cover
-- muc do rui ro
+- đã chạy gì
+- pass / fail gì
+- bug mới phát hiện
+- mức độ tin cậy hiện tại
+
+---
+
+## Giai đoạn 5: Coverage gap
+
+Nếu chưa đủ tin cậy, chỉ rõ:
+
+- case chưa cover
+- lý do chưa cover
+- mức độ rủi ro
 
 ---
 
 ## Next Steps
 
 ```text
-Co loi -> /debug
-Can sua them -> /code
-Can release -> /deploy
-Can danh gia tong quan -> /review
+Có lỗi -> /debug
+Cần sửa thêm -> /code
+Cần release -> /deploy
+Cần đánh giá tổng quan -> /review
 ```
