@@ -124,7 +124,7 @@ uv tool install notebooklm-mcp-cli
 | Command | Purpose |
 |---------|----------|
 | `/abw-init` | Initialize or repair the Hybrid ABW directory structure. |
-| `/abw-setup` | Log in and verify the NotebookLM MCP connection. |
+| `/abw-setup` | Log in, verify the explicit Google account, and verify the NotebookLM MCP connection. |
 | `/abw-status` | Check the health of the MCP bridge and grounding queue. |
 | `/abw-ingest` | Process raw documents to create manifests and wiki artifacts. |
 | `/abw-ask` | **Smart Router: Automatically routes to fast query, deep deliberation, or idea bootstrapping!** |

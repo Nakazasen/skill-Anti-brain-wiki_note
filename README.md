@@ -185,6 +185,12 @@ Install NotebookLM MCP CLI:
 uv tool install notebooklm-mcp-cli
 ```
 
+Account safety for `/abw-setup`:
+
+- `/abw-setup` must ask for the exact Google email you want to use with NotebookLM.
+- ABW must not infer the account from your Windows username, IDE profile, browser profile, notebook list, git config, or workspace files.
+- If `nlm` opens the browser with a different account, switch to the exact Google account you provided before marking setup as authenticated.
+
 ### Recommended Path
 
 ```text

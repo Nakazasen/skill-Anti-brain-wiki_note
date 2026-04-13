@@ -52,7 +52,7 @@ TODO: Check if notebooklm MCP server is configured in your IDE
 ### Step 2: Authenticate
 ```bash
 # Run in terminal:
-nlm login
+nlm login <your-google-email>
 
 # If nlm command not found, install first:
 pip install notebooklm-mcp
@@ -60,8 +60,12 @@ pip install notebooklm-mcp
 pipx install notebooklm-mcp
 
 # Then authenticate:
-nlm login
+nlm login <your-google-email>
 ```
+
+If your installed `nlm` version does not accept an email argument, run `nlm login` and choose the exact Google account in the browser.
+
+Do not infer the account from the Windows username, IDE profile, browser profile, git config, notebook titles, or workspace files. ABW should only set authenticated status after the user explicitly confirms the expected Google email and the observed login account matches it.
 
 ### Step 3: Verify Authentication
 ```
@@ -72,6 +76,8 @@ TODO: After nlm login, test connection by running one of:
       If authentication fails:
       1. Run: nlm login switch <profile>
       2. Or use save_auth_tokens as manual fallback
+      3. If the wrong Google account is selected, log out/switch profile,
+         then repeat login with the explicit Google email.
 ```
 
 ### Step 4: Create ABW Notebook
@@ -111,7 +117,7 @@ primary_notebook:
 # Authentication
 auth:
   method: "nlm_login"                  # nlm login (preferred) | manual cookies
-  profile: "default"
+  profile: null                         # Set to confirmed Google email after setup
   last_auth: null                      # TODO: Set after nlm login
   auth_status: "not_authenticated"     # TODO: Change to "authenticated"
 ```
@@ -233,7 +239,7 @@ FOR EACH item in .brain/grounding_queue.json WHERE status == "pending":
 | Auth token expired | Run `nlm login` again |
 | Notebook query timeout | Increase timeout, try smaller queries |
 | Rate limit hit | Wait 60s, reduce query frequency |
-| Wrong Google account | `nlm login switch <profile>` |
+| Wrong Google account | Do not infer from Windows/IDE username. Run `nlm login <expected-google-email>` if supported, or `nlm login` and select the exact Google account in the browser. Verify the email before setting `auth_status: "authenticated"`. |
 | `pip install` fails | Try `pipx install notebooklm-mcp` |
 
 ---
