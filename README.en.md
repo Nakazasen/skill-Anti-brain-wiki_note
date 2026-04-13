@@ -1,6 +1,6 @@
 # Hybrid Anti-Brain-Wiki (Hybrid ABW)
 
-> Version: 1.2.0
+> Version: 1.3.0
 > Tagline: Transforming AI from a fast-response state into a grounded knowledge system with memory and bounded deliberation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

@@ -1,6 +1,6 @@
 # Hybrid Anti-Brain-Wiki (Hybrid ABW)
 
-> Version: 1.2.0  
+> Version: 1.3.0  
 > EN: Turn a fast-answering LLM into a grounded, stateful, evaluation-aware working system.  
 > VI: Biến một LLM trả lời nhanh thành một hệ thống làm việc có grounding, có bộ nhớ, và có lớp nghiệm thu rõ ràng.
 
