@@ -9,6 +9,8 @@ description: Dong goi tri thuc cho NotebookLM (Orchestrator Mode)
 **Huong dan danh cho AI (Orchestrator):**
 Tu phase nay tro di, khong tu tay parse wiki va tao package bang LLM. Nhiem vu cua ban la chay script Python va trinh bay Approval Menu cho nguoi dung.
 
+> Luu y: Tren clone sach, muon `/abw-pack` dat `pass` thi can chay `/abw-ingest` truoc hoac phai co `processed/manifest.jsonl` hop le.
+
 ---
 
 ## Cac buoc thuc hien
