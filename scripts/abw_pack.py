@@ -35,7 +35,9 @@ def load_manifest(workspace_dir):
         logger.warning(f"Manifest not found at {manifest_path}")
         return manifest_data
         
-    with open(manifest_path, "r", encoding="utf-8") as f:
+    # Accept UTF-8 files with or without BOM. Some Windows-edited manifest files
+    # start with BOM and should still parse deterministically.
+    with open(manifest_path, "r", encoding="utf-8-sig") as f:
         for idx, line in enumerate(f):
             line = line.strip()
             if not line:
@@ -62,13 +64,34 @@ def parse_markdown_frontmatter(file_path):
             meta[parts[0].strip()] = parts[1].strip().strip('"').strip("'")
     return meta, body
 
+def manifest_supports_grounded(manifest_entry):
+    if not manifest_entry:
+        return False
+    manifest_status = manifest_entry.get("status", "unknown")
+    if manifest_status == "grounded":
+        return True
+    if manifest_status == "compiled" and manifest_entry.get("grounding_result"):
+        return True
+    return False
+
+
 def check_mismatch(meta, manifest_entry, file_path):
     note_status = meta.get("status", "draft")
     manifest_status = manifest_entry.get("status", "unknown") if manifest_entry else "unknown"
+    manifest_origin = manifest_entry.get("origin_path", "") if manifest_entry else ""
+
     if note_status in ["draft", "pending_grounding"]:
         return "needs_review", f"Note {file_path} is in status '{note_status}'."
-    if note_status == "grounded" and manifest_status != "grounded":
-        return "fail", f"Mismatch: Note {file_path} claims 'grounded' but manifest '{manifest_entry.get('origin_path','')}' is '{manifest_status}'."
+
+    if note_status == "grounded":
+        if not manifest_entry:
+            return "needs_review", f"Note {file_path} claims 'grounded' but has no manifest entry."
+        if not manifest_supports_grounded(manifest_entry):
+            return "fail", (
+                f"Mismatch: Note {file_path} claims 'grounded' but manifest "
+                f"'{manifest_origin}' is '{manifest_status}'."
+            )
+
     return "pass", ""
 
 def get_manifest_entry_for_wiki(meta, manifest_data):
@@ -81,6 +104,20 @@ def get_manifest_entry_for_wiki(meta, manifest_data):
             line_no = int(ref_match.group(1))
             return line_no, manifest_data.get(line_no)
     return None, None
+
+
+def apply_manifest_traceability_checks(meta, line_no, manifest_entry, file_path, qa_checks, warnings):
+    if line_no is not None and manifest_entry is None:
+        if qa_checks["manifest_match_check"] != "fail":
+            qa_checks["manifest_match_check"] = "needs_review"
+        warnings.append(
+            f"Manifest reference missing for note {file_path}: processed/manifest.jsonl#line-{line_no}"
+        )
+
+    if meta.get("status") == "grounded" and line_no is None:
+        if qa_checks["traceability_check"] != "fail":
+            qa_checks["traceability_check"] = "needs_review"
+        warnings.append(f"Grounded note {file_path} is missing a manifest line reference.")
 
 def determine_domain(file_name, rules):
     for domain, patterns in rules.items():
@@ -165,6 +202,7 @@ def run_packager(workspace, policy_path, output_dir_base, package_id, dry_run):
         meta, body = parse_markdown_frontmatter(w_file)
         meta["_filepath"] = w_file
         line_no, m_entry = get_manifest_entry_for_wiki(meta, manifest_data)
+        apply_manifest_traceability_checks(meta, line_no, m_entry, w_file.name, qa_checks, warnings)
         
         # QA lifecycle mismatch
         stat, msg = check_mismatch(meta, m_entry, w_file.name)
