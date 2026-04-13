@@ -33,6 +33,23 @@ Instead of letting the AI respond in a "single-pass" manner (thinking once and s
 
 ---
 
+## Repo Boundary: Skill OS vs Project Workspace
+
+This repository is the **Hybrid ABW OS / skill distribution**. It contains commands, workflows, skills, schemas, templates, and runtime scripts that can be installed globally into Antigravity/Gemini.
+
+This repository is **not** a business project repository. A project such as `MES-MOM-AMS-VN-Integration` is a **workspace that uses ABW OS**. That workspace owns its own `raw/`, `processed/manifest.jsonl`, `wiki/`, `.brain/`, and `notebooks/packages/` runtime state.
+
+Do not mix the two layers:
+
+| Layer | Repository | Owns |
+|---|---|---|
+| OS / skill layer | `Nakazasen/skill-Anti-brain-wiki_note` | Commands, workflows, skills, installers, schemas, templates, scripts |
+| Project data layer | `Nakazasen/MES-MOM-AMS-VN-Integration` or any user workspace | Source documents, manifests, wiki notes, package outputs, project memory |
+
+Generated project data should stay in the project workspace. Improvements to ABW commands and skills should be made in this repo.
+
+---
+
 ## TTC (Test-Time Compute) Deliberation Engine
 
 Hybrid ABW provides the `/abw-query-deep` command path for extremely challenging questions such as:
@@ -71,6 +88,19 @@ If the NotebookLM MCP is not ready or encounters an error:
 - The `/abw-lint` command must clearly warn that the system is in fallback mode (lacking deep grounding capabilities).
 
 **Hybrid ABW always prioritizes honesty over "smart-sounding but hollow" answers.**
+
+---
+
+## ABW OS Philosophy
+
+ABW OS is not a prompt bundle. It is an operating discipline for agentic work:
+
+1. **Memory before response**: read `.brain/` and `wiki/` before answering.
+2. **Provenance before confidence**: every important fact should trace back to source material or a logged gap.
+3. **Grounding before import**: NotebookLM is a grounding engine, not a place to dump uncontrolled files.
+4. **Packaging before scale**: when NotebookLM source limits are near, use `/abw-pack` to produce traceable compressed packages.
+5. **Approval before sync**: `/abw-sync` defaults to dry-run and only uploads after explicit operator approval.
+6. **Evaluation before acceptance**: use `/abw-eval`, `/abw-audit`, and `/abw-lint` to prevent shallow acceptance.
 
 ---
 
@@ -120,6 +150,20 @@ uv tool install notebooklm-mcp-cli
 4. Run `/abw-sync` in dry-run mode first, then execute sync only after an operator explicitly approves the package and NotebookLM target.
 5. Instead of trying to "diagnose" manually, use `/abw-ask` for any question. The Smart Router will automatically classify and route the request to a Fast path, Deep path, or Bootstrap path for new ideas.
 6. Maintain the project regularly with `/abw-lint`.
+
+### 5. Using ABW OS inside a project workspace
+
+When using this skill inside a real project such as `MES-MOM-AMS-VN-Integration`, keep this lifecycle:
+
+```text
+ABW OS repo:
+  install/update commands and skills
+
+Project workspace:
+  raw/ -> processed/manifest.jsonl -> wiki/ -> /abw-pack -> notebooks/packages/ -> /abw-sync dry-run -> explicit sync
+```
+
+The packager and sync scripts are installed from this repo, but they operate on the active workspace you run them in. That is the intended separation.
 
 ---
 
