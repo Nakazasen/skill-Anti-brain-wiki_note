@@ -73,6 +73,12 @@ Workflow hỗ trợ:
 
 ## First Command Cheat Sheet
 
+### Continuation Kernel
+
+Use `/abw-resume` when the project is already in progress and the agent must continue safely after context loss, quota exhaustion, or handoff.
+
+`/abw-resume` is different from `/next`: it runs Continuation Kernel governance and should present one next safe step, not a broad suggestion list.
+
 | Muốn làm gì | Lệnh đầu tiên |
 |---|---|
 | Không biết nên bắt đầu từ đâu | `/abw-ask` |

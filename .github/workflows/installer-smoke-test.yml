@@ -15,6 +15,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Continuation gate unit tests
+        run: |
+          python -m unittest tests.test_continuation_gate
+
       - name: Run installer (Windows)
         if: runner.os == 'Windows'
         shell: pwsh

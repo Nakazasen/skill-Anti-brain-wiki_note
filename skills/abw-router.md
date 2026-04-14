@@ -42,6 +42,23 @@ Kiểm tra nhanh xem các thư mục raw/ và wiki/ có chứa dữ liệu dự 
 
 ## Routing Priority Ladder
 
+### Continuation Kernel Routing Addendum
+
+Route to `/abw-resume` instead of `/next` when the user is not merely asking for a suggestion, but is resuming an interrupted project with risk of state drift.
+
+Use `/abw-resume` for cues such as:
+
+- `resume this project`
+- `continue the interrupted project`
+- `project is in the middle`
+- `what can the small model safely do next?`
+- `strong model quota is gone; continue with a small model`
+
+Difference:
+
+- `/next` suggests a general next action from session memory.
+- `/abw-resume` reconstructs continuation state, runs the machine gate when available, checks unsafe zones, locked decisions, knowledge gaps, rollback risk, and presents one governed next safe step.
+
 Để đảm bảo AI đưa ra quyết định nhất quán khi có nhiều ý định chồng lấn:
 
 1. **Confusion/System Query** -> `/help` (Nếu user không biết cách dùng hệ thống).
