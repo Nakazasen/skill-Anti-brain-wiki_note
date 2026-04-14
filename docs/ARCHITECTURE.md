@@ -44,6 +44,7 @@ Public surface means the commands a normal user is expected to discover and run 
 - `deploy.md`
 - `refactor.md`
 - `audit.md`
+- `abw-learn.md`
 - `save_brain.md`
 - `recap.md`
 - `next.md`

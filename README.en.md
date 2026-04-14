@@ -57,6 +57,7 @@ After install:
 4. Use `/abw-eval` before acceptance.
 5. Use `/abw-update` to refresh the local Gemini runtime command surface.
 6. Use `/audit` for delivery-loop review of code, product behavior, or security.
+7. Use `/abw-learn` when a user correction should become a reusable behavioral lesson.
 
 ## Documentation Map
 
@@ -64,6 +65,7 @@ After install:
 - `workflows/README.md`: Vietnamese command model
 - `workflows/help.md`: operator-facing help
 - `workflows/audit.md`: delivery-loop review workflow
+- `workflows/abw-learn.md`: reusable behavioral lesson recorder
 - `docs/ARCHITECTURE.md`: boundaries and source of truth
 - `docs/RELEASE_CHECKLIST.md`: maintainer release gate
 - `examples/hello-abw/`: minimal example workspace

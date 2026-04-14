@@ -1,134 +1,142 @@
 ---
-description: Hﾆｰ盻嬾g d蘯ｫn l盻㌻h vﾃ sﾆ｡ ﾄ黛ｻ・h盻・th盻創g Hybrid ABW
+description: Hướng dẫn lệnh và sơ đồ hệ thống Hybrid ABW
 ---
 
 # WORKFLOW: /help
 
-B蘯｡n lﾃ ngﾆｰ盻拱 hﾆｰ盻嬾g d蘯ｫn c盻ｧa Hybrid ABW. Nhi盻㍊ v盻･ c盻ｧa b蘯｡n lﾃ giﾃｺp ngﾆｰ盻拱 dﾃｹng ch盻肱 ﾄ妥ｺng l盻㌻h nhanh nh蘯･t, v盻嬖 ﾆｰu tiﾃｪn rﾃｵ rﾃng cho kh盻殃 t蘯｡o workspace, routing, grounding, vﾃ nghi盻㍊ thu.
+Bạn là người hướng dẫn của Hybrid ABW. Nhiệm vụ của bạn là giúp người dùng chọn đúng lệnh nhanh nhất, với ưu tiên rõ ràng cho khởi tạo workspace, routing, grounding, ghi nhớ, và nghiệm thu.
 
 ---
 
-## B蘯ｯt ﾄ雪ｺｧu ﾄ静ｺng Ch盻・
-- **`/abw-init`**: dﾃｹng trﾆｰ盻嫩 tiﾃｪn khi v盻ｫa clone repo, ho蘯ｷc khi workspace chﾆｰa cﾃｳ c蘯･u trﾃｺc ABW ﾄ黛ｺｧy ﾄ黛ｻｧ. L盻㌻h nﾃy d盻ｱng ho蘯ｷc s盻ｭa n盻］ t蘯｣ng ABW trong workspace.
-- **`/abw-setup`**: dﾃｹng ngay sau `/abw-init` ﾄ黛ｻ・c蘯･u hﾃｬnh grounding vﾃ ki盻ノ tra ﾄ柁ｰ盻拵g k蘯ｿt n盻訴 tri th盻ｩc.
-- **`/abw-ask`**: dﾃｹng khi b蘯｡n cﾃｳ task, cﾃ｢u h盻淑, ho蘯ｷc yﾃｪu c蘯ｧu nhﾆｰng chﾆｰa bi蘯ｿt lane nﾃo.
-- **`/abw-eval`**: dﾃｹng khi ﾄ妥｣ cﾃｳ ﾄ黛ｺｧu ra vﾃ b蘯｡n mu盻創 audit, challenge, ho蘯ｷc ch蘯･p nh蘯ｭn trﾆｰ盻嫩 khi coi lﾃ xong.
+## Bắt Đầu Đúng Chỗ
+
+- **`/abw-init`**: dùng trước tiên khi vừa clone repo, hoặc khi workspace chưa có cấu trúc ABW đầy đủ. Lệnh này dựng hoặc sửa nền tảng ABW trong workspace.
+- **`/abw-setup`**: dùng ngay sau `/abw-init` để cấu hình grounding và kiểm tra đường kết nối tri thức.
+- **`/abw-ask`**: dùng khi bạn có task, câu hỏi, hoặc yêu cầu nhưng chưa biết lane nào.
+- **`/abw-eval`**: dùng khi đã có đầu ra và bạn muốn audit, challenge, hoặc chấp nhận trước khi coi là xong.
+- **`/abw-learn`**: dùng khi một correction của user cần trở thành bài học hành vi tái sử dụng.
 
 ---
 
-## Khi Nﾃo Dﾃｹng L盻㌻h Nﾃo?
+## Khi Nào Dùng Lệnh Nào?
 
-- **Dﾃｹng `/abw-init`** khi workspace chﾆｰa cﾃｳ c蘯･u trﾃｺc ABW, ho蘯ｷc b蘯｡n v盻ｫa clone repo xong.
-- **Dﾃｹng `/abw-setup`** khi c蘯ｧn c蘯･u hﾃｬnh grounding sau khi kh盻殃 t蘯｡o xong workspace.
-- **Dﾃｹng `/abw-ask`** khi cﾃｳ vi盻㌘ c蘯ｧn lﾃm ho蘯ｷc cﾃ｢u h盻淑 c蘯ｧn router ch盻肱 lane phﾃｹ h盻｣p.
-- **Dﾃｹng `/abw-eval`** khi mu盻創 ch蘯｡y vﾃｲng ﾄ妥｡nh giﾃ｡ cho thay ﾄ黛ｻ品, workflow, tﾃi li盻㎡, ho蘯ｷc ﾄ黛ｺｧu ra c盻ｧa mﾃｴ hﾃｬnh.
-- **Dﾃｹng `/abw-start`** khi mu盻創 m盻・phiﾃｪn lﾃm vi盻㌘ theo cﾃ｡ch cﾃｳ ki盻ノ tra tr蘯｡ng thﾃ｡i vﾃ grounding path.
-- **Dﾃｹng `/abw-wrap`** khi mu盻創 ch盻奏 phiﾃｪn, chu蘯ｩn b盻・handover, vﾃ nh蘯ｯc ph蘯ｧn c蘯ｧn ingest ho蘯ｷc nghi盻㍊ thu ti蘯ｿp.
-- **Dﾃｹng `/next`** khi ﾄ疎ng 盻・gi盻ｯa dﾃn ﾃｽ vﾃ c蘯ｧn g盻｣i ﾃｽ bﾆｰ盻嫩 ti蘯ｿp theo d盻ｱa trﾃｪn tr蘯｡ng thﾃ｡i hi盻㌻ t蘯｡i.
-- **Dﾃｹng `/help`** khi c蘯ｧn hi盻ブ toﾃn b盻・h盻・th盻創g l盻㌻h, lane, ho蘯ｷc cﾃ｡ch ch盻肱 command.
-- **Dﾃｹng `/abw-update`** khi mu盻創 kﾃｩo b蘯｣n command surface m盻嬖 nh蘯･t vﾃo Gemini runtime local.
-- **Dﾃｹng `/customize`** khi mu盻創 thay ﾄ黛ｻ品 phong cﾃ｡ch giao ti蘯ｿp, persona, ho蘯ｷc m盻ｩc t盻ｱ ch盻ｧ c盻ｧa AI.
+- **Dùng `/abw-init`** khi workspace chưa có cấu trúc ABW, hoặc bạn vừa clone repo xong.
+- **Dùng `/abw-setup`** khi cần cấu hình grounding sau khi khởi tạo xong workspace.
+- **Dùng `/abw-ask`** khi có việc cần làm hoặc câu hỏi cần router chọn lane phù hợp.
+- **Dùng `/abw-eval`** khi muốn chạy vòng đánh giá cho thay đổi, workflow, tài liệu, hoặc đầu ra của mô hình.
+- **Dùng `/abw-learn`** khi user correction cần ghi vào `.brain/lessons_learned.jsonl` để dùng lại.
+- **Dùng `/abw-start`** khi muốn mở phiên làm việc theo cách có kiểm tra trạng thái và grounding path.
+- **Dùng `/abw-wrap`** khi muốn chốt phiên, chuẩn bị handover, và nhắc phần cần ingest hoặc nghiệm thu tiếp.
+- **Dùng `/next`** khi đang ở giữa dàn ý và cần gợi ý bước tiếp theo dựa trên trạng thái hiện tại.
+- **Dùng `/help`** khi cần hiểu toàn bộ hệ thống lệnh, lane, hoặc cách chọn command.
+- **Dùng `/abw-update`** khi muốn kéo bản command surface mới nhất vào Gemini runtime local.
+- **Dùng `/customize`** khi muốn thay đổi phong cách giao tiếp, persona, hoặc mức tự chủ của AI.
 
 ---
 
-## Mu盻創 Lﾃm X Thﾃｬ Gﾃｵ Gﾃｬ Trﾆｰ盻嫩?
+## Muốn Làm X Thì Gõ Gì Trước?
 
-| Trﾆｰ盻拵g h盻｣p | L盻㌻h g盻｣i ﾃｽ ﾄ黛ｺｧu tiﾃｪn |
+| Trường hợp | Lệnh gợi ý đầu tiên |
 |---|---|
-| V盻ｫa clone repo, c蘯ｧn t蘯｡o c蘯･u trﾃｺc ABW | `/abw-init` |
-| Chﾆｰa bi蘯ｿt nﾃｪn b蘯ｯt ﾄ黛ｺｧu t盻ｫ ﾄ妥｢u | `/abw-ask` |
-| Cﾃｳ cﾃ｢u h盻淑 d盻ｱ ﾃ｡n nhﾆｰng chﾆｰa rﾃｵ nﾃｪn tra c盻ｩu hay brainstorm | `/abw-ask` |
-| C蘯ｧn tra c盻ｩu nhanh m盻冲 fact ﾄ妥｣ cﾃｳ trong wiki | `/abw-query` |
-| C蘯ｧn phﾃ｢n tﾃｭch sﾃ｢u, so sﾃ｡nh, RCA, tradeoff | `/abw-query-deep` |
-| D盻ｱ ﾃ｡n greenfield, chﾆｰa cﾃｳ raw/wiki | `/abw-bootstrap` |
-| Mu盻創 ch盻奏 brief s蘯｣n ph蘯ｩm ho蘯ｷc scope | `/brainstorm` |
-| Mu盻創 d盻ｱng n盻］ tri th盻ｩc t盻ｫ tﾃi li盻㎡ ngu盻渡 | `/abw-ingest` |
-| Mu盻創 ﾄ妥ｳng gﾃｳi tri th盻ｩc cho NotebookLM | `/abw-pack` |
-| Mu盻創 dry-run ho蘯ｷc sync package ﾄ妥｣ duy盻㏄ lﾃｪn NotebookLM | `/abw-sync` |
-| Mu盻創 ki盻ノ tra s盻ｩc kh盻銃 wiki, grounding, manifest | `/abw-lint` |
-| Mu盻創 ki盻ノ tra MCP ho蘯ｷc tr蘯｡ng thﾃ｡i hﾃng ﾄ黛ｻ｣i | `/abw-status` |
-| Mu盻創 l蘯ｭp k蘯ｿ ho蘯｡ch th盻ｱc thi ho蘯ｷc chia task | `/plan` |
-| Mu盻創 thi蘯ｿt k蘯ｿ k盻ｹ thu蘯ｭt ho蘯ｷc DB | `/design` |
-| Mu盻創 mockup UI/UX ho蘯ｷc screen spec | `/visualize` |
-| Mu盻創 b蘯ｯt tay vﾃo code | `/code` |
-| Mu盻創 ch蘯｡y app c盻･c b盻・| `/run` |
-| Mu盻創 s盻ｭa bug | `/debug` |
-| Mu盻創 ki盻ノ tra b蘯ｱng test | `/test` |
-| Mu盻創 tri盻ハ khai lﾃｪn mﾃｴi trﾆｰ盻拵g ﾄ妥ｭch | `/deploy` |
-| Mu盻創 refactor khi ﾄ妥｣ rﾃｵ ph蘯｡m vi | `/refactor` |
-| Mu盻創 review code ho蘯ｷc tr蘯｡ng thﾃ｡i d盻ｱ ﾃ｡n trﾆｰ盻嫩 audit sﾃ｢u hﾆ｡n | `/abw-review` |
-| Mu盻創 audit code, s蘯｣n ph蘯ｩm, ho蘯ｷc b蘯｣o m蘯ｭt trong vﾃｲng delivery | `/audit` |
-| Mu盻創 audit thay ﾄ黛ｻ品 ho蘯ｷc artifact theo ABW rubric | `/abw-audit` |
-| Mu盻創 quay v盻・tr蘯｡ng thﾃ｡i an toﾃn sau thay ﾄ黛ｻ品 l盻擁 | `/abw-rollback` |
-| Mu盻創 ch盻奏 pass/fail cu盻訴 cﾃｹng | `/abw-accept` |
-| Mu盻創 ch蘯｡y toﾃn b盻・chain evaluation | `/abw-eval` |
-| Mu盻創 lﾆｰu ti蘯ｿn ﾄ黛ｻ・vﾃ chu蘯ｩn b盻・handover | `/save-brain` |
-| Mu盻創 khﾃｴi ph盻･c b盻訴 c蘯｣nh phiﾃｪn trﾆｰ盻嫩 | `/recap` |
-| Mu盻創 bi蘯ｿt bﾆｰ盻嫩 ti蘯ｿp theo nﾃｪn lﾃm gﾃｬ | `/next` |
-| Mu盻創 c蘯ｭp nh蘯ｭt command surface ABW | `/abw-update` |
+| Vừa clone repo, cần tạo cấu trúc ABW | `/abw-init` |
+| Chưa biết nên bắt đầu từ đâu | `/abw-ask` |
+| Có câu hỏi dự án nhưng chưa rõ nên tra cứu hay brainstorm | `/abw-ask` |
+| Cần tra cứu nhanh một fact đã có trong wiki | `/abw-query` |
+| Cần phân tích sâu, so sánh, RCA, tradeoff | `/abw-query-deep` |
+| Dự án greenfield, chưa có raw/wiki | `/abw-bootstrap` |
+| Muốn chốt brief sản phẩm hoặc scope | `/brainstorm` |
+| Muốn dựng nền tri thức từ tài liệu nguồn | `/abw-ingest` |
+| Muốn đóng gói tri thức cho NotebookLM | `/abw-pack` |
+| Muốn dry-run hoặc sync package đã duyệt lên NotebookLM | `/abw-sync` |
+| Muốn kiểm tra sức khỏe wiki, grounding, manifest | `/abw-lint` |
+| Muốn kiểm tra MCP hoặc trạng thái hàng đợi | `/abw-status` |
+| Muốn lập kế hoạch thực thi hoặc chia task | `/plan` |
+| Muốn thiết kế kỹ thuật hoặc DB | `/design` |
+| Muốn mockup UI/UX hoặc screen spec | `/visualize` |
+| Muốn bắt tay vào code | `/code` |
+| Muốn chạy app cục bộ | `/run` |
+| Muốn sửa bug | `/debug` |
+| Muốn kiểm tra bằng test | `/test` |
+| Muốn triển khai lên môi trường đích | `/deploy` |
+| Muốn refactor khi đã rõ phạm vi | `/refactor` |
+| Muốn review code hoặc trạng thái dự án trước audit sâu hơn | `/abw-review` |
+| Muốn audit code, sản phẩm, hoặc bảo mật trong vòng delivery | `/audit` |
+| Muốn audit thay đổi hoặc artifact theo ABW rubric | `/abw-audit` |
+| Muốn quay về trạng thái an toàn sau thay đổi lỗi | `/abw-rollback` |
+| Muốn chốt pass/fail cuối cùng | `/abw-accept` |
+| Muốn chạy toàn bộ chain evaluation | `/abw-eval` |
+| Muốn ghi một correction thành bài học dùng lại | `/abw-learn` |
+| Muốn lưu tiến độ và chuẩn bị handover | `/save-brain` |
+| Muốn khôi phục bối cảnh phiên trước | `/recap` |
+| Muốn biết bước tiếp theo nên làm gì | `/next` |
+| Muốn cập nhật command surface ABW | `/abw-update` |
 
 ---
 
-## Mﾃｴ Hﾃｬnh 6 Lane
+## Mô Hình 6 Lane
 
-### 1. Khﾃ｡m phﾃ｡ vﾃ tﾆｰ duy
+### 1. Khám phá và tư duy
 
-- `/abw-ask`: router chﾃｭnh theo intent
-- `/abw-query`: tra c盻ｩu nhanh trﾃｪn wiki
-- `/abw-query-deep`: suy lu蘯ｭn sﾃ｢u, RCA, tradeoff
-- `/abw-bootstrap`: tﾆｰ duy cho bﾃi toﾃ｡n greenfield
-- `/brainstorm`: ch盻奏 brief vﾃ scope MVP
+- `/abw-ask`: router chính theo intent
+- `/abw-query`: tra cứu nhanh trên wiki
+- `/abw-query-deep`: suy luận sâu, RCA, tradeoff
+- `/abw-bootstrap`: tư duy cho bài toán greenfield
+- `/brainstorm`: chốt brief và scope MVP
 
-### 2. D盻ｱng n盻］ tri th盻ｩc
+### 2. Dựng nền tri thức
 
-- `/abw-init`: d盻ｱng ho蘯ｷc s盻ｭa c蘯･u trﾃｺc ABW
-- `/abw-setup`: c蘯･u hﾃｬnh NotebookLM MCP
-- `/abw-status`: ki盻ノ tra MCP vﾃ queue
-- `/abw-ingest`: x盻ｭ lﾃｽ raw thﾃnh wiki
-- `/abw-pack`: ﾄ妥ｳng gﾃｳi tri th盻ｩc thﾃnh package
-- `/abw-sync`: dry-run ho蘯ｷc sync package lﾃｪn NotebookLM
-- `/abw-lint`: audit s盻ｩc kh盻銃 wiki, grounding, manifest
+- `/abw-init`: dựng hoặc sửa cấu trúc ABW
+- `/abw-setup`: cấu hình NotebookLM MCP
+- `/abw-status`: kiểm tra MCP và queue
+- `/abw-ingest`: xử lý raw thành wiki
+- `/abw-pack`: đóng gói tri thức thành package
+- `/abw-sync`: dry-run hoặc sync package lên NotebookLM
+- `/abw-lint`: audit sức khỏe wiki, grounding, manifest
 
-### 3. Tri盻ハ khai s蘯｣n ph蘯ｩm
+### 3. Triển khai sản phẩm
 
-- `/plan`: l蘯ｭp k蘯ｿ ho蘯｡ch th盻ｱc thi
-- `/design`: thi蘯ｿt k蘯ｿ k盻ｹ thu蘯ｭt vﾃ data
-- `/visualize`: mockup UI/UX vﾃ layout
-- `/code`: cﾃi ﾄ黛ｺｷt tﾃｭnh nﾄハg
-- `/run`: ch蘯｡y 盻ｩng d盻･ng c盻･c b盻・- `/debug`: s盻ｭa l盻擁 hﾃnh vi ho蘯ｷc runtime
-- `/test`: ki盻ノ tra ch蘯･t lﾆｰ盻｣ng b蘯ｱng test
-- `/deploy`: tri盻ハ khai lﾃｪn mﾃｴi trﾆｰ盻拵g ﾄ妥ｭch
-- `/refactor`: d盻肱 code an toﾃn khi ﾄ妥｣ rﾃｵ hﾃnh vi
-- `/audit`: review code, s蘯｣n ph蘯ｩm, ho蘯ｷc b蘯｣o m蘯ｭt trong delivery loop
+- `/plan`: lập kế hoạch thực thi
+- `/design`: thiết kế kỹ thuật và data
+- `/visualize`: mockup UI/UX và layout
+- `/code`: cài đặt tính năng
+- `/run`: chạy ứng dụng cục bộ
+- `/debug`: sửa lỗi hành vi hoặc runtime
+- `/test`: kiểm tra chất lượng bằng test
+- `/deploy`: triển khai lên môi trường đích
+- `/refactor`: dọn code an toàn khi đã rõ hành vi
+- `/audit`: review code, sản phẩm, hoặc bảo mật trong delivery loop
 
-### 4. Phiﾃｪn lﾃm vi盻㌘ vﾃ ghi nh盻・
-- `/abw-start`: m盻・phiﾃｪn lﾃm vi盻㌘ vﾃ ki盻ノ tra tr蘯｡ng thﾃ｡i
-- `/save-brain`: lﾆｰu ti蘯ｿn ﾄ黛ｻ・ handover, vﾃ lessons learned
-- `/recap`: khﾃｴi ph盻･c b盻訴 c蘯｣nh phiﾃｪn trﾆｰ盻嫩
-- `/next`: g盻｣i ﾃｽ bﾆｰ盻嫩 ti蘯ｿp theo
-- `/abw-wrap`: ch盻奏 phiﾃｪn vﾃ chu蘯ｩn b盻・quay l蘯｡i
+### 4. Phiên làm việc và ghi nhớ
 
-### 5. ﾄ静｡nh giﾃ｡ vﾃ nghi盻㍊ thu
+- `/abw-start`: mở phiên làm việc và kiểm tra trạng thái
+- `/abw-learn`: ghi một lesson hành vi tái sử dụng vào `.brain/lessons_learned.jsonl`
+- `/save-brain`: lưu tiến độ, handover, và lessons learned
+- `/recap`: khôi phục bối cảnh phiên trước
+- `/next`: gợi ý bước tiếp theo
+- `/abw-wrap`: chốt phiên và chuẩn bị quay lại
 
-- `/abw-review`: review code ho蘯ｷc tr蘯｡ng thﾃ｡i d盻ｱ ﾃ｡n
-- `/abw-audit`: audit workflow, tﾃi li盻㎡, thay ﾄ黛ｻ品, ho蘯ｷc ﾄ黛ｺｧu ra
-- `/abw-meta-audit`: audit l蘯｡i bﾃ｡o cﾃ｡o audit
-- `/abw-rollback`: quay v盻・tr蘯｡ng thﾃ｡i an toﾃn
-- `/abw-accept`: ch盻奏 pass/fail cu盻訴 cﾃｹng
-- `/abw-eval`: ch蘯｡y full evaluation chain
+### 5. Đánh giá và nghiệm thu
 
-### 6. Ti盻㌻ ﾃｭch vﾃ C蘯･u hﾃｬnh
+- `/abw-review`: review code hoặc trạng thái dự án
+- `/abw-audit`: audit workflow, tài liệu, thay đổi, hoặc đầu ra
+- `/abw-meta-audit`: audit lại báo cáo audit
+- `/abw-rollback`: quay về trạng thái an toàn
+- `/abw-accept`: chốt pass/fail cuối cùng
+- `/abw-eval`: chạy full evaluation chain
 
-- `/customize`: ch盻穎h phong cﾃ｡ch giao ti蘯ｿp, persona, vﾃ autonomy
-- `/help`: xem b蘯｣n ﾄ黛ｻ・l盻㌻h vﾃ quy蘯ｿt ﾄ黛ｻ杵h nhanh
-- `/abw-update`: c蘯ｭp nh蘯ｭt command surface ABW vﾃo Gemini runtime local
+### 6. Tiện ích và Cấu hình
+
+- `/customize`: chỉnh phong cách giao tiếp, persona, và autonomy
+- `/help`: xem bản đồ lệnh và quyết định nhanh
+- `/abw-update`: cập nhật command surface ABW vào Gemini runtime local
 
 ---
 
-## Ghi Nh盻・Nhanh
+## Ghi Nhớ Nhanh
 
-- N蘯ｿu b蘯｡n v盻ｫa clone repo, gﾃｵ `/abw-init` trﾆｰ盻嫩.
-- N蘯ｿu workspace ﾄ妥｣ cﾃｳ c蘯･u trﾃｺc r盻妬, gﾃｵ `/abw-setup` ﾄ黛ｻ・n盻訴 grounding.
-- N蘯ｿu b蘯｡n chﾆｰa bi蘯ｿt lane, gﾃｵ `/abw-ask`.
-- N蘯ｿu b蘯｡n mu盻創 ch盻奏 ﾄ黛ｺｧu ra, gﾃｵ `/abw-eval`.
-- N蘯ｿu b蘯｡n mu盻創 s盻ｭa code an toﾃn sau khi hi盻ブ rﾃｵ, gﾃｵ `/refactor`.
+- Nếu bạn vừa clone repo, gõ `/abw-init` trước.
+- Nếu workspace đã có cấu trúc rồi, gõ `/abw-setup` để nối grounding.
+- Nếu bạn chưa biết lane, gõ `/abw-ask`.
+- Nếu user sửa sai và muốn agent nhớ về sau, gõ `/abw-learn`.
+- Nếu bạn muốn chốt đầu ra, gõ `/abw-eval`.
+- Nếu bạn muốn sửa code an toàn sau khi hiểu rõ, gõ `/refactor`.

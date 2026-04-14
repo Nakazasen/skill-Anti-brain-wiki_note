@@ -44,7 +44,7 @@ This repo exists to help smaller, cheaper, faster models behave more like discip
 Bản cập nhật này không chỉ thêm lệnh. Nó làm ABW kỷ luật hơn ở 3 chỗ:
 
 - `/audit` xuất hiện như một workflow delivery-loop rõ ràng để review code, hành vi sản phẩm, và bảo mật trước khi đi xa hơn.
-- `lessons_learned` cho phép ABW nhớ các sửa sai có thể tái sử dụng, thay vì quên ngay sau phiên hiện tại.
+- `/abw-learn` và `lessons_learned` cho phép ABW nhớ các sửa sai có thể tái sử dụng, thay vì quên ngay sau phiên hiện tại.
 - `instruction_compliance` buộc ABW không chỉ trả lời đúng kiến thức, mà còn phải đúng format, đúng phạm vi, và đúng ràng buộc của user.
 
 Nếu nói ngắn gọn, đợt này biến ABW từ “có grounding” thành “có kỷ luật vận hành”.
@@ -81,7 +81,7 @@ Bắt đầu ở đây khi đã có đầu ra và bạn muốn audit, challenge,
     `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
  
  4. **Phiên làm việc và ghi nhớ**  
-    `/abw-start`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
+    `/abw-start`, `/abw-learn`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
  
  5. **Đánh giá và nghiệm thu**  
     `/abw-review`, `/abw-audit`, `/abw-meta-audit`, `/abw-rollback`, `/abw-accept`, `/abw-eval`
@@ -140,6 +140,7 @@ curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_not
 | refactor legacy code but still need orientation | `/abw-ask` |
 | refactor code with a clear scope already in mind | `/refactor` |
 | save your working session | `/save-brain` |
+| teach ABW a reusable behavioral lesson | `/abw-learn` |
 | start a session with state and grounding checks | `/abw-start` |
 | wrap a session and prepare handover | `/abw-wrap` |
 | restore last-session context | `/recap` |

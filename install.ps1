@@ -26,6 +26,7 @@ $WorkflowFiles = @(
     "abw-accept.md",
     "abw-eval.md",
     "abw-start.md",
+    "abw-learn.md",
     "abw-wrap.md",
     "abw-review.md",
     "abw-rollback.md",
@@ -294,6 +295,7 @@ Do not route users to the legacy AWF flow by default.
 | /abw-accept | abw-accept.md | Run the final acceptance gate |
 | /abw-eval | abw-eval.md | Run the full evaluation chain |
 | /abw-start | abw-start.md | Start a session with state, grounding, and next-step checks |
+| /abw-learn | abw-learn.md | Record a reusable behavioral lesson into lessons_learned |
 | /abw-wrap | abw-wrap.md | Wrap a session with handover and follow-up guidance |
 | /abw-review | abw-review.md | Review code, changes, or current project state |
 | /abw-rollback | abw-rollback.md | Recover a safe state after a bad change |
@@ -302,7 +304,7 @@ Do not route users to the legacy AWF flow by default.
 - Ask & Think: /abw-ask, /abw-query, /abw-query-deep, /abw-bootstrap, /brainstorm
 - Build Knowledge: /abw-setup, /abw-status, /abw-ingest, /abw-pack, /abw-sync, /abw-lint
 - Build Product: /plan, /design, /visualize, /code, /run, /debug, /test, /deploy, /refactor
-- Session & Memory: /abw-start, /save-brain, /recap, /next, /abw-wrap
+- Session & Memory: /abw-start, /abw-learn, /save-brain, /recap, /next, /abw-wrap
 - Evaluation & Acceptance: /abw-audit, /abw-meta-audit, /abw-accept, /abw-eval, /abw-review, /abw-rollback
 - Utility & Customization: /customize, /help, /abw-update
 
@@ -328,7 +330,7 @@ Do not route users to the legacy AWF flow by default.
 - Ask & Think: `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
 - Build Knowledge: `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-pack`, `/abw-sync`, `/abw-lint`
 - Build Product: `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
-- Session & Memory: `/abw-start`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
+- Session & Memory: `/abw-start`, `/abw-learn`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
 - Evaluation & Acceptance: `/abw-audit`, `/abw-meta-audit`, `/abw-accept`, `/abw-eval`, `/abw-review`, `/abw-rollback`
 
 ## Recommended Flow
@@ -369,7 +371,7 @@ $requiredWorkflows = @(
     "abw-init.md", "abw-setup.md", "abw-status.md", "abw-ingest.md", "abw-pack.md", "abw-sync.md", "abw-ask.md",
     "abw-query.md", "abw-query-deep.md", "abw-bootstrap.md", "abw-lint.md",
     "abw-audit.md", "abw-meta-audit.md", "abw-accept.md", "abw-eval.md",
-    "abw-start.md", "abw-wrap.md", "abw-review.md", "abw-rollback.md",
+    "abw-start.md", "abw-learn.md", "abw-wrap.md", "abw-review.md", "abw-rollback.md",
     "brainstorm.md", "plan.md", "design.md", "visualize.md", "code.md", "run.md",
     "debug.md", "test.md", "deploy.md", "refactor.md", "audit.md", "save_brain.md",
     "recap.md", "next.md", "help.md", "README.md", "abw-update.md"

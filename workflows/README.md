@@ -50,6 +50,7 @@ Workflow hỗ trợ:
 ### 4. Phiên làm việc và ghi nhớ
 
 - `/abw-start` : Mở phiên làm việc và kiểm tra trạng thái
+- `/abw-learn` : Ghi một bài học hành vi tái sử dụng vào lessons learned
 - `/save-brain` : Lưu tiến độ và chuẩn bị handover
 - `/recap` : Khôi phục bối cảnh từ phiên trước
 - `/next` : Gợi ý bước tiếp theo
@@ -79,6 +80,7 @@ Workflow hỗ trợ:
 | Muốn cài đặt cá nhân hóa AI | `/customize` |
 | Muốn refactor khi đã rõ phạm vi | `/refactor` |
 | Muốn mở phiên làm việc có kiểm tra trạng thái | `/abw-start` |
+| Muốn agent nhớ một correction để dùng lại | `/abw-learn` |
 | Muốn chốt phiên và handover | `/abw-wrap` |
 | Muốn cập nhật command surface local | `/abw-update` |
 
