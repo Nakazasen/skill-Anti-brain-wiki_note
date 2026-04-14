@@ -47,9 +47,7 @@ Bản cập nhật này không chỉ thêm lệnh. Nó làm ABW kỷ luật hơn
 - `/abw-learn` và `lessons_learned` cho phép ABW nhớ các sửa sai có thể tái sử dụng, thay vì quên ngay sau phiên hiện tại.
 - `instruction_compliance` buộc ABW không chỉ trả lời đúng kiến thức, mà còn phải đúng format, đúng phạm vi, và đúng ràng buộc của user.
 
-Nếu nói ngắn gọn, đợt này biến ABW từ “có grounding” thành “có kỷ luật vận hành”.
-
-Repo này tồn tại để giúp các mô hình nhỏ hơn, rẻ hơn, nhanh hơn hành xử giống hệ thống có kỷ luật thay vì chatbot phản xạ nhanh.
+Nếu nói ngắn gọn, đợt này biến ABW từ "có grounding" thành "có kỷ luật vận hành".
 
 ---
 
@@ -70,24 +68,24 @@ Bắt đầu ở đây khi đã có đầu ra và bạn muốn audit, challenge,
 ---
 
 ## Mental Model: 6 Lanes
- 
- 1. **Khám phá và tư duy**  
-    `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
- 
- 2. **Dựng nền tri thức**  
-    `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-pack`, `/abw-sync`, `/abw-lint`
- 
- 3. **Triển khai sản phẩm**  
-    `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
- 
- 4. **Phiên làm việc và ghi nhớ**  
-    `/abw-start`, `/abw-learn`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
- 
- 5. **Đánh giá và nghiệm thu**  
-    `/abw-review`, `/abw-audit`, `/abw-meta-audit`, `/abw-rollback`, `/abw-accept`, `/abw-eval`
- 
- 6. **Tiện ích và Cấu hình**  
-    `/customize`, `/help`, `/abw-update`
+
+1. **Khám phá và tư duy**  
+   `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
+
+2. **Dựng nền tri thức**  
+   `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-pack`, `/abw-sync`, `/abw-lint`
+
+3. **Triển khai sản phẩm**  
+   `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
+
+4. **Phiên làm việc và ghi nhớ**  
+   `/abw-start`, `/abw-learn`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
+
+5. **Đánh giá và nghiệm thu**  
+   `/abw-review`, `/abw-audit`, `/abw-meta-audit`, `/abw-rollback`, `/abw-accept`, `/abw-eval`
+
+6. **Tiện ích và cấu hình**  
+   `/customize`, `/help`, `/abw-update`
 
 ---
 

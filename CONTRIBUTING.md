@@ -1,49 +1,51 @@
-# Đóng Góp cho AWF
+# Đóng Góp cho Hybrid ABW
 
-Cảm ơn bạn muốn đóng góp cho AWF! 🎉
+Cảm ơn bạn muốn đóng góp cho Hybrid ABW.
 
-## 🚀 Cách Đóng Góp
+## Cách Đóng Góp
 
-### Báo Lỗi (Bug Report)
-1. Kiểm tra [Issues](https://github.com/TUAN130294/awf/issues) xem lỗi đã được báo chưa
-2. Tạo Issue mới với template **Bug Report**
-3. Mô tả chi tiết: bước tái hiện, kết quả mong đợi, kết quả thực tế
+### Báo Lỗi
+1. Kiểm tra [Issues](https://github.com/Nakazasen/skill-Anti-brain-wiki_note/issues) xem lỗi đã được báo chưa.
+2. Tạo issue mới bằng template `Bug Report`.
+3. Mô tả rõ bước tái hiện, kết quả mong đợi, và kết quả thực tế.
 
 ### Đề Xuất Tính Năng
-1. Tạo Issue mới với template **Feature Request**
-2. Giải thích vấn đề bạn gặp và cách tính năng mới sẽ giải quyết
+1. Tạo issue mới bằng template `Feature Request`.
+2. Giải thích vấn đề bạn đang gặp và cách tính năng mới sẽ giải quyết nó.
 
-### Gửi Code (Pull Request)
-1. **Fork** repo này
+### Gửi Code
+1. Fork repo này.
 2. Tạo branch mới: `git checkout -b feature/ten-tinh-nang`
-3. Code và test
-4. Commit với message rõ ràng: `feat: thêm tính năng XYZ`
-5. Push và tạo **Pull Request**
+3. Code và test trên môi trường liên quan.
+4. Commit với message rõ ràng, ví dụ: `feat: add reusable lesson checks`
+5. Push branch và tạo pull request.
 
-## 📋 Quy Tắc
+## Quy Tắc
 
-- Giữ code đơn giản, dễ đọc
-- Viết commit message theo [Conventional Commits](https://www.conventionalcommits.org/)
-- Test trên cả Windows (PowerShell) và macOS/Linux (Bash)
-- Cập nhật README nếu thêm tính năng mới
-- Tôn trọng mọi người trong cộng đồng
+- Giữ thay đổi nhỏ, rõ phạm vi, và có thể review độc lập.
+- Dùng [Conventional Commits](https://www.conventionalcommits.org/) khi phù hợp.
+- Test trên Windows nếu đụng `install.ps1`.
+- Test trên macOS/Linux nếu đụng `install.sh`.
+- Cập nhật README hoặc docs nếu public surface thay đổi.
+- Không claim grounding, evaluation, hay compatibility nếu chưa verify.
 
-## 🗂️ Cấu Trúc Thư Mục
+## Cấu Trúc Thư Mục
 
+```text
+skill-Anti-brain-wiki_note/
+|- workflows/        # Public command workflows
+|- skills/           # Lower-level execution and reasoning rules
+|- schemas/          # JSON schemas
+|- templates/        # Example state and policy files
+|- docs/             # Architecture and maintainer docs
+|- examples/         # Minimal example workspaces
+|- install.ps1       # Windows installer
+`- install.sh        # macOS/Linux installer
 ```
-awf/
-├── workflows/       # Các workflow chính (/init, /plan, /code...)
-├── awf_skills/      # AWF Skills
-├── schemas/         # JSON Schemas
-├── templates/       # Mẫu cấu hình
-├── docs/            # Tài liệu
-├── install.ps1      # Script cài đặt Windows
-└── install.sh       # Script cài đặt macOS/Linux
-```
 
-## 💬 Cần Hỗ Trợ?
+## Cần Hỗ Trợ?
 
-- Mở [Discussion](https://github.com/TUAN130294/awf/discussions) để hỏi
-- Đọc [Tài liệu](https://awfweb.pages.dev/) trước khi hỏi
+- Mở [Issues](https://github.com/Nakazasen/skill-Anti-brain-wiki_note/issues) nếu bạn gặp lỗi hoặc cần làm rõ hành vi.
+- Nếu repo bật Discussions sau này, ưu tiên dùng Discussions cho câu hỏi mở và thảo luận thiết kế.
 
-Mọi đóng góp đều được trân trọng! ❤️
+Mọi đóng góp tử tế đều có giá trị.

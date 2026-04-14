@@ -2,20 +2,22 @@
 <!-- Mô tả ngắn gọn thay đổi trong PR này -->
 
 ## Loại Thay Đổi
-- [ ] 🐛 Sửa lỗi (Bug fix)
-- [ ] ✨ Tính năng mới (New feature)
-- [ ] 📝 Cập nhật tài liệu (Documentation)
-- [ ] ♻️ Refactor code
-- [ ] 🎨 Style/UI
+- [ ] Sửa lỗi
+- [ ] Tính năng mới
+- [ ] Cập nhật tài liệu
+- [ ] Refactor
+- [ ] Cập nhật installer / runtime registration
 
 ## Đã Test Chưa?
 - [ ] Windows (PowerShell)
 - [ ] macOS / Linux (Bash)
+- [ ] Chưa test
 
 ## Checklist
-- [ ] Code đã được test
-- [ ] README đã được cập nhật (nếu cần)
-- [ ] Không có breaking changes
+- [ ] Phạm vi thay đổi rõ ràng
+- [ ] README / docs đã cập nhật nếu public surface thay đổi
+- [ ] Không có breaking change ngoài ý muốn
+- [ ] Nếu đụng installer, đã verify command surface sau khi cài
 
-## Ảnh Chụp (nếu có)
-<!-- Thêm ảnh chụp nếu liên quan đến UI -->
+## Ảnh / Log / Ghi Chú
+<!-- Thêm ảnh chụp, log, hoặc ghi chú vận hành nếu cần -->
