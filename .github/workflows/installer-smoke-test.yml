@@ -39,10 +39,14 @@ jobs:
             "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_gate.py",
             "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_execute.py",
             "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_status.py",
+            "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_detect_unsafe.py",
+            "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_rollback.py",
+            "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_claim.py",
             "$env:USERPROFILE\.gemini\antigravity\templates\resume_state.example.json",
             "$env:USERPROFILE\.gemini\antigravity\templates\continuation_backlog.example.json",
             "$env:USERPROFILE\.gemini\antigravity\templates\continuation_policy.example.json",
             "$env:USERPROFILE\.gemini\antigravity\templates\active_execution.example.json",
+            "$env:USERPROFILE\.gemini\antigravity\templates\model_claims.example.jsonl",
             "$env:USERPROFILE\.gemini\abw_install_state.json"
           )
           foreach ($path in $requiredFiles) {
@@ -64,6 +68,10 @@ jobs:
           if ($prepared.status -ne "prepared" -or $prepared.step_id -ne "step-safe-test") {
             throw "Continuation executor did not prepare expected step"
           }
+          $rollback = python .\scripts\continuation_rollback.py plan --workspace $fixture | ConvertFrom-Json
+          if ($rollback.status -ne "planned" -or -not $rollback.executable) {
+            throw "Continuation rollback planner did not produce executable plan"
+          }
           $recorded = python .\scripts\continuation_execute.py record --workspace $fixture --step-id step-safe-test --outcome success --changed-file tests/test_parser_resume.py --test-result pass --acceptance-result pass | ConvertFrom-Json
           if ($recorded.status -ne "recorded") {
             throw "Continuation executor did not record expected step"
@@ -71,6 +79,14 @@ jobs:
           $runtimeStatus = python .\scripts\continuation_status.py --workspace .\examples\resume-abw | ConvertFrom-Json
           if ($runtimeStatus.status -ne "ok" -or $runtimeStatus.next_safe_step.step_id -ne "step-safe-test") {
             throw "Continuation status fixture did not report expected next safe step"
+          }
+          $unsafe = python .\scripts\continuation_detect_unsafe.py --workspace .\examples\resume-abw | ConvertFrom-Json
+          if ($unsafe.status -ne "ok") {
+            throw "Continuation unsafe detector failed"
+          }
+          $claim = python .\scripts\continuation_claim.py claim --workspace $fixture --model-id ci-smoke --step-id step-safe-test | ConvertFrom-Json
+          if ($claim.status -ne "claimed") {
+            throw "Continuation model claim failed"
           }
           $gemini = Get-Content "$env:USERPROFILE\.gemini\GEMINI.md" -Raw
           foreach ($pattern in @("Hybrid ABW - Antigravity IDE Command Surface", "/abw-learn", "/abw-resume", "/abw-execute")) {
@@ -96,10 +112,14 @@ jobs:
           test -f "$HOME/.gemini/antigravity/scripts/continuation_gate.py"
           test -f "$HOME/.gemini/antigravity/scripts/continuation_execute.py"
           test -f "$HOME/.gemini/antigravity/scripts/continuation_status.py"
+          test -f "$HOME/.gemini/antigravity/scripts/continuation_detect_unsafe.py"
+          test -f "$HOME/.gemini/antigravity/scripts/continuation_rollback.py"
+          test -f "$HOME/.gemini/antigravity/scripts/continuation_claim.py"
           test -f "$HOME/.gemini/antigravity/templates/resume_state.example.json"
           test -f "$HOME/.gemini/antigravity/templates/continuation_backlog.example.json"
           test -f "$HOME/.gemini/antigravity/templates/continuation_policy.example.json"
           test -f "$HOME/.gemini/antigravity/templates/active_execution.example.json"
+          test -f "$HOME/.gemini/antigravity/templates/model_claims.example.jsonl"
           python -m json.tool "$HOME/.gemini/antigravity/templates/resume_state.example.json" >/dev/null
           python -m json.tool "$HOME/.gemini/antigravity/templates/continuation_backlog.example.json" >/dev/null
           python -m json.tool "$HOME/.gemini/antigravity/templates/continuation_policy.example.json" >/dev/null
@@ -112,11 +132,18 @@ jobs:
           python ./scripts/continuation_execute.py prepare --workspace "$fixture" > execute-prepare.json
           grep -q '"status": "prepared"' execute-prepare.json
           grep -q '"step_id": "step-safe-test"' execute-prepare.json
+          python ./scripts/continuation_rollback.py plan --workspace "$fixture" > rollback-plan.json
+          grep -q '"status": "planned"' rollback-plan.json
+          grep -q '"executable": true' rollback-plan.json
           python ./scripts/continuation_execute.py record --workspace "$fixture" --step-id step-safe-test --outcome success --changed-file tests/test_parser_resume.py --test-result pass --acceptance-result pass > execute-record.json
           grep -q '"status": "recorded"' execute-record.json
           python ./scripts/continuation_status.py --workspace ./examples/resume-abw > continuation-status.json
           grep -q '"status": "ok"' continuation-status.json
           grep -q '"step_id": "step-safe-test"' continuation-status.json
+          python ./scripts/continuation_detect_unsafe.py --workspace ./examples/resume-abw > unsafe-detect.json
+          grep -q '"status": "ok"' unsafe-detect.json
+          python ./scripts/continuation_claim.py claim --workspace "$fixture" --model-id ci-smoke --step-id step-safe-test > claim.json
+          grep -q '"status": "claimed"' claim.json
           test -f "$HOME/.gemini/abw_install_state.json"
           grep -q "Hybrid ABW - Antigravity IDE Command Surface" "$HOME/.gemini/GEMINI.md"
           grep -q "/abw-learn" "$HOME/.gemini/GEMINI.md"

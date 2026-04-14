@@ -25,6 +25,7 @@
 .brain/handover_log.jsonl
 .brain/step_history.jsonl
 .brain/active_execution.json
+.brain/model_claims.jsonl
 
 # Bootstrap reasoning state (do not commit greenfield assumptions/plans)
 .brain/bootstrap/*.json

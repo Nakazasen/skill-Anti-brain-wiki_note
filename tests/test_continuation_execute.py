@@ -58,6 +58,12 @@ class ContinuationExecuteTests(unittest.TestCase):
     def test_prepare_requires_explicit_approval_for_historical_zone(self):
         tmp, workspace = self.copy_fixture()
         with tmp:
+            state = load_json(workspace / ".brain" / "resume_state.json")
+            state["completed_steps"] = ["step-safe-test"]
+            (workspace / ".brain" / "resume_state.json").write_text(
+                json.dumps(state, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
             result = execute.prepare_execution(workspace, step_id="step-parser-impl")
             self.assertEqual(result["status"], "approval_required")
             self.assertTrue(result["required_approvals"])

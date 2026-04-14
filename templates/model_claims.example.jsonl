@@ -1,0 +1,2 @@
+{"event":"claimed","model_id":"gemini-flash","step_id":"step-001","candidate_files":["tests/test_example.py"],"timestamp":"2026-04-15T00:00:00Z"}
+{"event":"released","model_id":"gemini-flash","step_id":"step-001","timestamp":"2026-04-15T00:10:00Z"}

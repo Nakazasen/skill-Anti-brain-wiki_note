@@ -43,6 +43,30 @@ def count_by_status(steps):
     return counts
 
 
+def dependency_summary(steps, completed_steps, step_history):
+    accepted = set(completed_steps or [])
+    for row in step_history:
+        if row.get("accepted") is True:
+            accepted.add(row.get("step_id"))
+    blocked = []
+    for step in steps:
+        missing = [dep for dep in step.get("depends_on", []) if dep not in accepted]
+        if missing and step.get("status") == "pending":
+            blocked.append({"step_id": step.get("step_id"), "missing": missing})
+    return {"blocked_count": len(blocked), "blocked_steps": blocked}
+
+
+def active_model_claims(rows):
+    claims = {}
+    for row in rows:
+        key = (row.get("model_id"), row.get("step_id"))
+        if row.get("event") == "claimed":
+            claims[key] = row
+        elif row.get("event") == "released":
+            claims.pop(key, None)
+    return list(claims.values())
+
+
 def evaluate_status(workspace):
     workspace = Path(workspace).resolve()
     brain = workspace / ".brain"
@@ -51,6 +75,7 @@ def evaluate_status(workspace):
     active_execution = load_json(brain / "active_execution.json", None)
     step_history = load_jsonl(brain / "step_history.jsonl")
     handover_log = load_jsonl(brain / "handover_log.jsonl")
+    model_claims = load_jsonl(brain / "model_claims.jsonl")
     steps = backlog.get("steps", [])
 
     try:
@@ -90,6 +115,11 @@ def evaluate_status(workspace):
         "backlog": {
             "total": len(steps),
             "by_status": count_by_status(steps),
+        },
+        "dependencies": dependency_summary(steps, state.get("completed_steps"), step_history),
+        "model_claims": {
+            "active_count": len(active_model_claims(model_claims)),
+            "active": active_model_claims(model_claims),
         },
         "next_safe_step": {
             "status": gate_result.get("status"),

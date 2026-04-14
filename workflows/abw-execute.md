@@ -78,6 +78,18 @@ Use existing implementation workflows as needed:
 - `/test` for validation
 - `/abw-audit` for historical unsafe zones
 
+If multiple models are working in the same repo, claim the step before editing:
+
+```bash
+python scripts/continuation_claim.py claim --workspace . --model-id <model-id> --step-id <step_id>
+```
+
+If a rollback may be needed, inspect the plan before editing:
+
+```bash
+python scripts/continuation_rollback.py plan --workspace .
+```
+
 ---
 
 ## Phase 3: Record Outcome

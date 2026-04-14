@@ -140,6 +140,26 @@ class ContinuationGateTests(unittest.TestCase):
         self.assertEqual(result["selected"]["permission_class"], "requires_approval")
         self.assertTrue(result["selected"]["required_approvals"])
 
+    def test_missing_dependency_blocks_step(self):
+        step = base_step(depends_on=["step-prereq"])
+        tmp, workspace = self.make_workspace([step])
+        with tmp:
+            result = gate.evaluate_workspace(workspace)
+        self.assertEqual(result["status"], "blocked")
+        self.assertIn("Missing dependencies", result["candidates"][0]["block_reasons"][0])
+
+    def test_accepted_dependency_allows_step(self):
+        step = base_step(depends_on=["step-prereq"])
+        tmp, workspace = self.make_workspace([step])
+        with tmp:
+            (workspace / ".brain" / "step_history.jsonl").write_text(
+                '{"step_id":"step-prereq","accepted":true}\n',
+                encoding="utf-8",
+            )
+            result = gate.evaluate_workspace(workspace)
+        self.assertEqual(result["status"], "selected")
+        self.assertEqual(result["selected"]["step_id"], "step-test")
+
 
 if __name__ == "__main__":
     unittest.main()

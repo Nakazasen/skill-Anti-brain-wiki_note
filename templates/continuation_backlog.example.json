@@ -8,6 +8,7 @@
       "candidate_files": [
         "tests/test_example.py"
       ],
+      "depends_on": [],
       "preconditions": [
         {
           "type": "file_exists",

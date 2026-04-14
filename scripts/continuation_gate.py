@@ -115,6 +115,18 @@ def latest_test_result(step_history, step_id):
     return None
 
 
+def accepted_steps(step_history):
+    accepted = set()
+    for row in step_history:
+        if row.get("accepted") is True or (
+            row.get("outcome") == "success"
+            and row.get("test_result") == "pass"
+            and row.get("completion_artifact", {}).get("acceptance_result") == "pass"
+        ):
+            accepted.add(row.get("step_id"))
+    return accepted
+
+
 def file_exists(workspace, subject):
     return (workspace / subject).exists()
 
@@ -298,6 +310,12 @@ def constrain_gate(workspace, step, state, policy, decisions, zones, gaps, step_
         block(result, f"Invalid permission class: {permission}")
         return result
 
+    completed = set(state.get("completed_steps") or []) | accepted_steps(step_history)
+    missing_dependencies = [dep for dep in as_list(step.get("depends_on")) if dep not in completed]
+    if missing_dependencies:
+        block(result, f"Missing dependencies: {', '.join(missing_dependencies)}")
+        return result
+
     candidate_files = as_list(step.get("candidate_files"))
     if permission != "read_only" and not candidate_files:
         block(result, "candidate_files is required for non-read-only steps")
@@ -388,6 +406,7 @@ def constrain_gate(workspace, step, state, policy, decisions, zones, gaps, step_
 
 
 def hard_pre_filter(step, decisions, zones, gaps):
+    # Dependency checks need step_history/state, so they run in the full gate.
     candidate_files = as_list(step.get("candidate_files"))
     for hit in matching_zones(candidate_files, zones, source="user_declared", confidence="high"):
         return False, f"pre-filter: user-declared unsafe zone {hit['zone'].get('zone_id')}"

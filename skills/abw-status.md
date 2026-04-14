@@ -71,6 +71,8 @@ Include this section in the status report:
 - **Next Safe Step:** `[step_id or none]`
 - **Pending Steps:** `[count]`
 - **Last Outcome:** `[success | partial | failed | none]`
+- **Dependency Blocks:** `[count]`
+- **Active Model Claims:** `[count]`
 ```
 
 If the script is unavailable, read `.brain/resume_state.json`, `.brain/continuation_backlog.json`, `.brain/active_execution.json`, and `.brain/step_history.jsonl` directly and summarize best-effort.

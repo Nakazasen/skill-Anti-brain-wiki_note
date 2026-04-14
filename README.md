@@ -174,6 +174,13 @@ Use `/abw-execute` only after `/abw-resume` has selected an approved step. `/abw
 
 `/abw-status` also reports Continuation Runtime health when continuation state exists: active step, backlog counts, next safe step, required approvals, and last execution outcome.
 
+V2 runtime primitives add guarded support for dependency graphs, heuristic unsafe-zone detection, rollback planning, and multi-model file claims. These are intentionally conservative:
+
+- `depends_on` blocks a step until prerequisite step IDs are accepted.
+- `continuation_detect_unsafe.py` only writes `heuristic_suspected` zones, never hard blocks.
+- `continuation_rollback.py` plans first and requires `execute --confirm` for allowlisted rollback methods.
+- `continuation_claim.py` records model claims in `.brain/model_claims.jsonl` so parallel models do not edit overlapping files silently.
+
 For machine-checkable gating, run:
 
 ```bash
@@ -185,8 +192,11 @@ To exercise the governed execution wrapper on a copy of the example fixture:
 ```bash
 cp -R examples/resume-abw /tmp/resume-abw-execute
 python scripts/continuation_execute.py prepare --workspace /tmp/resume-abw-execute
+python scripts/continuation_rollback.py plan --workspace /tmp/resume-abw-execute
 python scripts/continuation_execute.py record --workspace /tmp/resume-abw-execute --step-id step-safe-test --outcome success --changed-file tests/test_parser_resume.py --test-result pass --acceptance-result pass
 python scripts/continuation_status.py --workspace /tmp/resume-abw-execute
+python scripts/continuation_detect_unsafe.py --workspace /tmp/resume-abw-execute
+python scripts/continuation_claim.py claim --workspace /tmp/resume-abw-execute --model-id gemini-flash --step-id step-safe-test
 ```
 
 Relevant files:
@@ -198,9 +208,13 @@ Relevant files:
 - `scripts/continuation_gate.py`
 - `scripts/continuation_execute.py`
 - `scripts/continuation_status.py`
+- `scripts/continuation_detect_unsafe.py`
+- `scripts/continuation_rollback.py`
+- `scripts/continuation_claim.py`
 - `templates/resume_state.example.json`
 - `templates/continuation_backlog.example.json`
 - `templates/active_execution.example.json`
+- `templates/model_claims.example.jsonl`
 - `examples/resume-abw/`
 
 ---

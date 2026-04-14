@@ -8,6 +8,7 @@
       "candidate_files": [
         "tests/test_parser_resume.py"
       ],
+      "depends_on": [],
       "preconditions": [
         {
           "type": "file_exists",
@@ -48,6 +49,7 @@
       "candidate_files": [
         "src/auth/login.py"
       ],
+      "depends_on": [],
       "preconditions": [],
       "exit_criteria": [],
       "affects_decision_ids": [],
@@ -74,6 +76,9 @@
       "permission_class": "safe_write",
       "candidate_files": [
         "src/parser/core.py"
+      ],
+      "depends_on": [
+        "step-safe-test"
       ],
       "preconditions": [],
       "exit_criteria": [],

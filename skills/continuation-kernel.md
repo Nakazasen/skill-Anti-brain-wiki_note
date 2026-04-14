@@ -256,6 +256,34 @@ The post-execute audit is deterministic and lightweight. It fails if changed fil
 
 Completion is strict: a step enters `completed_steps` only when `outcome=success`, `acceptance_result=pass`, and `post_execute_audit.status=pass`. Any audit failure or missing acceptance keeps the attempt recorded but not accepted.
 
+---
+
+## V2 Guarded Primitives
+
+Dependency graph:
+
+- Steps may declare `depends_on: ["step-id"]`.
+- The gate blocks a step until all dependencies appear in `resume_state.completed_steps` or `step_history.jsonl` with `accepted=true`.
+- Missing dependencies are hard blockers, not warnings.
+
+Unsafe-zone detection:
+
+- `scripts/continuation_detect_unsafe.py --workspace .` scans for security/auth paths, migrations, production config, and large files.
+- `--write` merges detections into `.brain/unsafe_zones.json`.
+- It only writes `source=heuristic_suspected`, so detections warn but do not hard block by themselves.
+
+Rollback automation:
+
+- `scripts/continuation_rollback.py plan --workspace .` reads active execution or a step ID and emits a rollback plan.
+- `execute --confirm` is allowed only for allowlisted low-risk methods such as `restore file`.
+- Non-allowlisted rollback contracts remain manual.
+
+Multi-model coordination:
+
+- `scripts/continuation_claim.py claim --workspace . --model-id <id> --step-id <step>` appends a claim to `.brain/model_claims.jsonl`.
+- Overlapping `candidate_files` claimed by a different model create a conflict.
+- Claims are released with `continuation_claim.py release ...`.
+
 Execution invariants:
 
 - No prepare, no execute.
