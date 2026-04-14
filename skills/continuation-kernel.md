@@ -10,6 +10,16 @@ Use this skill when:
 
 Canonical spec: `docs/spec-continuation-kernel-v1.md`.
 
+Machine gate: `scripts/continuation_gate.py`.
+
+Prefer the machine gate whenever Python is available:
+
+```bash
+python scripts/continuation_gate.py --workspace .
+```
+
+Use this markdown skill as the fallback policy reference when the script cannot run.
+
 ---
 
 ## Core Rule
@@ -146,6 +156,10 @@ Return `max(0, score)`.
 ---
 
 ## Candidate Selection
+
+Preferred implementation: call `scripts/continuation_gate.py` and use its JSON output.
+
+Manual fallback:
 
 1. Collect pending steps.
 2. Pre-filter only obvious hard blockers:

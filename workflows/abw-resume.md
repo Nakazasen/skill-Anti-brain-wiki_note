@@ -10,6 +10,14 @@ This workflow uses `skills/continuation-kernel.md` and follows `docs/spec-contin
 
 Important: `/abw-resume` does **not** execute work automatically. It reconstructs state, selects one governed next safe step, reports risks and approvals, then asks the user for confirmation.
 
+When Python is available, prefer the machine gate:
+
+```bash
+python scripts/continuation_gate.py --workspace .
+```
+
+If Python is not available, apply the same rules manually through `skills/continuation-kernel.md` and clearly say the gate was evaluated by policy rather than by script.
+
 ---
 
 ## Trigger
@@ -80,6 +88,14 @@ If there is no approved backlog, do not invent executable work. Create or presen
 ---
 
 ## Phase 3: Constrain
+
+Preferred path:
+
+1. Run `python scripts/continuation_gate.py --workspace .`.
+2. Parse the returned JSON.
+3. Use `selected`, `candidates`, `skipped`, `warnings`, `block_reasons`, and `required_approvals` as the source of truth for the report.
+
+Fallback path:
 
 Run the Constrain Gate from `skills/continuation-kernel.md` for each candidate.
 

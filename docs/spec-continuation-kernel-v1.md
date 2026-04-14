@@ -246,6 +246,16 @@ Policy limits là base limits. Runtime selection dùng `resume_state.effective_b
 
 Constrain Gate là internal mandatory validation. Nó không phải public command trong v1.
 
+Machine-checkable implementation: `scripts/continuation_gate.py`.
+
+Preferred invocation:
+
+```bash
+python scripts/continuation_gate.py --workspace .
+```
+
+The script output is JSON and should be treated as the source of truth when available. The markdown rules below define the policy and fallback behavior.
+
 ### Inputs
 
 - step từ `.brain/continuation_backlog.json`
