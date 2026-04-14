@@ -17,5 +17,18 @@
   "step": {
     "step_id": "step-001",
     "title": "Example prepared step"
+  },
+  "completion_artifact_example": {
+    "acceptance_result": "pass | fail | partial | not_checked",
+    "handover_note": "Short note for the next agent or null",
+    "lessons_learned": [
+      "Optional reusable lesson"
+    ],
+    "post_execute_audit": {
+      "status": "pass | warning | fail",
+      "out_of_scope_files": [],
+      "findings": [],
+      "requires_abw_audit": false
+    }
   }
 }

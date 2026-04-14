@@ -172,6 +172,8 @@ Important: `/abw-resume` does not execute automatically. It asks for confirmatio
 
 Use `/abw-execute` only after `/abw-resume` has selected an approved step. `/abw-execute` prepares `.brain/active_execution.json`, keeps the agent inside the selected `candidate_files`, and records the result to `.brain/step_history.jsonl` and `.brain/handover_log.jsonl`.
 
+`/abw-status` also reports Continuation Runtime health when continuation state exists: active step, backlog counts, next safe step, required approvals, and last execution outcome.
+
 For machine-checkable gating, run:
 
 ```bash
@@ -183,7 +185,8 @@ To exercise the governed execution wrapper on a copy of the example fixture:
 ```bash
 cp -R examples/resume-abw /tmp/resume-abw-execute
 python scripts/continuation_execute.py prepare --workspace /tmp/resume-abw-execute
-python scripts/continuation_execute.py record --workspace /tmp/resume-abw-execute --step-id step-safe-test --outcome success --test-result pass
+python scripts/continuation_execute.py record --workspace /tmp/resume-abw-execute --step-id step-safe-test --outcome success --changed-file tests/test_parser_resume.py --test-result pass --acceptance-result pass
+python scripts/continuation_status.py --workspace /tmp/resume-abw-execute
 ```
 
 Relevant files:
@@ -194,6 +197,7 @@ Relevant files:
 - `skills/continuation-kernel.md`
 - `scripts/continuation_gate.py`
 - `scripts/continuation_execute.py`
+- `scripts/continuation_status.py`
 - `templates/resume_state.example.json`
 - `templates/continuation_backlog.example.json`
 - `templates/active_execution.example.json`

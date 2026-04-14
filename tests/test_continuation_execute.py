@@ -86,6 +86,8 @@ class ContinuationExecuteTests(unittest.TestCase):
                 test_result="pass",
                 errors_introduced=0,
                 session_id="test-session",
+                acceptance_result="pass",
+                handover_note="Focused test added.",
             )
 
             self.assertEqual(result["status"], "recorded")
@@ -98,11 +100,15 @@ class ContinuationExecuteTests(unittest.TestCase):
             handover = read_jsonl(workspace / ".brain" / "handover_log.jsonl")
 
             self.assertIsNone(state["active_step"])
-            self.assertEqual(state["last_completed_step"], step_id)
-            self.assertIn(step_id, state["completed_steps"])
-            self.assertEqual(completed_step["status"], "completed")
+            self.assertIsNone(state["last_completed_step"])
+            self.assertNotIn(step_id, state["completed_steps"])
+            self.assertEqual(completed_step["status"], "partial")
             self.assertEqual(history[-1]["step_id"], step_id)
             self.assertEqual(history[-1]["test_result"], "pass")
+            self.assertFalse(history[-1]["accepted"])
+            self.assertEqual(history[-1]["completion_artifact"]["acceptance_result"], "pass")
+            self.assertEqual(history[-1]["completion_artifact"]["post_execute_audit"]["status"], "fail")
+            self.assertTrue(history[-1]["completion_artifact"]["post_execute_audit"]["out_of_scope_files"])
             self.assertEqual(handover[-1]["event"], "step_completed")
 
     def test_record_requires_active_execution(self):
@@ -128,7 +134,34 @@ class ContinuationExecuteTests(unittest.TestCase):
             self.assertEqual(result["status"], "error")
             self.assertIn("Active execution", result["error"])
 
+    def test_record_audit_passes_when_changed_files_stay_inside_candidate_files(self):
+        tmp, workspace = self.copy_fixture()
+        with tmp:
+            prepared = execute.prepare_execution(workspace)
+            step_id = prepared["step_id"]
+
+            result = execute.record_execution(
+                workspace,
+                step_id=step_id,
+                outcome="success",
+                changed_files=["tests/test_parser_resume.py"],
+                test_result="pass",
+                errors_introduced=0,
+                acceptance_result="pass",
+            )
+
+            self.assertEqual(result["status"], "recorded")
+            self.assertTrue(result["accepted"])
+            self.assertEqual(result["post_execute_audit"]["status"], "pass")
+            self.assertFalse(result["post_execute_audit"]["requires_abw_audit"])
+
+            state = load_json(workspace / ".brain" / "resume_state.json")
+            backlog = load_json(workspace / ".brain" / "continuation_backlog.json")
+            completed_step = next(s for s in backlog["steps"] if s["step_id"] == step_id)
+            self.assertEqual(state["last_completed_step"], step_id)
+            self.assertIn(step_id, state["completed_steps"])
+            self.assertEqual(completed_step["status"], "completed")
+
 
 if __name__ == "__main__":
     unittest.main()
-

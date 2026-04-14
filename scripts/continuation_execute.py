@@ -62,6 +62,76 @@ def brain_paths(workspace):
     }
 
 
+def as_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def normalize_path(path):
+    return str(path).replace("\\", "/")
+
+
+def audit_execution(step, changed_files, outcome, test_result, errors_introduced):
+    candidate_files = {normalize_path(path) for path in as_list(step.get("candidate_files"))}
+    changed = [normalize_path(path) for path in changed_files]
+    out_of_scope = []
+    if candidate_files:
+        out_of_scope = [path for path in changed if path not in candidate_files]
+
+    findings = []
+    severity = "pass"
+    if out_of_scope:
+        severity = "fail"
+        findings.append(
+            {
+                "severity": "fail",
+                "code": "scope_deviation",
+                "message": "Changed files outside candidate_files.",
+                "files": out_of_scope,
+            }
+        )
+
+    if test_result == "fail" or int(errors_introduced) > 0:
+        severity = "fail"
+        findings.append(
+            {
+                "severity": "fail",
+                "code": "validation_failed",
+                "message": "Tests failed or errors were introduced.",
+            }
+        )
+
+    if outcome in {"partial", "failed"} and severity != "fail":
+        severity = "warning"
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "incomplete_outcome",
+                "message": "Execution did not complete cleanly.",
+            }
+        )
+
+    if test_result in {None, "skipped"} and severity == "pass":
+        severity = "warning"
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "validation_not_checked",
+                "message": "No passing validation result was recorded.",
+            }
+        )
+
+    return {
+        "status": severity,
+        "out_of_scope_files": out_of_scope,
+        "findings": findings,
+        "requires_abw_audit": severity == "fail",
+    }
+
+
 def prepare_execution(workspace, step_id=None, approved=False, approval_note=None, session_id=None):
     workspace = Path(workspace).resolve()
     paths = brain_paths(workspace)
@@ -135,6 +205,9 @@ def record_execution(
     test_result=None,
     errors_introduced=0,
     session_id=None,
+    acceptance_result="not_checked",
+    handover_note=None,
+    lessons_learned=None,
 ):
     workspace = Path(workspace).resolve()
     paths = brain_paths(workspace)
@@ -158,11 +231,21 @@ def record_execution(
             "error": f"Active execution is {active_execution.get('step_id')}, not {step_id}",
         }
 
-    step_status = "completed" if outcome == "success" else outcome
+    active_step = active_execution.get("step") or find_step(backlog, step_id) or {}
+    audit = audit_execution(active_step, changed_files, outcome, test_result, errors_introduced)
+    completion_artifact = {
+        "acceptance_result": acceptance_result,
+        "handover_note": handover_note,
+        "lessons_learned": as_list(lessons_learned),
+        "post_execute_audit": audit,
+    }
+
+    accepted = outcome == "success" and acceptance_result == "pass" and audit["status"] == "pass"
+    step_status = "completed" if accepted else ("failed" if outcome == "failed" else "partial")
     update_step_status(backlog, step_id, step_status)
 
     completed_steps = state.setdefault("completed_steps", [])
-    if outcome == "success":
+    if accepted:
         state["last_completed_step"] = step_id
         if step_id not in completed_steps:
             completed_steps.append(step_id)
@@ -175,6 +258,8 @@ def record_execution(
         "changed_files": changed_files,
         "test_result": test_result,
         "errors_introduced": int(errors_introduced),
+        "completion_artifact": completion_artifact,
+        "accepted": accepted,
         "executed_at": timestamp,
     }
 
@@ -187,6 +272,7 @@ def record_execution(
             "outcome": outcome,
             "session_id": session_id,
             "timestamp": timestamp,
+            "completion_artifact": completion_artifact,
         },
     )
     save_json(paths["resume_state"], state)
@@ -198,7 +284,9 @@ def record_execution(
         "status": "recorded",
         "step_id": step_id,
         "outcome": outcome,
+        "accepted": accepted,
         "history": history_row,
+        "post_execute_audit": audit,
     }
 
 
@@ -220,6 +308,9 @@ def main(argv=None):
     record.add_argument("--changed-file", action="append", default=[])
     record.add_argument("--test-result", choices=["pass", "fail", "skipped", "null"], default="null")
     record.add_argument("--errors-introduced", type=int, default=0)
+    record.add_argument("--acceptance-result", choices=["pass", "fail", "partial", "not_checked"], default="not_checked")
+    record.add_argument("--handover-note")
+    record.add_argument("--lesson-learned", action="append", default=[])
     record.add_argument("--session-id")
 
     args = parser.parse_args(argv)
@@ -241,6 +332,9 @@ def main(argv=None):
                 test_result=None if args.test_result == "null" else args.test_result,
                 errors_introduced=args.errors_introduced,
                 session_id=args.session_id,
+                acceptance_result=args.acceptance_result,
+                handover_note=args.handover_note,
+                lessons_learned=args.lesson_learned,
             )
     except Exception as exc:  # noqa: BLE001 - CLI must return machine-readable errors.
         write_json({"status": "error", "error": str(exc)})

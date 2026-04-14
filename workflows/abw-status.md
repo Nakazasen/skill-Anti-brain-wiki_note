@@ -1,5 +1,5 @@
 ---
-description: ABW MCP and queue health check
+description: ABW MCP, grounding queue, and continuation runtime health check
 ---
 
 # WORKFLOW: /abw-status

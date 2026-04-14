@@ -1,1 +1,1 @@
-{"step_id":"step-001","outcome":"success","changed_files":["tests/test_example.py"],"test_result":"pass","errors_introduced":0,"executed_at":"2026-04-15T00:00:00Z"}
+{"step_id":"step-001","outcome":"success","changed_files":["tests/test_example.py"],"test_result":"pass","errors_introduced":0,"completion_artifact":{"acceptance_result":"pass","handover_note":"Added focused regression test only.","lessons_learned":[],"post_execute_audit":{"status":"pass","out_of_scope_files":[],"findings":[],"requires_abw_audit":false}},"accepted":true,"executed_at":"2026-04-15T00:00:00Z"}

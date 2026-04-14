@@ -27,7 +27,7 @@ For execution, prefer the governed executor whenever Python is available:
 
 ```bash
 python scripts/continuation_execute.py prepare --workspace .
-python scripts/continuation_execute.py record --workspace . --step-id <step_id> --outcome success --test-result pass
+python scripts/continuation_execute.py record --workspace . --step-id <step_id> --outcome success --test-result pass --acceptance-result pass
 ```
 
 The executor does not run arbitrary shell commands and does not edit files. It locks the active step, enforces approval requirements from the gate, and records the outcome after the host agent performs the bounded work.
@@ -243,7 +243,18 @@ Execution phases:
 2. If the result is `approval_required`, stop and ask for explicit user approval. Do not infer approval from vague language.
 3. If the result is `blocked`, return the gate reasons and go back to `/abw-resume`.
 4. If the result is `prepared`, perform only the selected step within `candidate_files`.
-5. `record`: call `scripts/continuation_execute.py record ...` with outcome, changed files, test result, and errors introduced.
+5. `record`: call `scripts/continuation_execute.py record ...` with outcome, changed files, test result, errors introduced, acceptance result, and handover note.
+
+The record phase writes a completion artifact into `.brain/step_history.jsonl` and `.brain/handover_log.jsonl`:
+
+- `acceptance_result`
+- `handover_note`
+- `lessons_learned`
+- `post_execute_audit`
+
+The post-execute audit is deterministic and lightweight. It fails if changed files escape `candidate_files`, tests fail, or errors are introduced. It warns when the outcome is partial/failed or validation was not checked. If it returns `requires_abw_audit = true`, the step must not be treated as accepted until `/abw-audit` runs.
+
+Completion is strict: a step enters `completed_steps` only when `outcome=success`, `acceptance_result=pass`, and `post_execute_audit.status=pass`. Any audit failure or missing acceptance keeps the attempt recorded but not accepted.
 
 Execution invariants:
 
@@ -252,3 +263,4 @@ Execution invariants:
 - No scope expansion without returning to `/abw-resume`.
 - No overwrite of `.brain/handover_log.jsonl` or `.brain/step_history.jsonl`.
 - Partial and failed outcomes must be recorded honestly.
+- Scope deviations must be surfaced through `post_execute_audit`; do not hide them in prose.

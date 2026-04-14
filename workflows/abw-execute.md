@@ -91,7 +91,9 @@ python scripts/continuation_execute.py record \
   --outcome success \
   --changed-file <path> \
   --test-result pass \
-  --errors-introduced 0
+  --errors-introduced 0 \
+  --acceptance-result pass \
+  --handover-note "What changed and what the next agent should know"
 ```
 
 Valid outcomes:
@@ -109,6 +111,30 @@ Valid test results:
 
 The record phase appends `.brain/step_history.jsonl`, appends `.brain/handover_log.jsonl`, updates `resume_state`, updates backlog status, and clears `.brain/active_execution.json`.
 
+The record phase also creates a lightweight completion artifact:
+
+- `acceptance_result`: `pass`, `fail`, `partial`, or `not_checked`
+- `handover_note`: short note for the next agent
+- `lessons_learned`: optional reusable lessons
+- `post_execute_audit`: deterministic scope/validation audit
+
+The post-execute audit is not a deep `/abw-audit`. It checks for:
+
+- changed files outside `candidate_files`
+- failed tests or introduced errors
+- partial/failed outcomes
+- missing passing validation
+
+If `post_execute_audit.requires_abw_audit = true`, stop and run `/abw-audit` before treating the step as accepted.
+
+A step is marked `completed` only when all of these are true:
+
+- `outcome = success`
+- `acceptance_result = pass`
+- `post_execute_audit.status = pass`
+
+Otherwise the attempt is recorded honestly as `partial` or `failed`; it is not added to `completed_steps`.
+
 ---
 
 ## Output
@@ -120,6 +146,9 @@ Report:
 - checks run,
 - outcome,
 - any deviations from candidate files,
+- post-execute audit status,
+- acceptance result,
+- accepted true/false,
 - whether state was recorded successfully.
 
 If the step failed, recommend `/abw-learn` only when there is a reusable behavioral lesson.

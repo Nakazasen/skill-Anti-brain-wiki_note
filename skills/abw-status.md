@@ -51,6 +51,30 @@ Generate a clean, Markdown-formatted report for the user based on your findings:
 > Run `/abw-setup` to configure your connection.
 ```
 
+
+---
+
+## Continuation Runtime Addendum
+
+If `scripts/continuation_status.py` exists, run:
+
+```bash
+python scripts/continuation_status.py --workspace .
+```
+
+Include this section in the status report:
+
+```markdown
+### Continuation Runtime
+- **Health:** `[ready | active | needs_approval | blocked | error]`
+- **Active Step:** `[active_step or none]`
+- **Next Safe Step:** `[step_id or none]`
+- **Pending Steps:** `[count]`
+- **Last Outcome:** `[success | partial | failed | none]`
+```
+
+If the script is unavailable, read `.brain/resume_state.json`, `.brain/continuation_backlog.json`, `.brain/active_execution.json`, and `.brain/step_history.jsonl` directly and summarize best-effort.
+
 ## Restrictions
 - Do NOT run the full `lint-wiki` 12 checks. This is meant to take < 5 seconds.
 - KEEP instructions and output completely in Vietnamese to match the AWF persona.
