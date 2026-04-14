@@ -24,13 +24,14 @@ Hybrid ABW is an operating discipline for AI work. It combines:
 - `/abw-ask`: work entrypoint
 - `/abw-eval`: evaluation entrypoint
 
-## Mental Model: 5 Lanes
+## Mental Model: 6 Lanes
 
 1. Ask & Think
 2. Build Knowledge
 3. Build Product
 4. Session & Memory
 5. Evaluation & Acceptance
+6. Utility & Customization
 
 ## Quick Start
 

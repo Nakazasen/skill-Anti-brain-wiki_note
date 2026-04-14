@@ -59,22 +59,25 @@ Bắt đầu ở đây khi đã có đầu ra và bạn muốn audit, challenge,
 
 ---
 
-## Mental Model: 5 Lanes
-
-1. **Khám phá và tư duy**  
-   `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
-
-2. **Dựng nền tri thức**  
-   `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-pack`, `/abw-sync`, `/abw-lint`
-
-3. **Triển khai sản phẩm**  
-   `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
-
-4. **Phiên làm việc và ghi nhớ**  
-   `/abw-start`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
-
-5. **Đánh giá và nghiệm thu**  
-   `/abw-review`, `/abw-audit`, `/abw-meta-audit`, `/abw-rollback`, `/abw-accept`, `/abw-eval`
+## Mental Model: 6 Lanes
+ 
+ 1. **Khám phá và tư duy**  
+    `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
+ 
+ 2. **Dựng nền tri thức**  
+    `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-pack`, `/abw-sync`, `/abw-lint`
+ 
+ 3. **Triển khai sản phẩm**  
+    `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`
+ 
+ 4. **Phiên làm việc và ghi nhớ**  
+    `/abw-start`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
+ 
+ 5. **Đánh giá và nghiệm thu**  
+    `/abw-review`, `/abw-audit`, `/abw-meta-audit`, `/abw-rollback`, `/abw-accept`, `/abw-eval`
+ 
+ 6. **Tiện ích và Cấu hình**  
+    `/customize`, `/help`, `/abw-update`
 
 ---
 
@@ -114,6 +117,7 @@ Sau khi cài xong:
 | analyze tradeoffs, RCA, or a complex question | `/abw-query-deep` |
 | work on a greenfield idea with no usable knowledge yet | `/abw-bootstrap` |
 | define product scope or MVP | `/brainstorm` |
+| configure AI style, persona, or autonomy | `/customize` |
 | ingest source material into project knowledge | `/abw-ingest` |
 | package wiki into compressed files for NotebookLM limits | `/abw-pack` |
 | dry-run or sync an approved package to NotebookLM | `/abw-sync` |

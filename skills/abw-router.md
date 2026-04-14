@@ -1,6 +1,6 @@
-﻿# SKILL: abw-router
+# SKILL: abw-router
 
-**Mục tiêu:** Đánh giá câu hỏi của người dùng và trạng thái của workspace hiện tại để kích hoạt nhánh tư duy hoặc workflow phù hợp nhất (Ask/Think, Build Knowledge, Build Product, Session/Memory).
+**Mục tiêu:** Đánh giá câu hỏi của người dùng và trạng thái của workspace hiện tại để kích hoạt nhánh tư duy hoặc workflow phù hợp nhất (Ask/Think, Build Knowledge, Build Product, Session/Memory, Evaluation/Acceptance, Utility/Customization).
 
 ---
 

@@ -1,4 +1,4 @@
-# Hybrid ABW Command Model
+# Hybrid ABW Command Model (6 Lanes)
 
 Tài liệu này mô tả command surface chính thức của Hybrid ABW trong repo.
 
@@ -9,7 +9,7 @@ Tài liệu này mô tả command surface chính thức của Hybrid ABW trong r
 - **`/abw-start`**: mở phiên làm việc có kiểm tra trạng thái và grounding path.
 - **`/abw-update`**: cập nhật command surface ABW vào Gemini runtime local.
 
-## 5 lane
+## 6 lane
 
 ### 1. Khám phá và tư duy
 

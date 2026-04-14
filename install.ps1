@@ -270,29 +270,38 @@ $abwInstructions = @"
 When the user types one of the commands below, treat it as a Hybrid ABW workflow command.
 Do not route users to the legacy AWF flow by default.
 
-## Primary Commands
+### Primary Commands
 | Command | Workflow File | Purpose |
 |---------|---------------|---------|
-| `/abw-init` | abw-init.md | Bootstrap or repair the Hybrid ABW structure |
-| `/abw-setup` | abw-setup.md | Authenticate NotebookLM MCP and verify bridge status |
-| `/abw-status` | abw-status.md | Check MCP health and grounding queue state |
-| `/abw-ingest` | abw-ingest.md | Process raw sources into manifest and wiki artifacts |
-| `/abw-pack` | abw-pack.md | Package wiki into compressed files for NotebookLM limits |
-| `/abw-sync` | abw-sync.md | Dry-run or execute NotebookLM sync for an approved package |
-| `/abw-ask` | abw-ask.md | Smart default router: auto-selects fast, deep, or bootstrap path |
+| /abw-init | abw-init.md | Bootstrap or repair the Hybrid ABW structure |
+| /abw-setup | abw-setup.md | Authenticate NotebookLM MCP and verify bridge status |
+| /abw-status | abw-status.md | Check MCP health and grounding queue state |
+| /abw-ingest | abw-ingest.md | Process raw sources into manifest and wiki artifacts |
+| /abw-pack | abw-pack.md | Package wiki into compressed files for NotebookLM limits |
+| /abw-sync | abw-sync.md | Dry-run or execute NotebookLM sync for an approved package |
+| /abw-ask | abw-ask.md | Smart default router: auto-selects fast, deep, or bootstrap path |
+| /customize | customize.md | Configure AI style, persona, and autonomy |
 
-| `/abw-query` | abw-query.md | Fast wiki-first query path |
-| `/abw-query-deep` | abw-query-deep.md | TTC deliberation path for complex questions |
-| `/abw-lint` | abw-lint.md | Audit wiki, grounding, and deliberation health |
-| `/abw-bootstrap` | abw-bootstrap.md | System 2 reasoning for greenfield ideas (no raw/wiki data yet) |
-| `/abw-audit` | abw-audit.md | Self-audit a change, workflow, doc, or output |
-| `/abw-meta-audit` | abw-meta-audit.md | Audit the audit report itself |
-| `/abw-accept` | abw-accept.md | Run the final acceptance gate |
-| `/abw-eval` | abw-eval.md | Run the full evaluation chain |
-| `/abw-start` | abw-start.md | Start a session with state, grounding, and next-step checks |
-| `/abw-wrap` | abw-wrap.md | Wrap a session with handover and follow-up guidance |
-| `/abw-review` | abw-review.md | Review code, changes, or current project state |
-| `/abw-rollback` | abw-rollback.md | Recover a safe state after a bad change |
+| /abw-query | abw-query.md | Fast wiki-first query path |
+| /abw-query-deep | abw-query-deep.md | TTC deliberation path for complex questions |
+| /abw-lint | abw-lint.md | Audit wiki, grounding, and deliberation health |
+| /abw-bootstrap | abw-bootstrap.md | System 2 reasoning for greenfield ideas (no raw/wiki data yet) |
+| /abw-audit | abw-audit.md | Self-audit a change, workflow, doc, or output |
+| /abw-meta-audit | abw-meta-audit.md | Audit the audit report itself |
+| /abw-accept | abw-accept.md | Run the final acceptance gate |
+| /abw-eval | abw-eval.md | Run the full evaluation chain |
+| /abw-start | abw-start.md | Start a session with state, grounding, and next-step checks |
+| /abw-wrap | abw-wrap.md | Wrap a session with handover and follow-up guidance |
+| /abw-review | abw-review.md | Review code, changes, or current project state |
+| /abw-rollback | abw-rollback.md | Recover a safe state after a bad change |
+
+## Command Model (6 Lanes)
+- Ask & Think: /abw-ask, /abw-query, /abw-query-deep, /abw-bootstrap, /brainstorm
+- Build Knowledge: /abw-setup, /abw-status, /abw-ingest, /abw-pack, /abw-sync, /abw-lint
+- Build Product: /plan, /design, /visualize, /code, /run, /debug, /test, /deploy, /refactor
+- Session & Memory: /abw-start, /save-brain, /recap, /next, /abw-wrap
+- Evaluation & Acceptance: /abw-audit, /abw-meta-audit, /abw-accept, /abw-eval, /abw-review, /abw-rollback
+- Utility & Customization: /customize, /help, /abw-update
 
 ## Extended Workflows
 | Command | Workflow File | Purpose |
@@ -312,7 +321,7 @@ Do not route users to the legacy AWF flow by default.
 | `/recap` | recap.md | Restore last-session context |
 | `/next` | next.md | Suggest the best next move |
 
-## Command Model (5 Lanes)
+## Command Model (6 Lanes)
 - Ask & Think: `/abw-ask`, `/abw-query`, `/abw-query-deep`, `/abw-bootstrap`, `/brainstorm`
 - Build Knowledge: `/abw-init`, `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-pack`, `/abw-sync`, `/abw-lint`
 - Build Product: `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`

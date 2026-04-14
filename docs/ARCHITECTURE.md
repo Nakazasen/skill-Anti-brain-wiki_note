@@ -25,6 +25,7 @@ This document is the source of truth for repository boundaries, runtime packagin
    - grounding
    - delivery
    - evaluation
+   - customization & utility
 
 ## Public Surface
 
@@ -42,11 +43,11 @@ Public surface means the commands a normal user is expected to discover and run 
   - `test.md`
   - `deploy.md`
   - `refactor.md`
-  - `audit.md`
   - `save_brain.md`
   - `recap.md`
   - `next.md`
   - `help.md`
+  - `customize.md`
 
 ## Compatibility Layer
 
