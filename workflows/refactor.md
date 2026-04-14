@@ -25,6 +25,12 @@ Trong suốt quá trình, phải giữ nguyên behavior.
 
 ## Giai đoạn 1: Scope và Safety
 
+### 1.0. Lessons & Side-Effect Preflight
+
+- Đọc `.brain/lessons_learned.jsonl` và áp dụng các lesson active liên quan `refactor`, module hiện tại, hoặc scope `general`.
+- Xác định refactor có đụng module dùng chung, generated code, migration, hoặc thay đổi diện rộng không.
+- Nếu phạm vi rộng hoặc side-effect khó đoán, trình bày plan nhỏ theo bước và điểm rollback trước khi sửa.
+
 ### 1.1. Xác định phạm vi
 
 Hỏi hoặc tự xác định:

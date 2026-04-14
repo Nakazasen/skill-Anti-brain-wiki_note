@@ -14,6 +14,7 @@
 .brain/grounding_queue.json
 .brain/knowledge_gaps.json
 .brain/deliberation_runs.jsonl
+.brain/lessons_learned.jsonl
 .brain/exit_gate_policy.json
 .brain/circuit_breaker.json
 

@@ -27,6 +27,7 @@ Initialize or upgrade the Hybrid Anti-Brain-Wiki (ABW) architecture in any proje
 3. Check for existence of core configuration files in `.brain/`:
    - `exit_gate_policy.json`
    - `circuit_breaker.json`
+   - `lessons_learned.jsonl`
 
 ### STAGE 2: Scaffold Structure
 1. **Create Missing Folders**: Run `mkdir` or equivalent for all missing folders identified in Stage 1.
@@ -38,6 +39,7 @@ Initialize or upgrade the Hybrid Anti-Brain-Wiki (ABW) architecture in any proje
    .brain/grounding_queue.json
    .brain/knowledge_gaps.json
    .brain/deliberation_runs.jsonl
+   .brain/lessons_learned.jsonl
    .brain/cache/
    ```
 
@@ -46,10 +48,11 @@ Copy the following files from the global skill `templates/` directory to the wor
 
 | Template Source | Workspace Destination | Purpose |
 |-----------------|-----------------------|---------|
-| `note.schema.md` | `wiki/_schemas/note.schema.md` | Enforcement of wiki structure |
-| `index.md` | `wiki/index.md` | Knowledge root index |
+| `note_schema.example.md` | `wiki/_schemas/note.schema.md` | Enforcement of wiki structure |
+| `wiki_index.example.md` | `wiki/index.md` | Knowledge root index |
 | `exit_gate_policy.example.json` | `.brain/exit_gate_policy.json` | TTC Deliberation scoring |
 | `circuit_breaker.example.json` | `.brain/circuit_breaker.json` | Loop safety control |
+| `lessons_learned.example.jsonl` | `.brain/lessons_learned.jsonl` | Active user corrections and project-specific lessons |
 
 ### STAGE 4: Finalize & Welcome
 1. Verify all files are in place.

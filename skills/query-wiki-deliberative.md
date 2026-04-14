@@ -44,15 +44,16 @@ This skill is NEVER called directly by the user. It is invoked by `query-wiki.md
                                    v
                           +-------------------+
                           |  PASS 4            |
+                          |  Challenge +       |
                           |  Self-Critique     |
                           |  + Exit Gate Score |
                           +--------+----------+
                                    |
                           +--------v----------+
                           |  EXIT DECISION     |
-                          |  score >= 8: exit  |
-                          |  score 5-7: loop   |
-                          |  score < 5: partial|
+                          |  score >= 10: exit |
+                          |  score 6-9: loop   |
+                          |  score < 6: partial|
                           +-------------------+
                                    |
                                (if loop)
@@ -100,6 +101,7 @@ Before starting the deliberation loop:
      run_id: "delib-<YYYYMMDD>-<XXXX>",
      query: <original_query>,
      mode: "deliberative",
+     decomposition: {},
      rounds: 0,
      max_rounds: policy.limits.max_rounds,
      passes: [],
@@ -124,6 +126,8 @@ Break the query into structured sub-problems before searching.
 ```
 1. Parse the user query into:
    - what_is_asked: core question in one sentence
+   - embedded_assumptions: what the user's query takes for granted (must verify before answering)
+   - instruction_constraints: specific format, negative constraints, or scope limits
    - evidence_needed: what wiki notes/sources would answer this
    - known_gaps: what is likely missing based on query complexity
    - verification_needed: what claims must be cross-checked
@@ -219,7 +223,7 @@ When budget = 0: no more NotebookLM calls regardless of need
 ## Pass 4: Self-Critique + Exit Gate Scoring
 
 ### Purpose
-The critical pass. Score the current answer draft against 5 objective criteria.
+The critical pass. Score the current answer draft against 6 objective criteria.
 
 ### Scoring Criteria
 
@@ -230,31 +234,38 @@ The critical pass. Score the current answer draft against 5 objective criteria.
 | consistency | Unresolved contradiction | Ambiguity present | Fully consistent |
 | grounding_status | All cited notes draft/unverified | Mixed grounded/draft | All grounded/verified |
 | answer_completeness | Misses core question | Partial answer | Complete answer |
+| instruction_compliance | Violates constraints | Partial compliance | Full compliance |
 
 ### Scoring Process
 ```
-1. Draft the answer based on current evidence
-2. Score each criterion 0-2
-3. Calculate total (max 10)
-4. Record scores in run.scores
-5. Log pass result with scores to run.passes[]
+1. Run a lightweight Red-Team Challenge before drafting:
+   - alternative_interpretations: other plausible readings of the query
+   - counterexamples: evidence that would weaken the current answer
+   - missing_evidence: claims that still lack provenance
+   - assumption_risks: embedded_assumptions from Pass 1 that were not verified
+2. Draft the answer based on current evidence and challenge results
+3. Check instruction_constraints from Pass 1 before scoring
+4. Score each criterion 0-2
+5. Calculate total (max 12)
+6. Record scores in run.scores
+7. Log pass result with scores to run.passes[]
 ```
 
 ### Exit Decision
 ```
-total = sum of all 5 scores
+total = sum of all 6 scores
 
-IF total >= policy.thresholds.early_exit (default: 8):
+IF total >= policy.thresholds.early_exit (default: 10):
     -> EXIT with final answer
     -> run.exit_reason = "score_threshold_met"
 
-IF total >= policy.thresholds.continue (default: 5):
+IF total >= policy.thresholds.continue (default: 6):
     -> proceed to Pass 5 (repair)
     -> IF already at max_rounds:
         -> EXIT with current answer + caveats
         -> run.exit_reason = "max_rounds_reached"
 
-IF total < policy.thresholds.force_partial (default: 5):
+IF total <= policy.thresholds.force_partial (default: 5):
     -> IF at max_rounds:
         -> EXIT with partial answer
         -> log gap to .brain/knowledge_gaps.json
@@ -288,6 +299,11 @@ FOR EACH criterion with score < 2:
     answer_completeness = 0 or 1:
         -> Re-read decomposition (Pass 1)
         -> Address missed sub-questions
+    instruction_compliance = 0 or 1:
+        -> Review instruction_constraints from Pass 1
+        -> Reformat output to match required format
+        -> Remove prohibited content or scope creep
+        -> If constraints conflict with grounding or safety, state the conflict explicitly
 
 AFTER repairs:
     -> Re-score (return to Pass 4 logic)
@@ -348,19 +364,20 @@ After every deliberation (success or break), append one JSON line:
   "rounds": 3,
   "max_rounds": 4,
   "exit_reason": "score_threshold_met | max_rounds_reached | insufficient_at_max_rounds | circuit_breaker:<trigger>",
-  "exit_score": 9,
+  "exit_score": 11,
   "circuit_breaker_triggered": false,
   "scores": {
     "evidence_coverage": 2,
     "citation_integrity": 2,
     "consistency": 1,
     "grounding_status": 2,
-    "answer_completeness": 2
+    "answer_completeness": 2,
+    "instruction_compliance": 2
   },
   "passes": [
     {"pass": 1, "type": "decomposition", "result": "..."},
     {"pass": 2, "type": "evidence_assembly", "result": "..."},
-    {"pass": 3, "type": "self_critique", "result": "score: 9/10"}
+    {"pass": 4, "type": "challenge_self_critique", "result": "score: 11/12"}
   ],
   "used_wiki_notes": ["wiki/concepts/example.md"],
   "used_manifest_refs": ["processed/manifest.jsonl#line-7"],
@@ -377,7 +394,7 @@ After every deliberation (success or break), append one JSON line:
 
 ## Answer Format
 
-### Successful Deliberation (score >= 8)
+### Successful Deliberation (score >= 10)
 ```markdown
 [Answer text with inline citations]
 
@@ -387,7 +404,7 @@ After every deliberation (success or break), append one JSON line:
 
 **Deliberation:**
 - Mode: deliberative (3 rounds)
-- Exit score: 9/10
+- Exit score: 11/12
 - Exit reason: score_threshold_met
 ```
 
@@ -408,7 +425,7 @@ After every deliberation (success or break), append one JSON line:
 
 **Deliberation:**
 - Mode: deliberative (4 rounds -- max reached)
-- Exit score: 6/10
+- Exit score: 7/12
 - Exit reason: max_rounds_reached
 - Gap logged: .brain/knowledge_gaps.json -> gap-<id>
 

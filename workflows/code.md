@@ -48,11 +48,18 @@ Trước khi code, luôn quét nhanh:
 
 ## Implementation Flow
 
+### 0. Preflight Check (Action Safety & Assumptions)
+Trước khi gõ phím:
+- Giả định nào đang được đưa ra? (VD: "API này đã có sẵn", "DB đã có bảng này"). Hãy xác minh lại.
+- Thay đổi này có side-effect phá hủy không? (VD: drop table, mass overwrite, xóa component chung).
+- Nếu có side-effect lớn: Bắt buộc trình bày tác động (impact analysis) hoặc tạo dry-run plan để user duyệt trước.
+
 ### 1. Context Detection
 
 Xác định:
 
 - file nào cần sửa
+- có bài học kinh nghiệm nào cần tránh không (quét nhanh `.brain/lessons_learned.jsonl` lấy các record có `status="active"`)
 - phần nào đang là blocker
 - có test nào liên quan
 

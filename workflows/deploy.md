@@ -33,6 +33,12 @@ Kiểm tra:
 
 Nếu repo chưa sẵn sàng, nói rõ và đề xuất chốt trước khi deploy.
 
+Action-safety additions:
+
+- Read `.brain/lessons_learned.jsonl` for active deploy-related lessons.
+- Identify hard-to-rollback side effects before execution: migrations, env overwrites, DNS changes, production data changes.
+- If a large side effect exists, state expected outcome, impact, and rollback path or dry-run plan before executing.
+
 ---
 
 ## Stage 1: Deployment discovery

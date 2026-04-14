@@ -71,7 +71,10 @@ $TemplateFiles = @(
     "decision_log.example.jsonl",
     "validation_backlog.example.json",
     "notebook_pack_policy.example.json",
-    "notebook_package_manifest.example.json"
+    "notebook_package_manifest.example.json",
+    "lessons_learned.example.jsonl",
+    "note_schema.example.md",
+    "wiki_index.example.md"
 )
 
 $AwfHelperSkills = @(

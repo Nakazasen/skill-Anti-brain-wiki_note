@@ -55,6 +55,13 @@ Kiểm tra nhanh xem các thư mục raw/ và wiki/ có chứa dữ liệu dự 
 
 ---
 
+### Bước 3: Preflight Check (Action Safety & Anti-Assumption)
+Trước khi định tuyến, tự hỏi nhanh:
+- **Chống giả định:** Câu hỏi có chứa giả định ẩn cần verify không? (VD: "Tại sao X hỏng?" -> Phải xác định "X có thực sự hỏng không?").
+- **An toàn hệ thống:** Hành động sắp tới có rủi ro tạo side-effect phá hủy không (VD: xóa file, migration DB, overwrite mass refactor)? Nếu có, tự động đưa vào mode an toàn (đề xuất dry-run hoặc yêu cầu user xác nhận impact trước khi thực thi).
+
+---
+
 > [!IMPORTANT]
 > **Lệnh Thực Thi Ngay (Dynamic Dispatch):**
 >

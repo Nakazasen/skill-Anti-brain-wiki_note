@@ -38,6 +38,12 @@ Nếu thiếu, hỏi lại ngắn gọn trước khi thiết kế.
 
 ## Nội dung cần thiết kế
 
+### 0. Assumption & Lesson Preflight
+
+- Đọc `.brain/lessons_learned.jsonl` và áp dụng các lesson active liên quan `design`, `architecture`, hoặc domain đang thiết kế.
+- Liệt kê giả định quan trọng trước khi chốt kiến trúc, nhất là giả định về data model, auth, scale, external service, và constraint người dùng.
+- Nếu một lựa chọn thiết kế có side-effect lớn về schema, migration, hoặc lock-in nhà cung cấp, nêu tradeoff và cách validate rẻ nhất trước khi chuyển sang `/code`.
+
 ### 1. Data Design
 
 Mô tả:

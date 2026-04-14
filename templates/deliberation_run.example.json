@@ -5,14 +5,15 @@
   "rounds": 3,
   "max_rounds": 4,
   "exit_reason": "score_threshold_met",
-  "exit_score": 9,
+  "exit_score": 11,
   "circuit_breaker_triggered": false,
   "scores": {
     "evidence_coverage": 2,
     "citation_integrity": 2,
     "consistency": 1,
     "grounding_status": 2,
-    "answer_completeness": 2
+    "answer_completeness": 2,
+    "instruction_compliance": 2
   },
   "passes": [
     {
@@ -26,9 +27,9 @@
       "result": "Found wiki/concepts/api-rate-limits.md (grounded, high), manifest#line-7. Missing: enterprise pricing data."
     },
     {
-      "pass": 3,
-      "type": "self_critique",
-      "result": "Citation chain complete. One ambiguity: enterprise vs standard tier not distinguished in existing note. Score: 9/10 -- exit."
+      "pass": 4,
+      "type": "challenge_self_critique",
+      "result": "Citation chain complete. One ambiguity: enterprise vs standard tier not distinguished in existing note. Instruction constraints satisfied. Score: 11/12 -- exit."
     }
   ],
   "used_wiki_notes": [

@@ -2,7 +2,7 @@
 
 > **Version:** 1.0.0  
 > **Trigger:** User says "lint wiki", "audit wiki", "check wiki health", or scheduled periodic check  
-> **Dependencies:** `wiki/`, `processed/manifest.jsonl`, `.brain/grounding_queue.json`, `.brain/knowledge_gaps.json`  
+> **Dependencies:** `wiki/`, `processed/manifest.jsonl`, `.brain/grounding_queue.json`, `.brain/knowledge_gaps.json`, `.brain/lessons_learned.jsonl`
 > **MCP:** `notebooklm` (optional -- health check only)
 
 ---
@@ -298,12 +298,12 @@ FOR EACH run in deliberation_runs.jsonl:
     IF run.circuit_breaker_triggered == true:
         REPORT: "Circuit breaker triggered for query: '<query>'
                  Reason: <exit_reason>
-                 Score: <exit_score>/10
+                 Score: <exit_score>/12
                  Suggestion: Add sources to raw/ for this topic"
 
-    IF run.exit_score < 5:
+    IF run.exit_score < 6:
         REPORT: "Low-quality deliberation for query: '<query>'
-                 Score: <exit_score>/10
+                 Score: <exit_score>/12
                  Gaps logged: <gaps_logged count>
                  Suggestion: Review .brain/knowledge_gaps.json"
 ```
@@ -355,6 +355,51 @@ FOR EACH cluster:
 
 ---
 
+## Check 13: Lessons Learned Integrity
+
+> **Severity:** [WARN] WARNING
+> **Description:** Project/user lessons that are malformed, expired, or too broad to use safely
+> **Requires:** `.brain/lessons_learned.jsonl`
+
+### Algorithm
+```
+IF .brain/lessons_learned.jsonl does NOT exist:
+    SKIP and report: "No lessons learned file yet -- /abw-init can provision it"
+
+FOR EACH non-empty line in .brain/lessons_learned.jsonl:
+    Parse as JSON
+    IF parse fails:
+        REPORT: "[ERR] ERROR: Invalid JSONL lesson at line <N>"
+
+    REQUIRED_FIELDS = [lesson, source, scope, priority, expires_at, status]
+    FOR EACH field in REQUIRED_FIELDS:
+        IF field MISSING:
+            REPORT: "[ERR] ERROR: Lesson line <N> missing '<field>'"
+
+    IF priority NOT IN [low, medium, high]:
+        REPORT: "[WARN] WARNING: Lesson line <N> has invalid priority '<priority>'"
+
+    IF status NOT IN [active, expired, superseded]:
+        REPORT: "[WARN] WARNING: Lesson line <N> has invalid status '<status>'"
+
+    IF status == "active" AND expires_at != null AND expires_at < NOW:
+        REPORT: "[WARN] WARNING: Active lesson expired at <expires_at> -- mark status as expired or refresh it"
+
+    IF scope == "general" AND priority == "high":
+        REPORT: "[INFO] INFO: High-priority general lesson may over-constrain future work -- consider a narrower scope"
+```
+
+### Auto-fix Suggestion
+```
+Do not auto-mutate from lint. Suggest a targeted edit:
+- fix invalid JSONL
+- add missing fields
+- mark expired active lessons as "expired"
+- narrow overly broad lessons
+```
+
+---
+
 ## Output: Lint Report
 
 ### Format
@@ -379,6 +424,7 @@ FOR EACH cluster:
 | Gate Exit Failures | 0 | <n> | 0 |
 | Stale High-Priority | 0 | <n> | 0 |
 | Contradiction Clusters | 0 | <n> | 0 |
+| Lessons Learned | <n> | <n> | <n> |
 | **TOTAL** | **<total>** | **<total>** | **<total>** |
 
 ## [ERR] Errors (Must Fix)
@@ -407,7 +453,7 @@ FOR EACH cluster:
 ### Full Audit
 ```
 User: lint wiki
--> Run all 12 checks
+-> Run all 13 checks
 -> Output formatted report
 -> Suggest priority fixes
 ```
