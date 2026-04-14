@@ -33,21 +33,22 @@ Public surface means the commands a normal user is expected to discover and run 
 
 - ABW commands in `workflows/abw-*.md`
 - promoted delivery/session workflows:
-  - `brainstorm.md`
-  - `plan.md`
-  - `design.md`
-  - `visualize.md`
-  - `code.md`
-  - `run.md`
-  - `debug.md`
-  - `test.md`
-  - `deploy.md`
-  - `refactor.md`
-  - `save_brain.md`
-  - `recap.md`
-  - `next.md`
-  - `help.md`
-  - `customize.md`
+- `brainstorm.md`
+- `plan.md`
+- `design.md`
+- `visualize.md`
+- `code.md`
+- `run.md`
+- `debug.md`
+- `test.md`
+- `deploy.md`
+- `refactor.md`
+- `audit.md`
+- `save_brain.md`
+- `recap.md`
+- `next.md`
+- `help.md`
+- `customize.md`
 
 ## Compatibility Layer
 

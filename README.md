@@ -68,7 +68,7 @@ Bắt đầu ở đây khi đã có đầu ra và bạn muốn audit, challenge,
     `/abw-setup`, `/abw-status`, `/abw-ingest`, `/abw-pack`, `/abw-sync`, `/abw-lint`
  
  3. **Triển khai sản phẩm**  
-    `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`
+    `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
  
  4. **Phiên làm việc và ghi nhớ**  
     `/abw-start`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
@@ -134,6 +134,7 @@ Sau khi cài xong:
 | restore last-session context | `/recap` |
 | decide what to do next | `/next` |
 | review code or project state before a heavier audit | `/abw-review` |
+| audit code, product behavior, or security in the delivery loop | `/audit` |
 | audit a change or artifact | `/abw-audit` |
 | recover after a bad change | `/abw-rollback` |
 | run the full acceptance chain | `/abw-eval` |

@@ -55,12 +55,14 @@ After install:
 2. Use `/abw-ask` for routing
 3. Use `/abw-eval` before acceptance
 4. Use `/abw-update` to refresh the local Gemini runtime command surface
+5. Use `/audit` for delivery-loop review of code, product behavior, or security
 
 ## Documentation Map
 
 - `README.md`: bilingual overview
 - `workflows/README.md`: Vietnamese command model
 - `workflows/help.md`: operator-facing help
+- `workflows/audit.md`: delivery-loop review workflow
 - `docs/ARCHITECTURE.md`: boundaries and source of truth
 - `docs/RELEASE_CHECKLIST.md`: maintainer release gate
 - `examples/hello-abw/`: minimal example workspace
