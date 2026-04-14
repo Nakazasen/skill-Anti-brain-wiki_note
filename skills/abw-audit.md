@@ -31,7 +31,7 @@ Nếu scope là:
 - **router** -> đọc `workflows/abw-ask.md`, `skills/abw-router.md`
 - **docs / command surface** -> đọc `workflows/help.md`, `workflows/README.md`, `workflows/next.md`, `wiki/index.md`
 - **session** -> đọc `workflows/save_brain.md`, `workflows/recap.md`, `workflows/next.md`
-- **delivery** -> đọc `workflows/plan.md`, `workflows/design.md`, `workflows/code.md`, `workflows/debug.md`
+- **delivery** -> đọc `workflows/plan.md`, `workflows/design.md`, `workflows/code.md`, `workflows/debug.md`, `workflows/test.md`, `workflows/deploy.md`, `workflows/refactor.md`
 - **installer** -> đọc `install.ps1`, `install.sh`
 
 Có thể đọc thêm file khác nếu cần, nhưng phải giữ phạm vi hẹp.
@@ -93,6 +93,7 @@ nếu chưa có evidence.
 - Installer / Runtime Robustness: <score or Not targeted>
 - Scope Discipline: <score or Not targeted>
 - Audit Integrity: <self-score is not allowed here; use N/A>
+- Instruction Compliance: <score or Not targeted>
 
 ## Verdict
 - FAIL

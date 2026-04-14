@@ -106,6 +106,7 @@ Before starting the deliberation loop:
      max_rounds: policy.limits.max_rounds,
      passes: [],
      scores: {},
+     score_groups: {},
      used_wiki_notes: [],
      used_manifest_refs: [],
      used_notebooklm: false,
@@ -247,8 +248,11 @@ The critical pass. Score the current answer draft against 6 objective criteria.
 3. Check instruction_constraints from Pass 1 before scoring
 4. Score each criterion 0-2
 5. Calculate total (max 12)
-6. Record scores in run.scores
-7. Log pass result with scores to run.passes[]
+6. Record raw criteria in run.scores
+7. Record score groups:
+   - fact_score = evidence_coverage + citation_integrity + consistency + grounding_status + answer_completeness
+   - rule_score = instruction_compliance
+8. Log pass result with scores to run.passes[]
 ```
 
 ### Exit Decision
@@ -373,6 +377,12 @@ After every deliberation (success or break), append one JSON line:
     "grounding_status": 2,
     "answer_completeness": 2,
     "instruction_compliance": 2
+  },
+  "score_groups": {
+    "fact_score": 9,
+    "fact_score_max": 10,
+    "rule_score": 2,
+    "rule_score_max": 2
   },
   "passes": [
     {"pass": 1, "type": "decomposition", "result": "..."},

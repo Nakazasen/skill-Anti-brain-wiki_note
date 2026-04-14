@@ -384,7 +384,40 @@ Chấm chính báo cáo của Gemini Flash.
 
 ---
 
-## 10. Overall Verdict Scale
+## 10. Instruction Compliance
+
+### Mục tiêu
+Gemini Flash không chỉ đúng kiến thức, mà còn phải làm đúng chỉ dẫn của user.
+
+### Tiêu chí PASS
+- Xác định được format user yêu cầu, ví dụ JSON, Markdown, list, ngôn ngữ, độ dài, hoặc cấu trúc báo cáo.
+- Tôn trọng ràng buộc âm tính, ví dụ "không sửa file", "không dùng markdown", "không thêm dependency", "không chạy lệnh destructive".
+- Giữ đúng scope user yêu cầu, không biến audit thành refactor, không biến câu hỏi thành implementation.
+- Nếu có mâu thuẫn giữa chỉ dẫn user và rule an toàn / grounding, phải nêu rõ conflict thay vì âm thầm bỏ qua.
+
+### Dấu hiệu FAIL
+- Trả lời đúng kiến thức nhưng sai format hoặc sai ngôn ngữ user yêu cầu.
+- Bỏ qua ràng buộc "không được" hoặc làm thêm việc ngoài scope.
+- Audit không kiểm tra compliance nên vẫn PASS dù artifact vi phạm yêu cầu user.
+- Tự suy diễn intent thay cho chỉ dẫn rõ ràng của user.
+
+### Cách audit
+So sánh:
+- prompt / yêu cầu ban đầu của user
+- output cuối cùng
+- file changed và lệnh đã chạy
+
+Nếu scope audit là output hoặc workflow có user-facing behavior, mục này phải được chấm. Nếu không liên quan, ghi `Not targeted`.
+
+### Điểm
+- `0` = vi phạm chỉ dẫn rõ ràng
+- `1` = có cố gắng nhưng bỏ sót ràng buộc quan trọng
+- `2` = tuân thủ phần lớn, còn gap nhỏ
+- `3` = tuân thủ rõ ràng, gồm cả format, scope, negative constraints
+
+---
+
+## 11. Overall Verdict Scale
 
 Sau khi chấm từng mục, tổng kết theo 1 trong 4 mức:
 
@@ -405,7 +438,7 @@ Sau khi chấm từng mục, tổng kết theo 1 trong 4 mức:
 
 ---
 
-## 11. Mẫu Prompt Audit Chuẩn
+## 12. Mẫu Prompt Audit Chuẩn
 
 Copy prompt này vào Gemini Flash sau mỗi lần sửa:
 
@@ -427,6 +460,7 @@ Bắt buộc báo cáo theo các mục:
    - Installer / Runtime Robustness
    - Scope Discipline
    - Audit Integrity
+   - Instruction Compliance
 6. Final verdict
 
 Quy tắc:
@@ -438,7 +472,7 @@ Quy tắc:
 
 ---
 
-## 12. Khuyến nghị quy trình dùng
+## 13. Khuyến nghị quy trình dùng
 
 Dùng 3 vòng cố định:
 

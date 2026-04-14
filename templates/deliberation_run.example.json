@@ -15,6 +15,12 @@
     "answer_completeness": 2,
     "instruction_compliance": 2
   },
+  "score_groups": {
+    "fact_score": 9,
+    "fact_score_max": 10,
+    "rule_score": 2,
+    "rule_score_max": 2
+  },
   "passes": [
     {
       "pass": 1,

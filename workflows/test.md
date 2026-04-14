@@ -40,6 +40,7 @@ Nếu là bug fix, nhất định phải có test để chống tái phát nếu
 
 Xác định:
 
+- bài học kinh nghiệm nào cần áp dụng không (đọc `.brain/lessons_learned.jsonl` và lọc các lesson active liên quan `test`, `qa`, module hiện tại, hoặc scope `general`)
 - lệnh test nào cần chạy
 - file / module nào bị ảnh hưởng
 - có cần fixtures, env, services nào không
