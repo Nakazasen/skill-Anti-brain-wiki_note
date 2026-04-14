@@ -1,88 +1,106 @@
 # SKILL: abw-accept
 
-> **Purpose:** Chạy acceptance gate cuối cùng cho một thay đổi hoặc artifact theo Hybrid ABW Rubric.
-> **Role:** Acceptance utility (used by `/abw-accept`)
+> **Purpose:** Evaluation Kernel v1 acceptance gate. Decide whether one output has enough evidence to move into `accepted`.
+> **Role:** Lean acceptance utility, not a deep audit.
 
 ---
 
-## Instructions for AI Operator
+## Boundary
 
-Khi user gọi `/abw-accept`, thực hiện quy trình sau:
+`/abw-accept` does not answer "is this generally good?"
 
-### 1. Xác định đối tượng cần nghiệm thu
+It answers one narrower question:
 
-Ví dụ:
+> Does this artifact have enough evidence to be accepted?
 
-- router patch
-- docs cleanup
-- installer hardening
-- toàn bộ thay đổi của phiên hiện tại
+Use the other commands for broader work:
 
-Nếu scope mơ hồ, nêu rõ giả định trước khi chấm.
+- `/abw-accept`: short, hard acceptance gate
+- `/abw-eval`: full evaluation chain
+- `/abw-audit`: deeper investigation
 
-### 2. Thu thập đầu vào nghiệm thu
+---
 
-Đọc:
+## Machine Gate
 
-- artifact thật
-- audit trước đó nếu có
-- meta-audit trước đó nếu có
+When Python is available, prefer:
 
-Nếu chưa có audit/meta-audit, bạn vẫn có thể nghiệm thu, nhưng phải nói rõ mức độ tin cậy thấp hơn.
+```bash
+python scripts/abw_accept.py --workspace . --request .brain/acceptance_request.json
+```
 
-### 3. Chấm theo rubric
+If the user has no request file, create or ask for a minimal request using `templates/acceptance_request.example.json`.
 
-Tham chiếu:
-- `HYBRID_ABW_RUBRIC.md`
+The script appends `.brain/acceptance_log.jsonl` unless `--no-log` is passed.
 
-Chỉ chấm các mục liên quan trực tiếp đến scope.
+---
 
-Với mỗi mục:
+## Required Inputs
 
-- cho điểm hoặc `Not targeted`
-- nêu ngắn gọn lý do
+An acceptance request must include:
 
-### 4. Phân biệt blocker và non-blocker
+- `artifact`: id, path, and type of the output being accepted
+- `rubric`: pass/fail criteria relevant to this artifact
+- `checks`: real check results, not model vibes
+- `scope`: what is being accepted
 
-Mọi vấn đề phải được tách thành:
+---
 
-- **Blocking issues**
-- **Non-blocking issues**
+## Verdict Rules
 
-Không được gộp chung.
+Allowed verdicts:
 
-### 5. Output Format
+- `pass`: all required artifact/rubric/check evidence is present and passing
+- `partial`: some evidence passes, but required checks or rubric items failed
+- `blocked`: acceptance cannot be evaluated because artifact, rubric, checks, or evidence are missing
+- `fail`: required evidence exists and fails with no meaningful passing evidence
+
+Rules:
+
+- `partial` means there was progress, but it is not accepted.
+- `blocked` means the gate lacks enough evidence to evaluate.
+- `verdict` must not be generated from model prose alone.
+- If any blocker exists, do not return `pass`.
+- If `accepted=false`, state the exact next action.
+
+---
+
+## Output Format
 
 ```markdown
 # ABW Acceptance Report
 
-## Scope Under Acceptance
+## Scope
 - <scope>
 
-## Inputs Considered
-- <artifacts, audit reports, meta-audit reports>
+## Artifact
+- <id/path/type>
 
-## Rubric Scoring
-- <category>: <score or Not targeted> - <reason>
+## Checks
+- <check>: <pass/fail> - <reason>
 
-## Blocking Issues
-- <must-fix items>
+## Rubric
+- <rubric item>: <pass/fail> - <reason>
 
-## Non-Blocking Issues
-- <minor gaps>
+## Verdict
+- pass | partial | blocked | fail
 
-## Final Verdict
-- FAIL
-- PASS WITH CRITICAL GAPS
-- PASS WITH MINOR GAPS
-- PASS
+## Accepted
+- true | false
+
+## Reasons
+- <block/fail/warning reasons>
 
 ## Required Next Action
 - <what must happen next>
 ```
 
-### 6. Restrictions
+---
 
-- `/abw-accept` không được sửa file
-- Không được để verdict mạnh hơn evidence thật
-- Nếu còn blocker, không được PASS
+## Restrictions
+
+- `/abw-accept` must not edit product files.
+- Do not produce a stronger verdict than the evidence supports.
+- Do not accept an artifact with missing required checks.
+- Do not treat `partial` as accepted.
+- Always preserve `.brain/acceptance_log.jsonl` as append-only.

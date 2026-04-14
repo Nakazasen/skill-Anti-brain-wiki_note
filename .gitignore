@@ -26,6 +26,8 @@
 .brain/step_history.jsonl
 .brain/active_execution.json
 .brain/model_claims.jsonl
+.brain/acceptance_log.jsonl
+.brain/acceptance_request.json
 
 # Bootstrap reasoning state (do not commit greenfield assumptions/plans)
 .brain/bootstrap/*.json

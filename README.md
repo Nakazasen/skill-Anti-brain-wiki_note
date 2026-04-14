@@ -181,6 +181,8 @@ V2 runtime primitives add guarded support for dependency graphs, heuristic unsaf
 - `continuation_rollback.py` plans first and requires `execute --confirm` for allowlisted rollback methods.
 - `continuation_claim.py` records model claims in `.brain/model_claims.jsonl` so parallel models do not edit overlapping files silently.
 
+Evaluation Kernel v1 lives behind `/abw-accept`. It is deliberately narrow: artifact + rubric + real checks + verdict + append-only `.brain/acceptance_log.jsonl`. It prevents "done giả" by refusing to mark an artifact accepted when evidence is missing or failing.
+
 For machine-checkable gating, run:
 
 ```bash
@@ -197,6 +199,7 @@ python scripts/continuation_execute.py record --workspace /tmp/resume-abw-execut
 python scripts/continuation_status.py --workspace /tmp/resume-abw-execute
 python scripts/continuation_detect_unsafe.py --workspace /tmp/resume-abw-execute
 python scripts/continuation_claim.py claim --workspace /tmp/resume-abw-execute --model-id gemini-flash --step-id step-safe-test
+python scripts/abw_accept.py --workspace /tmp/resume-abw-execute --request templates/acceptance_request.example.json
 ```
 
 Relevant files:
@@ -211,10 +214,13 @@ Relevant files:
 - `scripts/continuation_detect_unsafe.py`
 - `scripts/continuation_rollback.py`
 - `scripts/continuation_claim.py`
+- `scripts/abw_accept.py`
 - `templates/resume_state.example.json`
 - `templates/continuation_backlog.example.json`
 - `templates/active_execution.example.json`
 - `templates/model_claims.example.jsonl`
+- `templates/acceptance_request.example.json`
+- `templates/acceptance_log.example.jsonl`
 - `examples/resume-abw/`
 
 ---

@@ -1,10 +1,17 @@
 ---
-description: ABW acceptance gate workflow
+description: Evaluation Kernel v1 acceptance gate workflow
 ---
 
 # WORKFLOW: /abw-accept
 
-**Mục đích:** Đưa ra acceptance verdict cuối cùng cho một thay đổi hoặc artifact theo Hybrid ABW Rubric.
+Purpose: run Evaluation Kernel v1. Decide whether one artifact has enough evidence to move into `accepted`.
 
-**Hướng dẫn cho AI:**
-Bạn là chuyên gia Acceptance Gate của Hybrid ABW. Hãy đọc và thực hiện quy trình trong: [skills/abw-accept.md](../skills/abw-accept.md).
+Operator rule: you are the Hybrid ABW Acceptance Gate. Read and follow [skills/abw-accept.md](../skills/abw-accept.md).
+
+If a request file exists:
+
+```bash
+python scripts/abw_accept.py --workspace . --request .brain/acceptance_request.json
+```
+
+If no request file exists, use `templates/acceptance_request.example.json` as the minimal schema.
