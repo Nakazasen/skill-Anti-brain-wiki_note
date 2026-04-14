@@ -1,0 +1,44 @@
+{
+  "steps": [
+    {
+      "step_id": "step-001",
+      "title": "Add a narrow regression test",
+      "description": "Add one focused regression test for the known behavior before changing implementation.",
+      "permission_class": "safe_write",
+      "candidate_files": [
+        "tests/test_example.py"
+      ],
+      "preconditions": [
+        {
+          "type": "file_exists",
+          "subject": "tests",
+          "expected": true,
+          "description": "The test directory exists."
+        }
+      ],
+      "exit_criteria": [
+        {
+          "type": "test_passes",
+          "subject": "step-001",
+          "description": "The relevant test result is recorded as pass in step_history."
+        }
+      ],
+      "affects_decision_ids": [],
+      "evidence_delta_refs": [],
+      "estimated_files_touched": 1,
+      "estimated_lines_changed": 80,
+      "blast_radius": "low",
+      "reversibility": "easy",
+      "surface_type": "test",
+      "module": "example",
+      "rollback_contract": {
+        "method": "restore file",
+        "cost": "low",
+        "confidence": "high"
+      },
+      "blocked_by_gap": null,
+      "status": "pending",
+      "created_at": "2026-04-15T00:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "decisions": [
+    {
+      "decision_id": "dec-001",
+      "title": "Keep the current architecture boundary",
+      "decision": "Do not change architecture boundaries during a resume step.",
+      "rationale": "Resume steps must preserve continuity unless new evidence requires a decision override.",
+      "evidence_refs": [
+        "wiki/concepts/example.md"
+      ],
+      "locked_at": "2026-04-15T00:00:00Z",
+      "locked_by": "user",
+      "override_allowed": true,
+      "override_requires_evidence_delta": true,
+      "override_requires_approval": true,
+      "override_history": []
+    }
+  ]
+}

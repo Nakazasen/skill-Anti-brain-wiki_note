@@ -20,15 +20,34 @@ jobs:
         shell: pwsh
         run: |
           powershell -ExecutionPolicy Bypass -File .\install.ps1
-          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-ask.md"
-          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-eval.md"
-          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-learn.md"
-          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-pack.md"
-          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-sync.md"
-          Test-Path "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-update.md"
-          Test-Path "$env:USERPROFILE\.gemini\abw_install_state.json"
-          Select-String -Path "$env:USERPROFILE\.gemini\GEMINI.md" -Pattern "Hybrid ABW - Antigravity IDE Command Surface"
-          Select-String -Path "$env:USERPROFILE\.gemini\GEMINI.md" -Pattern "/abw-learn"
+          $requiredFiles = @(
+            "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-ask.md",
+            "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-eval.md",
+            "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-learn.md",
+            "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-pack.md",
+            "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-resume.md",
+            "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-sync.md",
+            "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-update.md",
+            "$env:USERPROFILE\.gemini\antigravity\skills\continuation-kernel.md",
+            "$env:USERPROFILE\.gemini\antigravity\templates\resume_state.example.json",
+            "$env:USERPROFILE\.gemini\antigravity\templates\continuation_backlog.example.json",
+            "$env:USERPROFILE\.gemini\antigravity\templates\continuation_policy.example.json",
+            "$env:USERPROFILE\.gemini\abw_install_state.json"
+          )
+          foreach ($path in $requiredFiles) {
+            if (-not (Test-Path $path)) {
+              throw "Missing required installed file: $path"
+            }
+          }
+          Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\resume_state.example.json" -Raw | ConvertFrom-Json | Out-Null
+          Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\continuation_backlog.example.json" -Raw | ConvertFrom-Json | Out-Null
+          Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\continuation_policy.example.json" -Raw | ConvertFrom-Json | Out-Null
+          $gemini = Get-Content "$env:USERPROFILE\.gemini\GEMINI.md" -Raw
+          foreach ($pattern in @("Hybrid ABW - Antigravity IDE Command Surface", "/abw-learn", "/abw-resume")) {
+            if ($gemini -notlike "*$pattern*") {
+              throw "GEMINI.md missing expected pattern: $pattern"
+            }
+          }
 
       - name: Run installer (Linux)
         if: runner.os != 'Windows'
@@ -39,8 +58,17 @@ jobs:
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-eval.md"
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-learn.md"
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-pack.md"
+          test -f "$HOME/.gemini/antigravity/global_workflows/abw-resume.md"
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-sync.md"
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-update.md"
+          test -f "$HOME/.gemini/antigravity/skills/continuation-kernel.md"
+          test -f "$HOME/.gemini/antigravity/templates/resume_state.example.json"
+          test -f "$HOME/.gemini/antigravity/templates/continuation_backlog.example.json"
+          test -f "$HOME/.gemini/antigravity/templates/continuation_policy.example.json"
+          python -m json.tool "$HOME/.gemini/antigravity/templates/resume_state.example.json" >/dev/null
+          python -m json.tool "$HOME/.gemini/antigravity/templates/continuation_backlog.example.json" >/dev/null
+          python -m json.tool "$HOME/.gemini/antigravity/templates/continuation_policy.example.json" >/dev/null
           test -f "$HOME/.gemini/abw_install_state.json"
           grep -q "Hybrid ABW - Antigravity IDE Command Surface" "$HOME/.gemini/GEMINI.md"
           grep -q "/abw-learn" "$HOME/.gemini/GEMINI.md"
+          grep -q "/abw-resume" "$HOME/.gemini/GEMINI.md"

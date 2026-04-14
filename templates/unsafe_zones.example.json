@@ -1,0 +1,18 @@
+{
+  "zones": [
+    {
+      "zone_id": "zone-001",
+      "path_pattern": "src/auth/**",
+      "reason": "Security-sensitive code path.",
+      "source": "user_declared",
+      "confidence": "high",
+      "restrictions": [
+        "no_refactor",
+        "no_rename",
+        "requires_audit_before_change"
+      ],
+      "created_at": "2026-04-15T00:00:00Z",
+      "created_by": "user"
+    }
+  ]
+}

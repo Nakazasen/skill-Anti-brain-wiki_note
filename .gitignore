@@ -17,6 +17,13 @@
 .brain/lessons_learned.jsonl
 .brain/exit_gate_policy.json
 .brain/circuit_breaker.json
+.brain/resume_state.json
+.brain/continuation_backlog.json
+.brain/locked_decisions.json
+.brain/unsafe_zones.json
+.brain/continuation_policy.json
+.brain/handover_log.jsonl
+.brain/step_history.jsonl
 
 # Bootstrap reasoning state (do not commit greenfield assumptions/plans)
 .brain/bootstrap/*.json
