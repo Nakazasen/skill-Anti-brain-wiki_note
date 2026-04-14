@@ -1,0 +1,35 @@
+{
+  "scope": "feature:parser-refactor",
+  "artifact": {
+    "id": "parser-v2",
+    "path": "README.md"
+  },
+  "rubric": [
+    {
+      "id": "r1",
+      "description": "Output must include verifiable test evidence.",
+      "required": true,
+      "passed": false
+    },
+    {
+      "id": "r2",
+      "description": "Code follows architectural locked decisions.",
+      "required": true,
+      "passed": true
+    }
+  ],
+  "checks": [
+    {
+      "type": "test_result",
+      "description": "Unit tests for parser logic.",
+      "required": true,
+      "result": "fail"
+    },
+    {
+      "type": "instruction_compliance",
+      "description": "Check if instructions were followed.",
+      "required": true,
+      "result": "pass"
+    }
+  ]
+}

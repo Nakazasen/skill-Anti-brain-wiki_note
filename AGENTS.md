@@ -1,6 +1,7 @@
 # Core System Invariants & Reasoning Policy
+> Version: 1.3.1
 
-Hybrid ABW (Anti-Brain-Wiki) enforces strict discipline on how the Agent processes information and answers questions. It operates on a **3-Tier Adaptive Reasoning Policy**.
+Hybrid ABW (Anti-Brain-Wiki) is an operating discipline for AI work that enforces strict governance on how information is processed and actions are executed. It operates on a **4-Tier Adaptive Reasoning Policy**.
 
 ## The Adaptive Router (`/abw-ask`)
 
@@ -44,6 +45,21 @@ Hybrid ABW (Anti-Brain-Wiki) enforces strict discipline on how the Agent process
   2. `hypotheses.json`: What are the competing approaches?
   3. `decision_log.jsonl`: Provisional or final decisions.
   4. `validation_backlog.json`: The absolute cheapest next experiments to verify assumptions.
+
+## Tier 4: Governed Action Path (`/abw-resume`)
+
+**Use Case:** Continuing an interrupted project while maintaining continuity and safety.
+**Condition:** Complex project in motion with existing state in `.brain/`.
+**Policy:**
+
+- **Action Governance:** Every writable action must pass the **Continuation Kernel v1 Gate**.
+- **Constraint Gate:** Validates the next step against:
+  1. `unsafe_zones.json`: Hard blocks (user-declared) or audit requirements (historical).
+  2. `locked_decisions.json`: Blocks silent reversals of established architectural choices.
+  3. `effective_budget`: Enforces both file count and line-change limits.
+  4. `knowledge_gaps.json`: Blocks steps dependent on missing critical info.
+- **Outcome Recording:** All execution outcomes must be recorded to `.brain/step_history.jsonl` and `.brain/handover_log.jsonl` to adjust future budgets.
+- If the gate returns `blocked` or `approval_required`, the Agent must STOP and request explicit user intervention.
 
 ---
 

@@ -4,27 +4,14 @@ This document is the source of truth for repository boundaries, runtime packagin
 
 ## System Layers
 
-1. Repository layer
-   - `workflows/`
-   - `skills/`
-   - `scripts/`
-   - `schemas/`
-   - `templates/`
-   - `wiki/`
-   - `.brain/`
-2. Installer layer
-   - `install.ps1`
-   - `install.sh`
-3. Runtime layer
-   - `~/.gemini/GEMINI.md`
-   - `~/.gemini/antigravity/global_workflows`
-   - `~/.gemini/antigravity/skills`
-   - `~/.gemini/antigravity/scripts`
-4. Operating discipline
-   - routing
-   - grounding
-   - delivery
-   - evaluation
+1. Repository layer: `workflows/`, `skills/`, `scripts/`, `schemas/`, `templates/`, `wiki/`, `.brain/`
+2. Installer layer: `install.ps1`, `install.sh`
+3. Runtime layer: `~/.gemini/GEMINI.md`, `~/.gemini/antigravity/` subfolders
+4. Hybrid Operating Discipline (Action Governance):
+   - routing (`/abw-ask`)
+   - grounding (`/abw-query`, `wiki/`)
+   - execution governance (**Continuation Kernel v1**)
+   - delivery & evaluation (`/audit`, `/abw-eval`)
    - customization & utility
 
 ## Public Surface
@@ -33,23 +20,14 @@ Public surface means the commands a normal user is expected to discover and run 
 
 - ABW commands in `workflows/abw-*.md`
 - promoted delivery/session workflows:
-- `brainstorm.md`
-- `plan.md`
-- `design.md`
-- `visualize.md`
-- `code.md`
-- `run.md`
-- `debug.md`
-- `test.md`
-- `deploy.md`
-- `refactor.md`
-- `audit.md`
-- `abw-learn.md`
-- `save_brain.md`
-- `recap.md`
-- `next.md`
-- `help.md`
-- `customize.md`
+- `abw-resume.md` (Governed Action Entrypoint)
+- `abw-execute.md` (Governed Executor Wrapper)
+- `audit.md` (Product/Sec Audit)
+- `abw-learn.md` (Lesson Ingestion)
+- `save_brain.md` (State Preservation)
+- `recap.md` (Context Restoration)
+- `brainstorm.md` / `plan.md` / `code.md` / `test.md`
+- `help.md` / `customize.md`
 
 ## Compatibility Layer
 
@@ -113,6 +91,8 @@ Official evaluation commands:
 - `/abw-accept`
 - `/abw-eval`
 
-## Example Workspace
+## Execution Proof (Action Governance)
 
-`examples/hello-abw/` is the minimal example workspace for pack/sync/eval smoke testing.
+`examples/resume-abw/` is the primary reference workspace for Continuation Kernel v1 logic. See `EVAL_REPORT.md` for a documented execution trace of gated continuation.
+
+`examples/hello-abw/` remains as a minimal workspace for pack/sync/eval smoke testing.
