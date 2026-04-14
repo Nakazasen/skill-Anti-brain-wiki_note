@@ -140,6 +140,7 @@ curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_not
 | save your working session | `/save-brain` |
 | teach ABW a reusable behavioral lesson | `/abw-learn` |
 | resume an interrupted project with one governed next safe step | `/abw-resume` |
+| execute one approved continuation step and record its outcome | `/abw-execute` |
 | start a session with state and grounding checks | `/abw-start` |
 | wrap a session and prepare handover | `/abw-wrap` |
 | restore last-session context | `/recap` |
@@ -167,20 +168,33 @@ It reads continuation runtime files under `.brain/`, checks locked decisions, un
 
 Important: `/abw-resume` does not execute automatically. It asks for confirmation first. If no approved backlog exists, it can propose draft steps, but the user must approve them before they become executable backlog items.
 
+Use `/abw-execute` only after `/abw-resume` has selected an approved step. `/abw-execute` prepares `.brain/active_execution.json`, keeps the agent inside the selected `candidate_files`, and records the result to `.brain/step_history.jsonl` and `.brain/handover_log.jsonl`.
+
 For machine-checkable gating, run:
 
 ```bash
 python scripts/continuation_gate.py --workspace examples/resume-abw
 ```
 
+To exercise the governed execution wrapper on a copy of the example fixture:
+
+```bash
+cp -R examples/resume-abw /tmp/resume-abw-execute
+python scripts/continuation_execute.py prepare --workspace /tmp/resume-abw-execute
+python scripts/continuation_execute.py record --workspace /tmp/resume-abw-execute --step-id step-safe-test --outcome success --test-result pass
+```
+
 Relevant files:
 
 - `docs/spec-continuation-kernel-v1.md`
 - `workflows/abw-resume.md`
+- `workflows/abw-execute.md`
 - `skills/continuation-kernel.md`
 - `scripts/continuation_gate.py`
+- `scripts/continuation_execute.py`
 - `templates/resume_state.example.json`
 - `templates/continuation_backlog.example.json`
+- `templates/active_execution.example.json`
 - `examples/resume-abw/`
 
 ---

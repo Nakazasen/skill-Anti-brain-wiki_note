@@ -1,4 +1,4 @@
-name: installer-smoke-test
+﻿name: installer-smoke-test
 
 on:
   push:
@@ -17,9 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Continuation gate unit tests
+      - name: Continuation kernel unit tests
         run: |
-          python -m unittest tests.test_continuation_gate
+          python -m unittest discover -s tests
 
       - name: Run installer (Windows)
         if: runner.os == 'Windows'
@@ -32,13 +32,16 @@ jobs:
             "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-learn.md",
             "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-pack.md",
             "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-resume.md",
+            "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-execute.md",
             "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-sync.md",
             "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-update.md",
             "$env:USERPROFILE\.gemini\antigravity\skills\continuation-kernel.md",
             "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_gate.py",
+            "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_execute.py",
             "$env:USERPROFILE\.gemini\antigravity\templates\resume_state.example.json",
             "$env:USERPROFILE\.gemini\antigravity\templates\continuation_backlog.example.json",
             "$env:USERPROFILE\.gemini\antigravity\templates\continuation_policy.example.json",
+            "$env:USERPROFILE\.gemini\antigravity\templates\active_execution.example.json",
             "$env:USERPROFILE\.gemini\abw_install_state.json"
           )
           foreach ($path in $requiredFiles) {
@@ -49,12 +52,23 @@ jobs:
           Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\resume_state.example.json" -Raw | ConvertFrom-Json | Out-Null
           Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\continuation_backlog.example.json" -Raw | ConvertFrom-Json | Out-Null
           Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\continuation_policy.example.json" -Raw | ConvertFrom-Json | Out-Null
+          Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\active_execution.example.json" -Raw | ConvertFrom-Json | Out-Null
           $gate = python .\scripts\continuation_gate.py --workspace .\examples\resume-abw | ConvertFrom-Json
           if ($gate.status -ne "selected" -or $gate.selected.step_id -ne "step-safe-test") {
             throw "Continuation gate fixture selected unexpected step"
           }
+          $fixture = Join-Path $env:RUNNER_TEMP "resume-abw-execute"
+          Copy-Item -Recurse .\examples\resume-abw $fixture
+          $prepared = python .\scripts\continuation_execute.py prepare --workspace $fixture | ConvertFrom-Json
+          if ($prepared.status -ne "prepared" -or $prepared.step_id -ne "step-safe-test") {
+            throw "Continuation executor did not prepare expected step"
+          }
+          $recorded = python .\scripts\continuation_execute.py record --workspace $fixture --step-id step-safe-test --outcome success --changed-file tests/test_resume.py --test-result pass | ConvertFrom-Json
+          if ($recorded.status -ne "recorded") {
+            throw "Continuation executor did not record expected step"
+          }
           $gemini = Get-Content "$env:USERPROFILE\.gemini\GEMINI.md" -Raw
-          foreach ($pattern in @("Hybrid ABW - Antigravity IDE Command Surface", "/abw-learn", "/abw-resume")) {
+          foreach ($pattern in @("Hybrid ABW - Antigravity IDE Command Surface", "/abw-learn", "/abw-resume", "/abw-execute")) {
             if ($gemini -notlike "*$pattern*") {
               throw "GEMINI.md missing expected pattern: $pattern"
             }
@@ -70,20 +84,32 @@ jobs:
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-learn.md"
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-pack.md"
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-resume.md"
+          test -f "$HOME/.gemini/antigravity/global_workflows/abw-execute.md"
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-sync.md"
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-update.md"
           test -f "$HOME/.gemini/antigravity/skills/continuation-kernel.md"
           test -f "$HOME/.gemini/antigravity/scripts/continuation_gate.py"
+          test -f "$HOME/.gemini/antigravity/scripts/continuation_execute.py"
           test -f "$HOME/.gemini/antigravity/templates/resume_state.example.json"
           test -f "$HOME/.gemini/antigravity/templates/continuation_backlog.example.json"
           test -f "$HOME/.gemini/antigravity/templates/continuation_policy.example.json"
+          test -f "$HOME/.gemini/antigravity/templates/active_execution.example.json"
           python -m json.tool "$HOME/.gemini/antigravity/templates/resume_state.example.json" >/dev/null
           python -m json.tool "$HOME/.gemini/antigravity/templates/continuation_backlog.example.json" >/dev/null
           python -m json.tool "$HOME/.gemini/antigravity/templates/continuation_policy.example.json" >/dev/null
+          python -m json.tool "$HOME/.gemini/antigravity/templates/active_execution.example.json" >/dev/null
           python ./scripts/continuation_gate.py --workspace ./examples/resume-abw > gate-result.json
           grep -q '"status": "selected"' gate-result.json
           grep -q '"step_id": "step-safe-test"' gate-result.json
+          fixture="$RUNNER_TEMP/resume-abw-execute"
+          cp -R ./examples/resume-abw "$fixture"
+          python ./scripts/continuation_execute.py prepare --workspace "$fixture" > execute-prepare.json
+          grep -q '"status": "prepared"' execute-prepare.json
+          grep -q '"step_id": "step-safe-test"' execute-prepare.json
+          python ./scripts/continuation_execute.py record --workspace "$fixture" --step-id step-safe-test --outcome success --changed-file tests/test_resume.py --test-result pass > execute-record.json
+          grep -q '"status": "recorded"' execute-record.json
           test -f "$HOME/.gemini/abw_install_state.json"
           grep -q "Hybrid ABW - Antigravity IDE Command Surface" "$HOME/.gemini/GEMINI.md"
           grep -q "/abw-learn" "$HOME/.gemini/GEMINI.md"
           grep -q "/abw-resume" "$HOME/.gemini/GEMINI.md"
+          grep -q "/abw-execute" "$HOME/.gemini/GEMINI.md"

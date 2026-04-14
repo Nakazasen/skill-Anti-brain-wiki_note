@@ -79,6 +79,8 @@ Use `/abw-resume` when the project is already in progress and the agent must con
 
 `/abw-resume` is different from `/next`: it runs Continuation Kernel governance and should present one next safe step, not a broad suggestion list.
 
+Use `/abw-execute` only after `/abw-resume` has selected a gated step. It prepares the active execution state, keeps the agent inside the selected step boundary, and records the outcome to append-only `.brain` logs.
+
 | Muốn làm gì | Lệnh đầu tiên |
 |---|---|
 | Không biết nên bắt đầu từ đâu | `/abw-ask` |

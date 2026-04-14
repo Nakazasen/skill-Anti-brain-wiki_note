@@ -1,0 +1,21 @@
+{
+  "status": "prepared",
+  "step_id": "step-001",
+  "prepared_at": "2026-04-15T00:00:00Z",
+  "session_id": "example-session",
+  "approved": false,
+  "approval_note": null,
+  "gate": {
+    "allowed": true,
+    "permission_class": "safe_write",
+    "warnings": [],
+    "block_reasons": [],
+    "required_approvals": [],
+    "safety_score": 93.4,
+    "step_id": "step-001"
+  },
+  "step": {
+    "step_id": "step-001",
+    "title": "Example prepared step"
+  }
+}

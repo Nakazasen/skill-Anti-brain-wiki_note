@@ -58,6 +58,7 @@ Difference:
 
 - `/next` suggests a general next action from session memory.
 - `/abw-resume` reconstructs continuation state, runs the machine gate when available, checks unsafe zones, locked decisions, knowledge gaps, rollback risk, and presents one governed next safe step.
+- `/abw-execute` runs only after `/abw-resume` has produced an approved/gated step. Use it for cues like `execute the selected resume step`, `run the next safe step`, or `do the step from /abw-resume`. Do not route broad implementation requests directly to `/abw-execute`; use `/abw-resume` first when no approved continuation step exists.
 
 Để đảm bảo AI đưa ra quyết định nhất quán khi có nhiều ý định chồng lấn:
 

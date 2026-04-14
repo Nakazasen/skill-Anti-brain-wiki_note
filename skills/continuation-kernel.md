@@ -1,16 +1,19 @@
 # SKILL: continuation-kernel
 
-Purpose: provide the reusable governance logic behind `/abw-resume`. This skill decides whether a proposed continuation step is safe enough to present to the user as the next action. It does not execute the step.
+Purpose: provide the reusable governance logic behind `/abw-resume` and `/abw-execute`. This skill decides whether a proposed continuation step is safe enough to present to the user as the next action, then records exactly one approved execution attempt.
 
 Use this skill when:
 
 - the user asks to resume an interrupted project,
 - a workflow needs to select the next safe step from `.brain/continuation_backlog.json`,
-- a step needs to be checked against unsafe zones, locked decisions, knowledge gaps, rollback risk, or step-size limits.
+- a step needs to be checked against unsafe zones, locked decisions, knowledge gaps, rollback risk, or step-size limits,
+- the user asks to execute the selected continuation step.
 
 Canonical spec: `docs/spec-continuation-kernel-v1.md`.
 
 Machine gate: `scripts/continuation_gate.py`.
+
+Governed executor: `scripts/continuation_execute.py`.
 
 Prefer the machine gate whenever Python is available:
 
@@ -19,6 +22,15 @@ python scripts/continuation_gate.py --workspace .
 ```
 
 Use this markdown skill as the fallback policy reference when the script cannot run.
+
+For execution, prefer the governed executor whenever Python is available:
+
+```bash
+python scripts/continuation_execute.py prepare --workspace .
+python scripts/continuation_execute.py record --workspace . --step-id <step_id> --outcome success --test-result pass
+```
+
+The executor does not run arbitrary shell commands and does not edit files. It locks the active step, enforces approval requirements from the gate, and records the outcome after the host agent performs the bounded work.
 
 ---
 
@@ -218,3 +230,25 @@ When a next step is selected, report:
 - why this step was chosen over alternatives.
 
 End with a clear user confirmation question. Do not execute automatically.
+
+---
+
+## Governed Execution
+
+`/abw-execute` is allowed only after `/abw-resume` has selected or evaluated a specific backlog step.
+
+Execution phases:
+
+1. `prepare`: call `scripts/continuation_execute.py prepare --workspace .`.
+2. If the result is `approval_required`, stop and ask for explicit user approval. Do not infer approval from vague language.
+3. If the result is `blocked`, return the gate reasons and go back to `/abw-resume`.
+4. If the result is `prepared`, perform only the selected step within `candidate_files`.
+5. `record`: call `scripts/continuation_execute.py record ...` with outcome, changed files, test result, and errors introduced.
+
+Execution invariants:
+
+- No prepare, no execute.
+- No implicit approval.
+- No scope expansion without returning to `/abw-resume`.
+- No overwrite of `.brain/handover_log.jsonl` or `.brain/step_history.jsonl`.
+- Partial and failed outcomes must be recorded honestly.
