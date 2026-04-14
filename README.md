@@ -109,12 +109,13 @@ irm https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/
 curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.sh | sh
 ```
 
-Sau khi cài xong:
+## Sau Khi Cài Xong
 
-1. Chạy `/abw-setup` để cấu hình grounding.
-2. Dùng `/abw-ask` cho mọi task hoặc câu hỏi chưa rõ lane.
-3. Dùng `/abw-eval` khi muốn nghiệm thu thay đổi hoặc đầu ra.
-4. Dùng `/abw-update` khi muốn kéo bản command mới nhất vào Gemini runtime local.
+1. Chạy `/abw-init` để dựng hoặc sửa cấu trúc ABW trong workspace.
+2. Chạy `/abw-setup` để cấu hình grounding.
+3. Dùng `/abw-ask` cho mọi task hoặc câu hỏi chưa rõ lane.
+4. Dùng `/abw-eval` khi muốn nghiệm thu thay đổi hoặc đầu ra.
+5. Dùng `/abw-update` khi muốn kéo bản command mới nhất vào Gemini runtime local.
 
 ---
 

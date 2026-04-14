@@ -51,11 +51,12 @@ curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_not
 
 After install:
 
-1. Run `/abw-setup`
-2. Use `/abw-ask` for routing
-3. Use `/abw-eval` before acceptance
-4. Use `/abw-update` to refresh the local Gemini runtime command surface
-5. Use `/audit` for delivery-loop review of code, product behavior, or security
+1. Run `/abw-init` to bootstrap or repair the ABW workspace structure.
+2. Run `/abw-setup` to configure grounding.
+3. Use `/abw-ask` for routing.
+4. Use `/abw-eval` before acceptance.
+5. Use `/abw-update` to refresh the local Gemini runtime command surface.
+6. Use `/audit` for delivery-loop review of code, product behavior, or security.
 
 ## Documentation Map
 
