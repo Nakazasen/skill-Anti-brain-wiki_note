@@ -5,7 +5,16 @@ set -euo pipefail
 
 REPO_OWNER="Nakazasen"
 REPO_NAME="skill-Anti-brain-wiki_note"
-REPO_REF="main"
+
+# Detect Repo Ref: Environment Variable > Current Git Branch > default "main"
+if [ -n "${ABW_REPO_REF:-}" ]; then
+  REPO_REF="$ABW_REPO_REF"
+elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  REPO_REF="$(git rev-parse --abbrev-ref HEAD)"
+else
+  REPO_REF="main"
+fi
+
 REPO_BASE="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$REPO_REF"
 REPO_API_BASE="https://api.github.com/repos/$REPO_OWNER/$REPO_NAME"
 

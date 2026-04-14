@@ -4,7 +4,27 @@ $ErrorActionPreference = "Stop"
 
 $RepoOwner = "Nakazasen"
 $RepoName = "skill-Anti-brain-wiki_note"
-$RepoRef = "main"
+
+# Detect Repo Ref: Environment Variable > Current Git Branch > default "main"
+if ($env:ABW_REPO_REF) {
+    $RepoRef = $env:ABW_REPO_REF
+}
+else {
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        $branch = (& $git.Source rev-parse --abbrev-ref HEAD 2>$null | Select-Object -First 1)
+        if ($branch) {
+            $RepoRef = $branch.Trim()
+        }
+        else {
+            $RepoRef = "main"
+        }
+    }
+    else {
+        $RepoRef = "main"
+    }
+}
+
 $RepoBase = "https://raw.githubusercontent.com/$RepoOwner/$RepoName/$RepoRef"
 $RepoApiBase = "https://api.github.com/repos/$RepoOwner/$RepoName"
 

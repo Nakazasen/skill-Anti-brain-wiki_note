@@ -12,6 +12,8 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      ABW_INSTALL_SOURCE: local
     steps:
       - uses: actions/checkout@v4
 
