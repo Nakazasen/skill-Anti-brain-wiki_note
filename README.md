@@ -113,7 +113,9 @@ curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_not
 2. Chạy `/abw-setup` để cấu hình grounding.
 3. Dùng `/abw-ask` cho mọi task hoặc câu hỏi chưa rõ lane.
 4. Dùng `/abw-eval` khi muốn nghiệm thu thay đổi hoặc đầu ra.
-5. Dùng `/abw-update` khi muốn kéo bản command mới nhất vào Gemini runtime local.
+5. Dùng `/abw-resume` khi cần tiếp quản project đang dở bằng một next safe step.
+6. Dùng `/abw-execute` khi muốn thực thi step đã qua Continuation Kernel gate.
+7. Dùng `/abw-update` khi muốn kéo bản command mới nhất vào Gemini runtime local.
 
 ---
 
