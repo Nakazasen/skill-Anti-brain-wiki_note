@@ -50,6 +50,8 @@ Workflow hỗ trợ:
 ### 4. Phiên làm việc và ghi nhớ
 
 - `/abw-start` : Mở phiên làm việc và kiểm tra trạng thái
+- `/abw-resume` : Khôi phục project đang dở và chọn một next safe step qua Continuation Kernel
+- `/abw-execute` : Thực thi một continuation step đã qua gate và ghi outcome append-only
 - `/abw-learn` : Ghi một bài học hành vi tái sử dụng vào lessons learned
 - `/save-brain` : Lưu tiến độ và chuẩn bị handover
 - `/recap` : Khôi phục bối cảnh từ phiên trước

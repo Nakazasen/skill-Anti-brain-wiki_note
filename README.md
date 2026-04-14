@@ -79,7 +79,7 @@ Bắt đầu ở đây khi đã có đầu ra và bạn muốn audit, challenge,
    `/plan`, `/design`, `/visualize`, `/code`, `/run`, `/debug`, `/test`, `/deploy`, `/refactor`, `/audit`
 
 4. **Phiên làm việc và ghi nhớ**  
-   `/abw-start`, `/abw-learn`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
+   `/abw-start`, `/abw-resume`, `/abw-execute`, `/abw-learn`, `/save-brain`, `/recap`, `/next`, `/abw-wrap`
 
 5. **Đánh giá và nghiệm thu**  
    `/abw-review`, `/abw-audit`, `/abw-meta-audit`, `/abw-rollback`, `/abw-accept`, `/abw-eval`
