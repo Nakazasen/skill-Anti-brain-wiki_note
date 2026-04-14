@@ -1,0 +1,13 @@
+{
+  "step_size_limits": {
+    "max_files_for_safe_write": 3,
+    "max_lines_for_safe_write": 150,
+    "max_files_for_multi_file_write": 8,
+    "max_lines_for_multi_file_write": 400
+  },
+  "gate_exit_rules": {
+    "step_fail_action": "log to step_history and shrink next step size by 50%",
+    "step_success_3x": "increase effective budget by 20%, never above policy max",
+    "irreversible_step": "always requires approval"
+  }
+}

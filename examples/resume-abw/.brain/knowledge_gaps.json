@@ -1,0 +1,11 @@
+{
+  "gaps": [
+    {
+      "gap_id": "gap-auth-policy",
+      "query": "Confirm current auth policy before changing auth behavior.",
+      "status": "open",
+      "module": "auth",
+      "classification": "blocking"
+    }
+  ]
+}

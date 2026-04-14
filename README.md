@@ -167,13 +167,21 @@ It reads continuation runtime files under `.brain/`, checks locked decisions, un
 
 Important: `/abw-resume` does not execute automatically. It asks for confirmation first. If no approved backlog exists, it can propose draft steps, but the user must approve them before they become executable backlog items.
 
+For machine-checkable gating, run:
+
+```bash
+python scripts/continuation_gate.py --workspace examples/resume-abw
+```
+
 Relevant files:
 
 - `docs/spec-continuation-kernel-v1.md`
 - `workflows/abw-resume.md`
 - `skills/continuation-kernel.md`
+- `scripts/continuation_gate.py`
 - `templates/resume_state.example.json`
 - `templates/continuation_backlog.example.json`
+- `examples/resume-abw/`
 
 ---
 

@@ -1,0 +1,19 @@
+{
+  "decisions": [
+    {
+      "decision_id": "dec-api-boundary",
+      "title": "Keep parser API stable",
+      "decision": "Do not change parser public API during resume steps.",
+      "rationale": "Continuation should preserve boundaries unless new evidence is approved.",
+      "evidence_refs": [
+        "wiki/concepts/parser-api.md"
+      ],
+      "locked_at": "2026-04-15T00:00:00Z",
+      "locked_by": "user",
+      "override_allowed": true,
+      "override_requires_evidence_delta": true,
+      "override_requires_approval": true,
+      "override_history": []
+    }
+  ]
+}

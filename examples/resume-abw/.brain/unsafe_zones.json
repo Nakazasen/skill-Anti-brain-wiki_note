@@ -1,0 +1,29 @@
+{
+  "zones": [
+    {
+      "zone_id": "zone-auth",
+      "path_pattern": "src/auth/**",
+      "reason": "Security-sensitive authentication code.",
+      "source": "user_declared",
+      "confidence": "high",
+      "restrictions": [
+        "no_refactor",
+        "requires_audit_before_change"
+      ],
+      "created_at": "2026-04-15T00:00:00Z",
+      "created_by": "user"
+    },
+    {
+      "zone_id": "zone-parser-history",
+      "path_pattern": "src/parser/**",
+      "reason": "This module caused regressions in previous sessions.",
+      "source": "historical",
+      "confidence": "high",
+      "restrictions": [
+        "requires_audit_before_change"
+      ],
+      "created_at": "2026-04-15T00:00:00Z",
+      "created_by": "history"
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "steps": [
+    {
+      "step_id": "step-safe-test",
+      "title": "Add a parser regression test",
+      "description": "Add one focused test without changing implementation.",
+      "permission_class": "safe_write",
+      "candidate_files": [
+        "tests/test_parser_resume.py"
+      ],
+      "preconditions": [
+        {
+          "type": "file_exists",
+          "subject": "tests",
+          "expected": true,
+          "description": "The tests directory exists."
+        }
+      ],
+      "exit_criteria": [
+        {
+          "type": "test_passes",
+          "subject": "step-safe-test",
+          "description": "The parser regression test passes after execution."
+        }
+      ],
+      "affects_decision_ids": [],
+      "evidence_delta_refs": [],
+      "estimated_files_touched": 1,
+      "estimated_lines_changed": 80,
+      "blast_radius": "low",
+      "reversibility": "easy",
+      "surface_type": "test",
+      "module": "parser",
+      "rollback_contract": {
+        "method": "restore file",
+        "cost": "low",
+        "confidence": "high"
+      },
+      "blocked_by_gap": null,
+      "status": "pending",
+      "created_at": "2026-04-15T00:00:00Z"
+    },
+    {
+      "step_id": "step-auth-change",
+      "title": "Change auth behavior",
+      "description": "Modify auth implementation.",
+      "permission_class": "safe_write",
+      "candidate_files": [
+        "src/auth/login.py"
+      ],
+      "preconditions": [],
+      "exit_criteria": [],
+      "affects_decision_ids": [],
+      "evidence_delta_refs": [],
+      "estimated_files_touched": 1,
+      "estimated_lines_changed": 60,
+      "blast_radius": "medium",
+      "reversibility": "moderate",
+      "surface_type": "security",
+      "module": "auth",
+      "rollback_contract": {
+        "method": "restore file",
+        "cost": "medium",
+        "confidence": "medium"
+      },
+      "blocked_by_gap": "gap-auth-policy",
+      "status": "pending",
+      "created_at": "2026-04-15T00:00:00Z"
+    },
+    {
+      "step_id": "step-parser-impl",
+      "title": "Touch parser implementation",
+      "description": "Small parser implementation change in a historically risky zone.",
+      "permission_class": "safe_write",
+      "candidate_files": [
+        "src/parser/core.py"
+      ],
+      "preconditions": [],
+      "exit_criteria": [],
+      "affects_decision_ids": [],
+      "evidence_delta_refs": [],
+      "estimated_files_touched": 1,
+      "estimated_lines_changed": 90,
+      "blast_radius": "medium",
+      "reversibility": "moderate",
+      "surface_type": "feature",
+      "module": "parser",
+      "rollback_contract": {
+        "method": "restore file",
+        "cost": "medium",
+        "confidence": "high"
+      },
+      "blocked_by_gap": null,
+      "status": "pending",
+      "created_at": "2026-04-15T00:00:00Z"
+    }
+  ]
+}
