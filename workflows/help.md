@@ -4,7 +4,7 @@ description: Hướng dẫn lệnh và sơ đồ hệ thống Hybrid ABW
 
 # WORKFLOW: /help
 
-Bạn là người hướng dẫn của Hybrid ABW. Nhiệm vụ của bạn là giúp người dùng định hướng thật nhanh. Bề mặt lệnh hiện được tổ chức thành 5 lane chức năng và 2 entrypoint chính.
+Bạn là người hướng dẫn của Hybrid ABW. Nhiệm vụ của bạn là giúp người dùng định hướng thật nhanh. Bề mặt lệnh hiện được tổ chức thành 6 lane chức năng và 2 entrypoint chính.
 
 ---
 
@@ -22,8 +22,9 @@ Nếu bạn sắp bắt đầu làm việc, hãy đi từ một trong hai entryp
 - **Dùng `/abw-start`** khi bạn muốn mở phiên làm việc theo cách có kiểm tra trạng thái và grounding path.
 - **Dùng `/abw-wrap`** khi bạn muốn chốt phiên, chuẩn bị handover, và nhắc phần cần ingest hoặc nghiệm thu.
 - **Dùng `/next`** khi bạn đang ở giữa dự án và cần gợi ý bước tiếp theo dựa trên trạng thái hiện tại.
-- **Dùng `/help`** khi bạn cần hiểu mô hình hệ thống, danh sách lệnh, hoặc mental model 5 lane.
+- **Dùng `/help`** khi bạn cần hiểu mô hình hệ thống, danh sách lệnh, hoặc mental model 6 lane.
 - **Dùng `/abw-update`** khi bạn muốn kéo bản mới nhất của command surface ABW vào Gemini runtime local.
+- **Dùng `/customize`** khi bạn muốn thay đổi phong cách giao tiếp hoặc thiết lập persona cho AI.
 
 ## Muốn làm X thì gõ gì đầu tiên?
 
@@ -50,7 +51,7 @@ Nếu bạn sắp bắt đầu làm việc, hãy đi từ một trong hai entryp
 | Muốn triển khai lên môi trường đích | `/deploy` |
 | Muốn refactor legacy code nhưng chưa rõ phạm vi | `/abw-ask` |
 | Muốn refactor khi đã rõ phạm vi | `/refactor` |
-| Muốn review code hoặc hiện trạng trước khi audit nặng hơn | `/abw-review` |
+| Muốn review hiện trạng trước khi audit chuyên sâu | `/abw-review` |
 | Muốn audit thay đổi hoặc artifact | `/abw-audit` |
 | Muốn audit lại chính báo cáo audit | `/abw-meta-audit` |
 | Muốn quay lại trạng thái an toàn sau một thay đổi sai | `/abw-rollback` |
@@ -61,11 +62,12 @@ Nếu bạn sắp bắt đầu làm việc, hãy đi từ một trong hai entryp
 | Muốn khôi phục bối cảnh từ phiên trước | `/recap` |
 | Muốn biết bước tiếp theo nên làm gì | `/next` |
 | Muốn chốt phiên và wrap lại thay đổi | `/abw-wrap` |
-| Muốn cập nhật command surface ABW lên bản mới nhất | `/abw-update` |
+| Muốn cài đặt phong cách giao tiếp/làm việc | `/customize` |
+| Muốn cập nhật command surface ABW mới nhất | `/abw-update` |
 
 ---
 
-## Mô hình lệnh (5 lane)
+## Mô hình lệnh (6 lane)
 
 ### 1. Khám phá và tư duy
 
@@ -81,7 +83,6 @@ Dùng nhóm này khi cần khám phá ý tưởng hoặc hỏi trên tri thức 
 
 Dùng nhóm này để xây và duy trì nền tri thức có grounding.
 
-- `/abw-init` : Khởi tạo cấu trúc ABW
 - `/abw-setup` : Cấu hình NotebookLM MCP
 - `/abw-status` : Kiểm tra MCP và hàng đợi
 - `/abw-ingest` : Xử lý raw thành wiki
@@ -93,8 +94,6 @@ Dùng nhóm này để xây và duy trì nền tri thức có grounding.
 
 Dùng nhóm này để biến tri thức thành phần mềm chạy được.
 
-Luồng delivery chính:
-
 - `/plan` : Lập kế hoạch thực thi tính năng
 - `/design` : Thiết kế kỹ thuật và cơ sở dữ liệu
 - `/visualize` : Dựng mockup UI/UX và đặc tả màn hình
@@ -103,11 +102,7 @@ Luồng delivery chính:
 - `/debug` : Sửa lỗi có hệ thống
 - `/test` : Chạy test và kiểm tra chất lượng
 - `/deploy` : Triển khai lên môi trường đích
-
-Workflow hỗ trợ trong delivery:
-
 - `/refactor` : Dọn code an toàn sau khi đã hiểu rõ hành vi
-- `/audit` : Rà soát sản phẩm, code, hoặc bảo mật trong vòng delivery
 
 ### 4. Phiên làm việc và ghi nhớ
 

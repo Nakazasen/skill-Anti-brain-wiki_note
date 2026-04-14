@@ -55,19 +55,20 @@ Workflow hỗ trợ:
 - `/next` : Gợi ý bước tiếp theo
 - `/abw-wrap` : Chốt phiên và wrap lại thay đổi
 
-### 5. Đánh giá và nghiệm thu
+### 5. Đánh giá và nghiệm thu (Gated)
 
-- `/abw-review` : Review code, thay đổi, hoặc hiện trạng dự án
+- `/abw-review` : Review code, thay đổi, hoặc hiện trạng dự án (evaluation mode)
 - `/abw-audit` : Tự audit workflow, tài liệu, thay đổi, hoặc đầu ra
 - `/abw-meta-audit` : Audit lại chính báo cáo audit
 - `/abw-rollback` : Quay về trạng thái an toàn sau thay đổi lỗi
 - `/abw-accept` : Chốt pass/fail cuối cùng
 - `/abw-eval` : Chạy toàn bộ chuỗi evaluation từ đầu đến cuối
 
-### Utility
+### 6. Tiện ích và Cấu hình
 
-- `/help` : Bản đồ hệ thống và decision table
-- `/abw-update` : Kéo bản mới nhất của command surface ABW vào Gemini runtime local
+- `/customize` : Cài đặt phong cách giao tiếp, persona, và mức độ tự quyết của AI
+- `/help` : Bản đồ hệ thống và bảng tra cứu nhanh
+- `/abw-update` : Cập nhật Command Surface ABW mới nhất vào local runtime
 
 ## First Command Cheat Sheet
 
@@ -75,7 +76,7 @@ Workflow hỗ trợ:
 |---|---|
 | Không biết nên bắt đầu từ đâu | `/abw-ask` |
 | Muốn nghiệm thu đầu ra | `/abw-eval` |
-| Muốn refactor legacy code nhưng chưa rõ phạm vi | `/abw-ask` |
+| Muốn cài đặt cá nhân hóa AI | `/customize` |
 | Muốn refactor khi đã rõ phạm vi | `/refactor` |
 | Muốn mở phiên làm việc có kiểm tra trạng thái | `/abw-start` |
 | Muốn chốt phiên và handover | `/abw-wrap` |
