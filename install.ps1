@@ -268,6 +268,7 @@ function Write-GeminiRegistration {
 ## CRITICAL: Command Recognition
 When the user types one of the registered commands below, treat it as a Hybrid ABW workflow command loaded from `~/.gemini/antigravity/global_workflows`.
 Do not silently fall back to a stale local clone when the verified remote snapshot is newer.
+Hybrid ABW commands take precedence over older AWF registrations with the same slash command. In particular, /help MUST load ~/.gemini/antigravity/global_workflows/help.md; do not answer from awf-context-help or a short summary.
 
 ## Registered ABW Commands
 $(Join-Commands -Commands $abwCommands.ToArray())
@@ -302,6 +303,11 @@ If NotebookLM MCP is unavailable:
     $markerIndex = $content.IndexOf($marker)
     if ($markerIndex -ge 0) {
         $content = $content.Substring(0, $markerIndex).TrimEnd()
+    }
+
+    $legacyAwfMarker = "# AWF - Antigravity Workflow Framework"
+    if ($content.TrimStart().StartsWith($legacyAwfMarker)) {
+        $content = ""
     }
 
     if ($content.Length -gt 0) {

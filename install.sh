@@ -265,6 +265,7 @@ write_gemini_registration() {
 ## CRITICAL: Command Recognition
 When the user types one of the registered commands below, treat it as a Hybrid ABW workflow command loaded from \`~/.gemini/antigravity/global_workflows\`.
 Do not silently fall back to a stale local clone when the verified remote snapshot is newer.
+Hybrid ABW commands take precedence over older AWF registrations with the same slash command. In particular, \`/help\` MUST load \`~/.gemini/antigravity/global_workflows/help.md\`; do not answer from \`awf-context-help\` or a short summary.
 
 ## Registered ABW Commands
 $(join_commands "${abw_commands[@]}")
@@ -296,6 +297,9 @@ EOF
     sed '/# Hybrid ABW - Antigravity IDE Command Surface/,$d' "$GEMINI_MD" > "$tmp_file"
   else
     cat "$GEMINI_MD" > "$tmp_file"
+  fi
+  if grep -q "^# AWF - Antigravity Workflow Framework" "$tmp_file" 2>/dev/null; then
+    : > "$tmp_file"
   fi
   printf '\n%s\n' "$ABW_INSTRUCTIONS" >> "$tmp_file"
   mv "$tmp_file" "$GEMINI_MD"
