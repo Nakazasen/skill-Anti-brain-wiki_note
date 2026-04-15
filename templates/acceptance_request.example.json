@@ -1,40 +1,149 @@
 {
+  "task_id": "eval-v15-demo",
   "scope": "One governed continuation step",
-  "artifact": {
-    "id": "step-safe-test",
-    "path": "tests/test_parser_resume.py",
-    "type": "code"
-  },
-  "rubric": [
+  "candidate_files": [
+    "scripts/abw_accept.py",
+    "tests/test_abw_accept.py"
+  ],
+  "artifacts": [
     {
-      "id": "scope",
-      "description": "Changed files stay inside the approved candidate_files.",
-      "required": true,
-      "passed": true
-    },
-    {
-      "id": "validation",
-      "description": "Relevant validation check passed.",
-      "required": true,
-      "passed": true
+      "id": "acceptance-gate",
+      "path": "scripts/abw_accept.py",
+      "kind": "code",
+      "evidence": {
+        "type": "file_path",
+        "ref": "scripts/abw_accept.py",
+        "status": "passed",
+        "machine_checkable": true,
+        "strength": "required_machine",
+        "claim_id": "check:artifact-exists",
+        "proves": "The declared artifact exists in the governed workspace.",
+        "mechanism": "artifact_presence",
+        "result": "passed",
+        "details": "Artifact exists in the governed candidate file set."
+      }
     }
   ],
   "checks": [
     {
-      "type": "file_exists",
-      "subject": "tests/test_parser_resume.py",
-      "result": "pass",
+      "id": "unit-tests",
+      "type": "test_result",
+      "subject": "tests/test_abw_accept.py",
+      "status": "passed",
       "expected": "pass",
       "required": true,
-      "description": "Artifact file exists."
+      "description": "Acceptance gate tests passed.",
+      "evidence": {
+        "type": "test_output",
+        "ref": "tests/logs/pytest-abw-accept.txt",
+        "status": "passed",
+        "machine_checkable": true,
+        "strength": "required_machine",
+        "claim_id": "check:unit-tests",
+        "proves": "The acceptance gate unit tests passed.",
+        "mechanism": "test_result",
+        "result": "passed",
+        "details": "pytest tests/test_abw_accept.py -q"
+      }
     },
     {
-      "type": "test_result",
-      "subject": "step-safe-test",
-      "result": "pass",
+      "id": "scope-diff",
+      "type": "scope_check",
+      "subject": "candidate_files",
+      "status": "passed",
       "expected": "pass",
       "required": true,
-      "description": "Step validation result passed."
+      "description": "Changed artifacts stay inside the approved candidate_files.",
+      "evidence": {
+        "type": "git_diff_name_only",
+        "ref": "git diff --name-only",
+        "status": "passed",
+        "machine_checkable": true,
+        "strength": "required_machine",
+        "claim_id": "check:scope-diff",
+        "proves": "Changed artifacts stay inside candidate_files.",
+        "mechanism": "diff_inspection",
+        "result": "passed",
+        "details": "Only approved candidate files changed."
+      }
+    },
+    {
+      "id": "human-review",
+      "type": "manual_review",
+      "subject": "evaluation wording",
+      "status": "passed",
+      "expected": "pass",
+      "required": false,
+      "description": "Human-reviewed wording stays honest about machine checks and manual review.",
+      "evidence": {
+        "type": "review_note",
+        "ref": "EVAL_REPORT.md#evaluation-kernel-v15-evidence-contract",
+        "status": "passed",
+        "machine_checkable": false,
+        "strength": "allowed_human",
+        "claim_id": "check:human-review",
+        "proves": "The wording is honest about machine checks and human review.",
+        "mechanism": "human_review",
+        "result": "passed",
+        "details": "Machine-checkable where possible, explicitly human-reviewed where necessary."
+      }
     }
-  ]
+  ],
+  "rubric": [
+    {
+      "id": "instruction_compliance",
+      "description": "The output follows the user-approved scope and negative constraints.",
+      "required": true,
+      "status": "passed",
+      "evidence": {
+        "type": "scope_review",
+        "ref": "candidate_files",
+        "status": "passed",
+        "machine_checkable": false,
+        "strength": "allowed_human",
+        "claim_id": "rubric:instruction_compliance",
+        "proves": "The output follows the accepted step scope and constraints.",
+        "mechanism": "human_review",
+        "result": "passed",
+        "details": "Reviewed against accepted governed step scope."
+      }
+    },
+    {
+      "id": "scope_discipline",
+      "description": "No planner, strategy, router, or continuation refactor is included.",
+      "required": true,
+      "status": "passed",
+      "evidence": {
+        "type": "git_diff_name_only",
+        "ref": "git diff --name-only",
+        "status": "passed",
+        "machine_checkable": true,
+        "strength": "required_machine",
+        "claim_id": "rubric:scope_discipline",
+        "proves": "The diff is limited to the approved evaluation files.",
+        "mechanism": "diff_inspection",
+        "result": "passed",
+        "details": "Diff is limited to the approved evaluation flow files."
+      }
+    },
+    {
+      "id": "evaluation_integrity",
+      "description": "Acceptance depends on explicit evidence instead of prose-only claims.",
+      "required": true,
+      "status": "passed",
+      "evidence": {
+        "type": "test_case",
+        "ref": "tests/test_abw_accept.py",
+        "status": "passed",
+        "machine_checkable": true,
+        "strength": "required_machine",
+        "claim_id": "rubric:evaluation_integrity",
+        "proves": "Tests cover the evidence contract failure modes.",
+        "mechanism": "test_result",
+        "result": "passed",
+        "details": "Tests cover missing, narrative-only, contradictory, and out-of-scope evidence."
+      }
+    }
+  ],
+  "locked_decisions": []
 }
