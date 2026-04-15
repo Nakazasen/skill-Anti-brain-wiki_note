@@ -79,10 +79,14 @@ def main():
             print(f"ERROR: Commands in workflows/ but missing in help.md: {missing}")
             overall_success = False
             
-        # Extra/Stale in help
-        extra = documented_cmds - (expected_from_files | COMMAND_ALLOWLIST)
-        # Filter out common markdown links or false positives if needed
-        # (Current regex is fairly specific to /command)
+        # Extra/Stale in help — filter out false positives from example text
+        # (e.g. /orders from "POST /orders", /localhost from "http://localhost")
+        NON_COMMAND_PATTERNS = {
+            'localhost', 'orders', 'api', 'path', 'workspace', 'step-id',
+            'command', 'next_cmd', 'package_id',
+        }
+        raw_extra = documented_cmds - (expected_from_files | COMMAND_ALLOWLIST)
+        extra = {cmd for cmd in raw_extra if cmd not in NON_COMMAND_PATTERNS}
         if extra:
             print(f"ERROR: Stale or extra commands in help.md (not found in workflows/): {extra}")
             overall_success = False
