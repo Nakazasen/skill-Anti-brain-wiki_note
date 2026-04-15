@@ -52,7 +52,7 @@ Workflow hỗ trợ:
 - `/abw-start` : Mở phiên làm việc và kiểm tra trạng thái
 - `/abw-learn` : Ghi một bài học hành vi tái sử dụng vào lessons learned
 - `/save-brain` : Lưu tiến độ và chuẩn bị handover
-- `/recap` : Khôi phục bối cảnh từ phiên trước
+- `/recap` : Khôi phục bối cảnh từ phiên trước và nạp lessons learned active
 - `/next` : Gợi ý bước tiếp theo
 - `/abw-wrap` : Chốt phiên và wrap lại thay đổi
 

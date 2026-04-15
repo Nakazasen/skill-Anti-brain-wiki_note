@@ -143,7 +143,7 @@ curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_not
 | teach ABW a reusable behavioral lesson | `/abw-learn` |
 | start a session with state and grounding checks | `/abw-start` |
 | wrap a session and prepare handover | `/abw-wrap` |
-| restore last-session context | `/recap` |
+| restore last-session context and active lessons | `/recap` |
 | decide what to do next | `/next` |
 | review code or project state before a heavier audit | `/abw-review` |
 | audit code, product behavior, or security in the delivery loop | `/audit` |

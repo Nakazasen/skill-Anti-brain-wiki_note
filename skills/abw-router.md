@@ -36,6 +36,7 @@ Kiểm tra nhanh xem các thư mục raw/ và wiki/ có chứa dữ liệu dự 
 | delivery-planning | "lên kế hoạch", "plan", "phases", "chia task", "roadmap" |
 | delivery-execution | "code", "viết", "sửa lỗi", "debug", "test", "run", "deploy" |
 | session-recap | "tóm tắt", "recap", "đang làm gì", "nhắc lại", "context", "hôm qua làm gì" |
+| session-resume | "resume", "tiếp tục", "làm tiếp", "quay lại", "continue", "pick up", "where were we" |
 | session-next | "làm gì tiếp", "next step", "tiếp theo là gì", "task tiếp theo" |
 
 ---
@@ -46,7 +47,7 @@ Kiểm tra nhanh xem các thư mục raw/ và wiki/ có chứa dữ liệu dự 
 
 1. **Confusion/System Query** -> `/help` (Nếu user không biết cách dùng hệ thống).
 2. **Mixed Intent** -> Thực hiện command hành động đầu tiên + ghi log Follow-up.
-3. **Past Context Recovery** -> `/recap` (Nếu câu hỏi nhắm vào lịch sử phiên làm việc).
+3. **Session Resume / Past Context Recovery** -> `/recap` (Nếu câu hỏi nhắm vào lịch sử phiên làm việc hoặc muốn tiếp tục việc cũ). Nếu user cũng nêu intent thực thi như code/debug/test, route `/recap` trước và ghi Follow-up là workflow thực thi phù hợp.
 4. **Next-Action Guidance** -> `/next` (Nếu user hỏi "giờ làm gì" dựa trên tiến độ).
 5. **Knowledge Lookup** -> `/abw-query` (nhanh) hoặc `/abw-query-deep` (sâu).
 6. **Undefined Product Scope** -> `/brainstorm` (lên ý tưởng, chốt brief).
@@ -59,6 +60,7 @@ Kiểm tra nhanh xem các thư mục raw/ và wiki/ có chứa dữ liệu dự 
 Trước khi định tuyến, tự hỏi nhanh:
 - **Chống giả định:** Câu hỏi có chứa giả định ẩn cần verify không? (VD: "Tại sao X hỏng?" -> Phải xác định "X có thực sự hỏng không?").
 - **An toàn hệ thống:** Hành động sắp tới có rủi ro tạo side-effect phá hủy không (VD: xóa file, migration DB, overwrite mass refactor)? Nếu có, tự động đưa vào mode an toàn (đề xuất dry-run hoặc yêu cầu user xác nhận impact trước khi thực thi).
+- **Resume guard:** Nếu `.brain/handover.md`, `.brain/session.json`, hoặc `.brain/lessons_learned.jsonl` tồn tại và user muốn "tiếp tục/làm tiếp/resume", không nhảy thẳng vào delivery. Route `/recap` trước để nạp context và lessons active, rồi mới follow-up sang `/code`, `/debug`, `/test`, `/refactor`, hoặc workflow phù hợp.
 
 ---
 

@@ -26,6 +26,7 @@ Bạn là người hướng dẫn của Hybrid ABW. Nhiệm vụ của bạn là
 - **Dùng `/abw-eval`** khi muốn chạy vòng đánh giá cho thay đổi, workflow, tài liệu, hoặc đầu ra của mô hình.
 - **Dùng `/abw-learn`** khi user correction cần ghi vào `.brain/lessons_learned.jsonl` để dùng lại.
 - **Dùng `/abw-start`** khi muốn mở phiên làm việc theo cách có kiểm tra trạng thái và grounding path.
+- **Dùng `/abw-setup`** khi cần cài đặt hoặc xác thực NotebookLM MCP; đây là bước cấu hình grounding, không phải bước resume phiên.
 - **Dùng `/abw-wrap`** khi muốn chốt phiên, chuẩn bị handover, và nhắc phần cần ingest hoặc nghiệm thu tiếp.
 - **Dùng `/next`** khi đang ở giữa dàn ý và cần gợi ý bước tiếp theo dựa trên trạng thái hiện tại.
 - **Dùng `/help`** khi cần hiểu toàn bộ hệ thống lệnh, lane, hoặc cách chọn command.
@@ -111,9 +112,20 @@ Bạn là người hướng dẫn của Hybrid ABW. Nhiệm vụ của bạn là
 - `/abw-start`: mở phiên làm việc và kiểm tra trạng thái
 - `/abw-learn`: ghi một lesson hành vi tái sử dụng vào `.brain/lessons_learned.jsonl`
 - `/save-brain`: lưu tiến độ, handover, và lessons learned
-- `/recap`: khôi phục bối cảnh phiên trước
+- `/recap`: khôi phục bối cảnh phiên trước và nạp `.brain/lessons_learned.jsonl` active
 - `/next`: gợi ý bước tiếp theo
 - `/abw-wrap`: chốt phiên và chuẩn bị quay lại
+
+Luồng handoff chuẩn:
+
+1. Cuối phiên: `/abw-wrap` hoặc `/save-brain`
+2. Phiên mới: `/recap`
+3. Sau recap: chạy workflow theo scope, ví dụ `/code`, `/debug`, `/test`, `/refactor`, hoặc `/abw-ask`
+
+Phân biệt nhanh:
+
+- `/abw-start`: kiểm tra workspace/session/lessons/grounding status để chọn lệnh đầu phiên.
+- `/abw-setup`: wizard cấu hình NotebookLM MCP và xác thực tài khoản.
 
 ### 5. Đánh giá và nghiệm thu
 
