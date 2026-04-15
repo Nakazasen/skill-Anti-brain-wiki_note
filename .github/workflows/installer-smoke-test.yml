@@ -20,6 +20,7 @@ jobs:
       - name: Continuation kernel unit tests
         run: |
           python -m unittest discover -s tests
+          python scripts/validate_docs.py
 
       - name: Run installer (Windows)
         if: runner.os == 'Windows'

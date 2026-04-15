@@ -3,7 +3,7 @@
 
 Small LLMs do not fail because they lack intelligence. They fail because they lose control over long-running tasks. As context grows and instructions stack, even capable models break project continuity, invent hallucinations, or execute unsafe changes without grounding.
 
-Hybrid ABW is an operating discipline for AI work. It establishes **Action Governance** to prevent common agent failure modes.
+Hybrid ABW is an operating discipline for AI work. It establishes **Action Governance** to prevent common agent failure modes. The "Wild Agent" scenario below reflects typical uncontrolled LLM behavior observed in long-running projects.
 
 ### Behavior Contrast: The Governance Delta
 
@@ -28,7 +28,7 @@ This framework enforces a strict execution boundary at runtime:
 
 ## System Architecture
 
-Hybrid ABW operates on a four-pillar governance stack:
+Hybrid ABW operates on a four-pillar governance stack (Runtime Control):
 
 1. **Truth Layer (Truth OS)**: Epistemic layer. Enforces grounding in `wiki/` and `raw/` sources.
 2. **Continuation Kernel**: State layer. Manages project continuity via `.brain/` artifacts.
@@ -113,7 +113,7 @@ When an agent fails to meet explicit acceptance criteria, the **Evaluation Kerne
 
 ## Closing Statement
 
-This system does not make models smarter. It makes them harder to fail silently by enforcing boundaries that LLMs cannot maintain on their own.
+Without governance, failure is invisible. With ABW, failure is blocked, logged, and forced into correction.
 
 ---
 *Created by the Hybrid ABW maintainers.*

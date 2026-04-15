@@ -102,7 +102,7 @@ To evaluate the effectiveness of the v1.3.1 gates, we contrast the governed trac
 
 ## 5. Final Compliance Summary
 
-**Conclusion**: Hybrid ABW v1.3.1 enforces explicit acceptance constraints at runtime. It prevents agents from making impulsive moves and blocks them from declaring success on failed work through machine-checkable gates.
+**Conclusion**: Hybrid ABW v1.3.1 enforces explicit acceptance constraints at runtime. By utilizing a machine-checkable gate and append-only state tracking, it prevents the agent from making impulsive moves and blocks them from declaring success on failed work.
 
 ---
 *Verified by Hybrid ABW Hardening Logic.*
