@@ -29,18 +29,17 @@ Public surface means the commands a normal user is expected to discover and run 
 - `brainstorm.md` / `plan.md` / `code.md` / `test.md`
 - `help.md` / `customize.md`
 
-## Compatibility Layer
+## Legacy Boundary
 
-Compatibility files may still be useful, but they are not the main ABW-first entry surface.
+Hybrid ABW no longer ships or installs legacy AWF helper skills. Runtime behavior must come from ABW workflows, ABW skills, and ABW scripts only.
 
-- `awf_skills/`
-- older AWF-oriented workflows
-- files explicitly described as compatibility-oriented
+- Do not add `awf_skills/` back to the installer.
+- Do not register `awf-context-help`; `/help` must resolve to `workflows/help.md`.
+- Historical docs may mention AWF, but the public/runtime command surface must not depend on it.
 
 ## Internal / Maintainer Artifacts
 
 - `HYBRID_ABW_*.md`
-- `docs/PROMPT_V2.hybrid-abw.md`
 - `docs/BRIEF.hybrid-abw.md`
 - release and architecture docs
 

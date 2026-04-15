@@ -143,7 +143,7 @@ function Get-LocalTreePaths {
 
     $paths = New-Object System.Collections.Generic.List[string]
 
-    foreach ($dir in @("workflows", "skills", "schemas", "templates", "scripts", "awf_skills")) {
+    foreach ($dir in @("workflows", "skills", "schemas", "templates", "scripts")) {
         $target = Join-Path $RepoRoot $dir
         if (-not (Test-Path $target)) {
             continue
@@ -178,10 +178,6 @@ function New-RepoCatalog {
         SchemaPaths = $Paths | Where-Object { $_ -like "schemas/*.json" } | Sort-Object -Unique
         TemplatePaths = $Paths | Where-Object { $_ -like "templates/*" -and $_ -notlike "templates/*/*" } | Sort-Object -Unique
         ScriptPaths = $Paths | Where-Object { $_ -like "scripts/*.py" } | Sort-Object -Unique
-        HelperSkills = $Paths |
-            Where-Object { $_ -like "awf_skills/*/SKILL.md" } |
-            ForEach-Object { ($_ -split "/")[1] } |
-            Sort-Object -Unique
     }
 }
 
@@ -268,7 +264,7 @@ function Write-GeminiRegistration {
 ## CRITICAL: Command Recognition
 When the user types one of the registered commands below, treat it as a Hybrid ABW workflow command loaded from `~/.gemini/antigravity/global_workflows`.
 Do not silently fall back to a stale local clone when the verified remote snapshot is newer.
-Hybrid ABW commands take precedence over older AWF registrations with the same slash command. In particular, /help MUST load ~/.gemini/antigravity/global_workflows/help.md; do not answer from awf-context-help or a short summary.
+Hybrid ABW commands are authoritative. In particular, /help MUST load ~/.gemini/antigravity/global_workflows/help.md and should not be answered from memory or a short summary.
 
 ## Registered ABW Commands
 $(Join-Commands -Commands $abwCommands.ToArray())
@@ -318,6 +314,25 @@ If NotebookLM MCP is unavailable:
     }
 
     Set-Content -Path $GeminiMd -Value $content -Encoding UTF8
+}
+
+function Remove-LegacyAwfSkills {
+    $legacySkills = @(
+        "awf-adaptive-language",
+        "awf-auto-save",
+        "awf-context-help",
+        "awf-error-translator",
+        "awf-onboarding",
+        "awf-session-restore"
+    )
+
+    foreach ($skill in $legacySkills) {
+        $path = Join-Path $SkillsDir $skill
+        if (Test-Path $path) {
+            Remove-Item -LiteralPath $path -Recurse -Force
+            Write-Host "  [OK] Removed legacy skill: $skill" -ForegroundColor Green
+        }
+    }
 }
 
 $RepoRoot = Get-LocalRepoRoot
@@ -409,20 +424,8 @@ foreach ($relativePath in $Catalog.SkillPaths) {
     }
 }
 
-Write-Host "Installing compatibility helper skills..." -ForegroundColor Cyan
-foreach ($skill in $Catalog.HelperSkills) {
-    $skillDir = Join-Path $SkillsDir $skill
-    $null = New-Item -ItemType Directory -Force -Path $skillDir
-    try {
-        $source = Install-File -RelativePath "awf_skills/$skill/SKILL.md" -Destination (Join-Path $skillDir "SKILL.md") -SourceMode $InstallMode -RepoRoot $RepoRoot
-        Write-Host "  [OK] $skill ($source)" -ForegroundColor Green
-        $success++
-    }
-    catch {
-        Write-Host "  [X] FAILED: $skill" -ForegroundColor Red
-        $missing++
-    }
-}
+Write-Host "Removing legacy AWF helper skills..." -ForegroundColor Cyan
+Remove-LegacyAwfSkills
 
 Write-Host "Installing runtime scripts..." -ForegroundColor Cyan
 foreach ($relativePath in $Catalog.ScriptPaths) {
@@ -457,7 +460,6 @@ $installState = @{
     schema_count = $Catalog.SchemaPaths.Count
     template_count = $Catalog.TemplatePaths.Count
     script_count = $Catalog.ScriptPaths.Count
-    helper_skill_count = $Catalog.HelperSkills.Count
 }
 $installState | ConvertTo-Json | Set-Content -Path $AbwInstallStateFile -Encoding UTF8
 
@@ -497,13 +499,6 @@ foreach ($relativePath in $Catalog.TemplatePaths) {
 foreach ($relativePath in $Catalog.ScriptPaths) {
     if (-not (Test-Path (Join-Path $ScriptsDir (Split-Path -Leaf $relativePath)))) {
         Write-Host "  [!] Missing script: $(Split-Path -Leaf $relativePath)" -ForegroundColor Red
-        $verificationErrors++
-    }
-}
-
-foreach ($skill in $Catalog.HelperSkills) {
-    if (-not (Test-Path (Join-Path (Join-Path $SkillsDir $skill) "SKILL.md"))) {
-        Write-Host "  [!] Missing helper skill: $skill" -ForegroundColor Red
         $verificationErrors++
     }
 }

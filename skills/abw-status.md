@@ -79,4 +79,4 @@ If the script is unavailable, read `.brain/resume_state.json`, `.brain/continuat
 
 ## Restrictions
 - Do NOT run the full `lint-wiki` 12 checks. This is meant to take < 5 seconds.
-- KEEP instructions and output completely in Vietnamese to match the AWF persona.
+- KEEP instructions and output completely in Vietnamese to match the ABW persona.

@@ -20,7 +20,7 @@ Chúng tôi cam kết tạo một môi trường mở, thân thiện cho tất c
 
 ## Thực Thi
 
-Các trường hợp vi phạm có thể được báo cáo qua [Issues](https://github.com/TUAN130294/awf/issues). Đội ngũ duy trì sẽ xem xét và xử lý phù hợp.
+Các trường hợp vi phạm có thể được báo cáo qua [Issues](https://github.com/Nakazasen/skill-Anti-brain-wiki_note/issues). Đội ngũ duy trì sẽ xem xét và xử lý phù hợp.
 
 ## Phạm Vi
 

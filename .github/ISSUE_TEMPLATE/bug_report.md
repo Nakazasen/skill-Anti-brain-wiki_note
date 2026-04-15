@@ -1,32 +1,32 @@
 ---
-name: 🐛 Báo Lỗi (Bug Report)
-about: Báo cáo lỗi để giúp AWF tốt hơn
-title: '[BUG] '
+name: Bug report
+about: Report a Hybrid ABW bug
+title: "[BUG] "
 labels: bug
 assignees: TUAN130294
 ---
 
-## Mô Tả Lỗi
-<!-- Mô tả rõ ràng lỗi gặp phải -->
+## Bug Summary
+<!-- Describe the problem clearly. -->
 
-## Các Bước Tái Hiện
-1. Gõ lệnh `...`
-2. Chọn `...`
-3. Xem lỗi xuất hiện
+## Steps To Reproduce
+1. Run `...`
+2. Observe `...`
+3. See the failure
 
-## Kết Quả Mong Đợi
-<!-- Bạn mong đợi điều gì xảy ra? -->
+## Expected Result
+<!-- What should have happened? -->
 
-## Kết Quả Thực Tế
-<!-- Thực tế điều gì xảy ra? -->
+## Actual Result
+<!-- What happened instead? -->
 
-## Ảnh Chụp Màn Hình
-<!-- Nếu có, thêm ảnh chụp để mô tả rõ hơn -->
+## Screenshots / Logs
+<!-- Add screenshots, terminal output, or relevant logs if useful. -->
 
-## Môi Trường
-- **OS:** [VD: Windows 11 / macOS 14 / Ubuntu 22.04]
-- **AWF Version:** [VD: v4.1.0]
-- **Antigravity Version:** [VD: latest]
+## Environment
+- **OS:** [e.g. Windows 11 / macOS 14 / Ubuntu 22.04]
+- **Hybrid ABW Version:** [e.g. v1.3.1]
+- **Runtime:** [e.g. Gemini CLI / Antigravity]
 
-## Thông Tin Thêm
-<!-- Bất kỳ thông tin nào khác có thể hữu ích -->
+## Additional Context
+<!-- Anything else that may help diagnose the issue. -->

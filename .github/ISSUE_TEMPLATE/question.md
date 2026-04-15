@@ -1,17 +1,17 @@
 ---
-name: ❓ Hỏi Đáp (Question)
-about: Hỏi về cách sử dụng AWF
-title: '[Q&A] '
+name: Question
+about: Ask about using Hybrid ABW
+title: "[Q&A] "
 labels: question
-assignees: ''
+assignees: ""
 ---
 
-## Câu Hỏi
-<!-- Mô tả câu hỏi của bạn -->
+## Question
+<!-- Describe what you want to understand. -->
 
-## Bạn Đã Thử Gì?
-<!-- Bạn đã đọc docs / thử lệnh gì rồi? -->
+## What Have You Tried?
+<!-- Which docs or commands have you already checked? -->
 
-## Môi Trường
-- **OS:** [VD: Windows 11]
-- **AWF Version:** [VD: v4.1.0]
+## Environment
+- **OS:** [e.g. Windows 11]
+- **Hybrid ABW Version:** [e.g. v1.3.1]

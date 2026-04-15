@@ -58,6 +58,12 @@ jobs:
               throw "Missing required installed file: $path"
             }
           }
+          foreach ($legacySkill in @("awf-adaptive-language", "awf-auto-save", "awf-context-help", "awf-error-translator", "awf-onboarding", "awf-session-restore")) {
+            $legacyPath = Join-Path "$env:USERPROFILE\.gemini\antigravity\skills" $legacySkill
+            if (Test-Path $legacyPath) {
+              throw "Legacy AWF helper skill should not be installed: $legacySkill"
+            }
+          }
           Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\resume_state.example.json" -Raw | ConvertFrom-Json | Out-Null
           Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\continuation_backlog.example.json" -Raw | ConvertFrom-Json | Out-Null
           Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\continuation_policy.example.json" -Raw | ConvertFrom-Json | Out-Null
@@ -134,6 +140,9 @@ jobs:
           test -f "$HOME/.gemini/antigravity/templates/model_claims.example.jsonl"
           test -f "$HOME/.gemini/antigravity/templates/acceptance_request.example.json"
           test -f "$HOME/.gemini/antigravity/templates/acceptance_log.example.jsonl"
+          for legacy_skill in awf-adaptive-language awf-auto-save awf-context-help awf-error-translator awf-onboarding awf-session-restore; do
+            test ! -e "$HOME/.gemini/antigravity/skills/$legacy_skill"
+          done
           python -m json.tool "$HOME/.gemini/antigravity/templates/resume_state.example.json" >/dev/null
           python -m json.tool "$HOME/.gemini/antigravity/templates/continuation_backlog.example.json" >/dev/null
           python -m json.tool "$HOME/.gemini/antigravity/templates/continuation_policy.example.json" >/dev/null

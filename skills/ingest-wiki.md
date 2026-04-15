@@ -259,7 +259,7 @@ contradictions: []
 3. If wiki note was created as `draft` (fallback mode):
    - Ensure queue entry remains with `status: "pending"`
    - Manifest stays at `pending_grounding` (NOT `compiled`) until grounding resolves
-4. Log a delta entry (for AWF session tracking):
+4. Log a delta entry (for ABW session tracking):
    ```
    [ingest-wiki] Ingested <source_id> -> wiki/<type>/<slug>.md (status: <status>, confidence: <confidence>)
    ```

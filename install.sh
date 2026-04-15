@@ -134,7 +134,6 @@ get_local_tree_paths() {
     "$repo_root/schemas" \
     "$repo_root/templates" \
     "$repo_root/scripts" \
-    "$repo_root/awf_skills" \
     -type f 2>/dev/null | sed "s#^$repo_root/##" | sort
 }
 
@@ -151,7 +150,6 @@ SKILL_PATHS=()
 SCHEMA_PATHS=()
 TEMPLATE_PATHS=()
 SCRIPT_PATHS=()
-HELPER_SKILLS=()
 
 load_catalog_from_paths() {
   local tree_paths="$1"
@@ -161,7 +159,6 @@ load_catalog_from_paths() {
   SCHEMA_PATHS=()
   TEMPLATE_PATHS=()
   SCRIPT_PATHS=()
-  HELPER_SKILLS=()
 
   while IFS= read -r path; do
     [ -z "$path" ] && continue
@@ -183,15 +180,8 @@ load_catalog_from_paths() {
       scripts/*.py)
         SCRIPT_PATHS+=("$path")
         ;;
-      awf_skills/*/SKILL.md)
-        HELPER_SKILLS+=("$(printf '%s' "$path" | cut -d/ -f2)")
-        ;;
     esac
   done <<< "$tree_paths"
-
-  if [ "${#HELPER_SKILLS[@]}" -gt 0 ]; then
-    mapfile -t HELPER_SKILLS < <(printf '%s\n' "${HELPER_SKILLS[@]}" | sort -u)
-  fi
 }
 
 install_file() {
@@ -265,7 +255,7 @@ write_gemini_registration() {
 ## CRITICAL: Command Recognition
 When the user types one of the registered commands below, treat it as a Hybrid ABW workflow command loaded from \`~/.gemini/antigravity/global_workflows\`.
 Do not silently fall back to a stale local clone when the verified remote snapshot is newer.
-Hybrid ABW commands take precedence over older AWF registrations with the same slash command. In particular, \`/help\` MUST load \`~/.gemini/antigravity/global_workflows/help.md\`; do not answer from \`awf-context-help\` or a short summary.
+Hybrid ABW commands are authoritative. In particular, \`/help\` MUST load \`~/.gemini/antigravity/global_workflows/help.md\` and should not be answered from memory or a short summary.
 
 ## Registered ABW Commands
 $(join_commands "${abw_commands[@]}")
@@ -303,6 +293,24 @@ EOF
   fi
   printf '\n%s\n' "$ABW_INSTRUCTIONS" >> "$tmp_file"
   mv "$tmp_file" "$GEMINI_MD"
+}
+
+remove_legacy_awf_skills() {
+  local legacy_skills=(
+    awf-adaptive-language
+    awf-auto-save
+    awf-context-help
+    awf-error-translator
+    awf-onboarding
+    awf-session-restore
+  )
+
+  for skill in "${legacy_skills[@]}"; do
+    if [ -e "$SKILLS_DIR/$skill" ]; then
+      rm -rf "$SKILLS_DIR/$skill"
+      echo -e "  ${GREEN}[OK]${NC} Removed legacy skill: $skill"
+    fi
+  done
 }
 
 REPO_ROOT="$(get_local_repo_root || true)"
@@ -383,16 +391,8 @@ for rel_path in "${SKILL_PATHS[@]}"; do
   fi
 done
 
-echo -e "${CYAN}Installing compatibility helper skills...${NC}"
-for skill in "${HELPER_SKILLS[@]}"; do
-  if source_type="$(install_file "awf_skills/$skill/SKILL.md" "$SKILLS_DIR/$skill/SKILL.md")"; then
-    echo -e "  ${GREEN}[OK]${NC} $skill ($source_type)"
-    success=$((success + 1))
-  else
-    echo -e "  ${RED}[X]${NC} FAILED: $skill"
-    missing=$((missing + 1))
-  fi
-done
+echo -e "${CYAN}Removing legacy AWF helper skills...${NC}"
+remove_legacy_awf_skills
 
 echo -e "${CYAN}Installing runtime scripts...${NC}"
 for rel_path in "${SCRIPT_PATHS[@]}"; do
@@ -424,8 +424,7 @@ cat > "$ABW_INSTALL_STATE_FILE" <<EOF
   "skill_count": ${#SKILL_PATHS[@]},
   "schema_count": ${#SCHEMA_PATHS[@]},
   "template_count": ${#TEMPLATE_PATHS[@]},
-  "script_count": ${#SCRIPT_PATHS[@]},
-  "helper_skill_count": ${#HELPER_SKILLS[@]}
+  "script_count": ${#SCRIPT_PATHS[@]}
 }
 EOF
 
@@ -465,13 +464,6 @@ done
 for rel_path in "${SCRIPT_PATHS[@]}"; do
   [ -f "$SCRIPTS_DIR/$(basename "$rel_path")" ] || {
     echo -e "  ${RED}[!]${NC} Missing script: $(basename "$rel_path")"
-    verification_errors=$((verification_errors + 1))
-  }
-done
-
-for skill in "${HELPER_SKILLS[@]}"; do
-  [ -f "$SKILLS_DIR/$skill/SKILL.md" ] || {
-    echo -e "  ${RED}[!]${NC} Missing helper skill: $skill"
     verification_errors=$((verification_errors + 1))
   }
 done
