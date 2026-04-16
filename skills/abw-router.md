@@ -1,87 +1,243 @@
-# SKILL: abw-router
+# SKILL: abw-router — Smart Router Engine
 
-**Mục tiêu:** Đánh giá câu hỏi của người dùng và trạng thái của workspace hiện tại để kích hoạt nhánh tư duy hoặc workflow phù hợp nhất (Ask/Think, Build Knowledge, Build Product, Session/Memory, Evaluation/Acceptance, Utility/Customization).
-
----
-
-## Quy trình Định tuyến (Routing Logic)
-
-### Bước 1: Quét bối cảnh (Context Scan)
-
-Kiểm tra nhanh xem các thư mục raw/ và wiki/ có chứa dữ liệu dự án không.
-
-- Trạng thái **Greenfield**: Cả raw/ và wiki/ đều trống.
-- Trạng thái **Knowledgeable**: Có dữ liệu (ít nhất 1 file) trong raw/ hoặc wiki/.
-
-### Bước 2.1: Quy tắc Phân biệt (Disambiguation Rules)
-
-Để giảm thiểu sự mơ hồ giữa các intent tương đồng:
-
-- **Query vs Brainstorm (Biết vs Khám phá)**: 
-    - Query (/abw-query): Hỏi về thông tin "đã có" trong wiki (VD: "Tính năng X đã chốt là gì?"). 
-    - Brainstorm (/brainstorm): Hỏi về ý tưởng "chưa có", "cần định nghĩa" hoặc "scoping" (VD: "MVP nên có những gì?").
-- **Recap vs Next (Quá khứ vs Tương lai)**:
-    - Recap (/recap): Nhìn lại "quá khứ" (VD: "Chúng ta đã làm gì?", "Tóm tắt bối cảnh").
-    - Next (/next): Đề xuất bước tiếp theo từ trạng thái hiện tại (VD: "Tôi làm gì tiếp theo?", "Task tiếp theo là gì?").
-- **Ask vs Help (Hành động vs Hỗ trợ)**:
-    - Ask (/abw-ask): Có ý định thực thi task cụ thể nhưng chưa biết lệnh.
-    - Help (/help): Không hiểu cách hệ thống vận hành hoặc danh sách các lệnh/lane.
-
-### Bước 2.2: Từ khóa nhận diện (Action Keywords)
-
-| Intent | Cue Patterns / Keywords |
-|--------|-------------------------|
-| knowledge | "là gì", "đã chốt", "tra cứu", "đọc wiki", "giải thích nội dung cũ" |
-| product-discovery | "MVP", "scope", "brainstorm", "lên ý tưởng", "định nghĩa", "chốt tính năng" |
-| delivery-planning | "lên kế hoạch", "plan", "phases", "chia task", "roadmap" |
-| delivery-execution | "code", "viết", "sửa lỗi", "debug", "test", "run", "deploy" |
-| session-recap | "tóm tắt", "recap", "đang làm gì", "nhắc lại", "context", "hôm qua làm gì" |
-| session-next | "làm gì tiếp", "next step", "tiếp theo là gì", "task tiếp theo" |
+**Mục tiêu:** Logic thực thi cho `/abw-ask` Smart Router. Nhận input user, phân loại intent, chạy safety guards, áp dụng Flash mode, và trả routing decision.
 
 ---
 
-## Routing Priority Ladder
+## Phase 1: Flash Mode Detection
 
-### Continuation Kernel Routing Addendum
-
-Route to `/abw-resume` instead of `/next` when the user is not merely asking for a suggestion, but is resuming an interrupted project with risk of state drift.
-
-Use `/abw-resume` for cues such as:
-
-- `resume this project`
-- `continue the interrupted project`
-- `project is in the middle`
-- `what can the small model safely do next?`
-- `strong model quota is gone; continue with a small model`
-
-Difference:
-
-- `/next` suggests a general next action from session memory.
-- `/abw-resume` reconstructs continuation state, runs the machine gate when available, checks unsafe zones, locked decisions, knowledge gaps, rollback risk, and presents one governed next safe step.
-- `/abw-execute` runs only after `/abw-resume` has produced an approved/gated step. Use it for cues like `execute the selected resume step`, `run the next safe step`, or `do the step from /abw-resume`. Do not route broad implementation requests directly to `/abw-execute`; use `/abw-resume` first when no approved continuation step exists.
-
-Để đảm bảo AI đưa ra quyết định nhất quán khi có nhiều ý định chồng lấn:
-
-1. **Confusion/System Query** -> `/help` (Nếu user không biết cách dùng hệ thống).
-2. **Mixed Intent** -> Thực hiện command hành động đầu tiên + ghi log Follow-up.
-3. **Past Context Recovery** -> `/recap` (Nếu câu hỏi nhắm vào lịch sử phiên làm việc).
-4. **Next-Action Guidance** -> `/next` (Nếu user hỏi "giờ làm gì" dựa trên tiến độ).
-5. **Knowledge Lookup** -> `/abw-query` (nhanh) hoặc `/abw-query-deep` (sâu).
-6. **Undefined Product Scope** -> `/brainstorm` (lên ý tưởng, chốt brief).
-7. **Greenfield (No Anchors)** -> `/abw-bootstrap` (khi chưa có bất kỳ dữ liệu raw/wiki nào).
-8. **Delivery Execution** -> `/plan`, `/design`, `/code`, `/debug`, `/test` (theo luồng sản xuất).
+```text
+IF model hiện tại là Flash, mini, small, hoặc model yếu/nhỏ
+→ flash_mode = true
+   Áp dụng: scope giới hạn (1 file, 50 lines), eval sau 2 step, ưu tiên /next
+ELSE
+→ flash_mode = false
+   Áp dụng: scope tiêu chuẩn (3 files, 200 lines), eval sau 3 step
+```
 
 ---
 
-### Bước 3: Preflight Check (Action Safety & Anti-Assumption)
-Trước khi định tuyến, tự hỏi nhanh:
-- **Chống giả định:** Câu hỏi có chứa giả định ẩn cần verify không? (VD: "Tại sao X hỏng?" -> Phải xác định "X có thực sự hỏng không?").
-- **An toàn hệ thống:** Hành động sắp tới có rủi ro tạo side-effect phá hủy không (VD: xóa file, migration DB, overwrite mass refactor)? Nếu có, tự động đưa vào mode an toàn (đề xuất dry-run hoặc yêu cầu user xác nhận impact trước khi thực thi).
+## Phase 2: Context Scan
+
+Kiểm tra nhanh trạng thái workspace:
+
+```text
+1. .brain/resume_state.json tồn tại?            → has_resume_state
+2. .brain/resume_state.completed_steps có item?  → has_completed_steps
+3. .brain/step_history.jsonl tồn tại?            → has_step_history
+4. wiki/ có ≥1 file?                             → has_wiki
+5. raw/ có ≥1 file?                              → has_raw
+6. .brain/ directory tồn tại?                    → has_brain
+```
+
+Trạng thái:
+- **Greenfield:** `has_wiki = false AND has_raw = false`
+- **Knowledgeable:** `has_wiki = true OR has_raw = true`
+- **Active Project:** `has_brain = true AND has_resume_state = true`
+- **Cold Start:** `has_brain = false`
 
 ---
 
-> [!IMPORTANT]
-> **Lệnh Thực Thi Ngay (Dynamic Dispatch):**
->
-> 1. In ra màn hình log: `[Router] Routing to /<cmd> for <intent>. [Optional] Follow-up: /<next_cmd>.`
-> 2. ĐỌC và TUÂN THEO TOÀN BỘ quy tắc trong file workflow/skill đã chọn.
+## Phase 3: Intent Classification
+
+### 3.1: Pattern Matching Table
+
+| Ưu tiên | Intent | Cue Patterns |
+|---|---|---|
+| **1** | `resume` | "tiếp tục", "đang dở", "resume", "continue", "project bị ngắt", "model yếu", "quota hết", "strong model quota is gone", "continue the interrupted project", "project is in the middle" |
+| **2** | `next_step` | "tiếp theo làm gì", "next step", "giờ làm gì", "task tiếp", "bước kế", "làm gì tiếp", "next", "what should I do" |
+| **3** | `execution` | "code", "viết code", "sửa lỗi", "debug", "test", "run", "deploy", "implement", "refactor", "viết", "tạo file", "fix", "build" |
+| **4** | `evaluation` | "ok chưa", "xong chưa", "review", "kiểm tra", "nghiệm thu", "đánh giá", "eval", "xong rồi", "kiểm tra giùm", "check" |
+| **5** | `knowledge` | "là gì", "giải thích", "tra cứu", "tìm trong wiki", "đã chốt gì", "so sánh", "tradeoff", "tại sao", "how does", "what is" |
+| **6** | `ambiguous` | Không khớp pattern nào |
+
+### 3.2: Disambiguation Rules
+
+- **resume vs execution:** "tiếp tục code" → resume (ưu tiên 1 > 3)
+- **next_step vs ambiguous:** "ừ thì làm đi" → ambiguous (không có "next"/"tiếp theo")
+- **knowledge vs execution:** "giải thích rồi implement" → knowledge (ưu tiên 5 < 3, NHƯNG Mixed Intent Rule: thực hiện intent đầu tiên trong câu + ghi follow_up)
+- **help vs ambiguous:** "tôi không hiểu gì cả" → route `/help` (ngoại lệ, bypass classification)
+
+### 3.3: Mixed Intent Rule
+
+```text
+IF input chứa 2+ intent
+→ Xử lý intent xuất hiện ĐẦU TIÊN trong câu
+→ Ghi intent thứ 2 vào follow_up
+→ NGOẠI LỆ: nếu 1 trong 2 intent là resume → resume LUÔN thắng
+```
+
+---
+
+## Phase 4: Safety Guards
+
+Chạy **tuần tự** 4 guard. Dừng tại guard đầu tiên trigger.
+
+### Guard A: Resume-Before-Execute
+
+```text
+CONDITION:
+  intent = execution
+  AND (has_resume_state = false OR has_completed_steps = false)
+
+ACTION:
+  route_to = /abw-resume
+  forced = true
+  guard_triggered = "resume_before_execute"
+  reason = "Chưa biết trạng thái project. Phải resume trước khi code."
+```
+
+### Guard B: Scope-Too-Large
+
+```text
+CONDITION:
+  intent = execution
+  AND (task ước lượng >3 files OR >200 lines
+       OR flash_mode AND (>1 file OR >50 lines)
+       OR cue chứa "toàn bộ", "viết lại", "migrate", "refactor all")
+
+ACTION:
+  route_to = /plan (nếu chưa có plan) hoặc /next (nếu có plan)
+  forced = true
+  guard_triggered = "scope_too_large"
+  reason = "Task quá lớn cho 1 step. Chia nhỏ trước."
+```
+
+### Guard C: Missing-Evaluation
+
+```text
+CONDITION:
+  intent = execution
+  AND has_step_history = true
+  AND step_history có ≥N step liên tiếp chưa acceptance_result
+      (N = 2 nếu flash_mode, N = 3 nếu không)
+
+ACTION:
+  route_to = /abw-eval
+  forced = true
+  guard_triggered = "missing_evaluation"
+  reason = "Đã N step chưa evaluation. Đánh giá trước khi tiếp."
+```
+
+### Guard D: Evidence-Before-Claim
+
+```text
+CONDITION:
+  intent = knowledge
+  AND user hỏi fact, decision, hoặc architecture conclusion
+  AND has_wiki = false
+
+ACTION:
+  IF has_raw = true → route_to = /abw-ingest
+  ELIF greenfield → route_to = /abw-bootstrap
+  ELSE → route_to = /abw-query (sẽ ghi knowledge_gaps nếu không tìm thấy)
+  forced = true
+  guard_triggered = "evidence_before_claim"
+  reason = "Không có evidence trong wiki. Nạp dữ liệu hoặc bootstrap trước."
+```
+
+---
+
+## Phase 5: Flash Mode Rules
+
+Chỉ áp dụng khi `flash_mode = true`:
+
+| ID | Rule | Chi tiết |
+|---|---|---|
+| FM-1 | Default to /next | `ambiguous` → LUÔN route `/next`. KHÔNG route `/code` hay `/plan`. |
+| FM-2 | Force resume check | `execution` → check resume_state. Step cuối failed hoặc không có → ép `/abw-resume`. |
+| FM-3 | Hard scope limit | Max 1 file, max 50 lines. Vượt → ép `/next` để chia nhỏ. |
+| FM-4 | No inline planning | Yêu cầu "lên kế hoạch" → route `/plan`. KHÔNG tự plan trong response. |
+| FM-5 | Eval after 2 steps | ≥2 step chưa eval → ép `/abw-eval` (thay vì 3 ở mode thường). |
+
+---
+
+## Phase 6: Anti-Stupidity Rules
+
+5 quy tắc cứng. **KHÔNG ĐƯỢC VI PHẠM:**
+
+| ID | Rule | BLOCK | FORCE |
+|---|---|---|---|
+| AS-1 | Không code nếu chưa biết state | Mọi execution khi không có resume_state | `/abw-resume` |
+| AS-2 | Không skip evaluation | ≥3 step (≥2 Flash) chưa eval | `/abw-eval` |
+| AS-3 | Không suy luận thay evidence | Trả lời fact khi wiki trống | `/abw-query` / `/abw-ingest` / `/abw-bootstrap` |
+| AS-4 | Không task lớn 1 bước | >3 files / >200 lines (Flash: >1/50) | `/next` / `/plan` |
+| AS-5 | Không tự thêm step vào backlog | Ghi trực tiếp continuation_backlog | Đề xuất proposed_steps, chờ approve |
+
+---
+
+## Phase 7: Route Decision
+
+### Decision Tree (tuần tự, dừng ở nhánh đầu tiên match)
+
+```text
+1. User hỏi cách dùng hệ thống?    → /help
+2. intent = resume?                 → /abw-resume
+3. intent = next_step?              → /next
+4. intent = execution?              → Chạy Guard A → B → C → pass? → /code|/debug|/test|/run|/deploy
+5. intent = evaluation?             → /abw-eval
+6. intent = knowledge?              → Chạy Guard D → /abw-query | /abw-query-deep | /abw-bootstrap
+7. intent = ambiguous + has_brain?  → /next (forced trong Flash)
+8. intent = ambiguous + no brain?   → /abw-init hoặc /help
+```
+
+### Execution Sub-Router (cho intent = execution)
+
+```text
+IF cue chứa "debug", "sửa lỗi", "fix bug" → /debug
+IF cue chứa "test", "kiểm thử"            → /test
+IF cue chứa "run", "chạy", "start"         → /run
+IF cue chứa "deploy", "triển khai"         → /deploy
+IF cue chứa "refactor", "dọn dẹp"         → /refactor
+ELSE                                        → /code
+```
+
+### Knowledge Sub-Router (cho intent = knowledge)
+
+```text
+IF câu hỏi đơn giản (definition, lookup)                → /abw-query
+IF câu hỏi phức tạp (so sánh, tradeoff, RCA, mâu thuẫn) → /abw-query-deep
+IF greenfield (wiki trống, raw trống)                     → /abw-bootstrap
+```
+
+---
+
+## Phase 8: Output Format
+
+### Log bắt buộc (in ra trước khi chuyển tiếp)
+
+Normal route:
+```text
+[Router] intent=<intent> → /<command> | reason: <reason> | forced: false
+```
+
+Guard triggered:
+```text
+[Router] ⚠️ GUARD <guard_name> → FORCED /<command> | reason: <reason>
+```
+
+Flash mode:
+```text
+[Router] 🔸 FLASH intent=<intent> → /<command> | reason: <reason> | forced: <true/false>
+```
+
+### Sau khi in log
+
+**BẮT BUỘC** đọc toàn bộ quy tắc trong workflow file của `route_to` và thực thi.
+
+Router không trả lời câu hỏi. Router chỉ route.
+
+---
+
+## Routing Priority Ladder (tóm tắt)
+
+```text
+Priority 1: /help           (user bối rối)
+Priority 2: /abw-resume     (resume intent HOẶC Guard A trigger)
+Priority 3: /next           (next_step intent HOẶC ambiguous trong Flash)
+Priority 4: Guard B/C       (scope/eval blocks)
+Priority 5: /code|/test|... (execution intent, all guards pass)
+Priority 6: /abw-eval       (evaluation intent)
+Priority 7: /abw-query*     (knowledge intent)
+Priority 8: /abw-init|/help (ambiguous, no state)
+```
