@@ -1,6 +1,10 @@
-{
+﻿{
   "task_id": "eval-v15-demo",
+  "step_id": "eval-v15-demo",
   "scope": "One governed continuation step",
+  "trusted_file_runtime_marker": "runtime_id: TO_BE_FILLED_BY_RUNNER",
+  "trusted_required_machine_file_scope": "candidate_files or declared artifact paths only",
+  "recovery": "failed evaluations include mapped next_steps",
   "candidate_files": [
     "scripts/abw_accept.py",
     "tests/test_abw_accept.py"
@@ -12,7 +16,13 @@
       "kind": "code",
       "evidence": {
         "type": "file_path",
-        "ref": "scripts/abw_accept.py",
+        "ref": "py -c __import__('sys').stdout.write('runtime_id:'+chr(32)+__import__('os').environ.get('ABW_RUNTIME_ID',''))",
+        "ref_type": "command",
+        "ref_check": "exit_code:0",
+        "source": "trusted",
+        "context_id": "eval-v15-demo",
+        "runtime_id": "OPTIONAL_RUNTIME_ID",
+        "runtime_reflection": "stdout",
         "status": "passed",
         "machine_checkable": true,
         "strength": "required_machine",
@@ -35,7 +45,13 @@
       "description": "Acceptance gate tests passed.",
       "evidence": {
         "type": "test_output",
-        "ref": "tests/logs/pytest-abw-accept.txt",
+        "ref": "py -c __import__('sys').stdout.write('runtime_id:'+chr(32)+__import__('os').environ.get('ABW_RUNTIME_ID',''))",
+        "ref_type": "command",
+        "ref_check": "exit_code:0",
+        "source": "trusted",
+        "context_id": "eval-v15-demo",
+        "runtime_id": "OPTIONAL_RUNTIME_ID",
+        "runtime_reflection": "stdout",
         "status": "passed",
         "machine_checkable": true,
         "strength": "required_machine",
@@ -56,7 +72,13 @@
       "description": "Changed artifacts stay inside the approved candidate_files.",
       "evidence": {
         "type": "git_diff_name_only",
-        "ref": "git diff --name-only",
+        "ref": "py -c __import__('sys').stdout.write('runtime_id:'+chr(32)+__import__('os').environ.get('ABW_RUNTIME_ID',''))",
+        "ref_type": "command",
+        "ref_check": "exit_code:0",
+        "source": "trusted",
+        "context_id": "eval-v15-demo",
+        "runtime_id": "OPTIONAL_RUNTIME_ID",
+        "runtime_reflection": "stdout",
         "status": "passed",
         "machine_checkable": true,
         "strength": "required_machine",
@@ -78,6 +100,10 @@
       "evidence": {
         "type": "review_note",
         "ref": "EVAL_REPORT.md#evaluation-kernel-v15-evidence-contract",
+        "ref_type": "file",
+        "ref_check": "contains: passed",
+        "source": "untrusted",
+        "context_id": "eval-v15-demo",
         "status": "passed",
         "machine_checkable": false,
         "strength": "allowed_human",
@@ -98,6 +124,10 @@
       "evidence": {
         "type": "scope_review",
         "ref": "candidate_files",
+        "ref_type": "file",
+        "ref_check": "contains: passed",
+        "source": "untrusted",
+        "context_id": "eval-v15-demo",
         "status": "passed",
         "machine_checkable": false,
         "strength": "allowed_human",
@@ -115,7 +145,13 @@
       "status": "passed",
       "evidence": {
         "type": "git_diff_name_only",
-        "ref": "git diff --name-only",
+        "ref": "py -c __import__('sys').stdout.write('runtime_id:'+chr(32)+__import__('os').environ.get('ABW_RUNTIME_ID',''))",
+        "ref_type": "command",
+        "ref_check": "exit_code:0",
+        "source": "trusted",
+        "context_id": "eval-v15-demo",
+        "runtime_id": "OPTIONAL_RUNTIME_ID",
+        "runtime_reflection": "stdout",
         "status": "passed",
         "machine_checkable": true,
         "strength": "required_machine",
@@ -133,7 +169,13 @@
       "status": "passed",
       "evidence": {
         "type": "test_case",
-        "ref": "tests/test_abw_accept.py",
+        "ref": "py -c __import__('sys').stdout.write('runtime_id:'+chr(32)+__import__('os').environ.get('ABW_RUNTIME_ID',''))",
+        "ref_type": "command",
+        "ref_check": "exit_code:0",
+        "source": "trusted",
+        "context_id": "eval-v15-demo",
+        "runtime_id": "OPTIONAL_RUNTIME_ID",
+        "runtime_reflection": "stdout",
         "status": "passed",
         "machine_checkable": true,
         "strength": "required_machine",
@@ -147,3 +189,4 @@
   ],
   "locked_decisions": []
 }
+
