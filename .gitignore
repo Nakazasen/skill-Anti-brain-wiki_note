@@ -56,11 +56,6 @@ wiki/_indexes/lint-report-*.md
 notebooks/packages/
 
 # --- OS and IDE artifacts ---
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-*~
 
 # --- Node/Python artifacts (if applicable) ---
 node_modules/
@@ -68,3 +63,8 @@ __pycache__/
 *.pyc
 .env
 .env.local
+
+# --- ABW session-specific artifacts ---
+scratch/
+tests/logs/
+
