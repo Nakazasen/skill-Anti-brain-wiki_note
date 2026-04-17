@@ -97,6 +97,20 @@ Rules:
 
 ---
 
+## Finalization Rule
+
+Append the terminal block from `workflows/finalization.md`.
+
+- Map `pass` to `verified`.
+- Map `partial` to `partially_verified`.
+- Map `blocked` to `blocked`.
+- Map `fail` to `blocked`.
+- Before emitting the verdict, run `scripts/finalization_check.py` on the drafted Finalization block.
+- If the checker returns `downgrade` or `blocked`, lower the state before finalizing.
+- Do not claim `pass` unless the evidence is strong enough for the current scope.
+
+---
+
 ## Restrictions
 
 - `/abw-accept` must not edit product files.

@@ -178,6 +178,12 @@ All wiki-sourced answers must include:
 - [1] <- processed/manifest.jsonl#line-42 <- raw/original-doc.pdf
 ```
 
+### Finalization Rule
+Append the terminal block from `workflows/finalization.md` to every answer.
+- Use `verified` only when the answer has explicit provenance and the cited chain is checkable.
+- Use `partially_verified` when the answer is source-backed but still incomplete or caveated.
+- Use `blocked` when the wiki cannot support the answer and no safe fallback exists.
+
 ---
 
 ## Layer 3: NotebookLM Deep Grounding
@@ -276,6 +282,10 @@ ELSE:
 
 **Priority:** <medium>
 ```
+
+After the answer body, append the `Finalization` block from `workflows/finalization.md`.
+- Do not collapse partial support into `verified`.
+- Do not use `done` as a substitute for evidence.
 
 ---
 
