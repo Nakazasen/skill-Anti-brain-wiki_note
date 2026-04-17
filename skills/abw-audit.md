@@ -102,6 +102,12 @@ nếu chưa có evidence.
 - PASS
 ```
 
+### Finalization Rule
+Append the terminal block from `workflows/finalization.md`.
+- Use `verified` only when the audit verdict is backed by direct file or command evidence.
+- Use `partially_verified` when the audit is evidence-backed but some scope remains unresolved.
+- Use `blocked` when the reviewed artifacts are insufficient to close the audit cleanly.
+
 ### 6. Restrictions
 
 - Không được sửa file trong `/abw-audit`

@@ -81,6 +81,16 @@ Không được gộp chung.
 - <what must happen next>
 ```
 
+### Finalization Rule
+Append the terminal block from `workflows/finalization.md`.
+- Map `PASS` to `verified`.
+- Map `PASS WITH MINOR GAPS` to `partially_verified`.
+- Map `PASS WITH CRITICAL GAPS` to `blocked`.
+- Map `FAIL` to `blocked`.
+- Do not claim `PASS` unless the evidence is strong enough for the current scope.
+- Before emitting the verdict, run `scripts/finalization_check.py` on the drafted Finalization block.
+- If the checker returns `downgrade` or `blocked`, lower the state before finalizing.
+
 ### 6. Restrictions
 
 - `/abw-accept` không được sửa file

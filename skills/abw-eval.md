@@ -75,6 +75,16 @@ Chay logic tuong duong `/abw-accept`:
 - <next step>
 ```
 
+### Finalization Rule
+Append the terminal block from `workflows/finalization.md`.
+- The final state must match the acceptance verdict.
+- `PASS` -> `verified`
+- `PASS WITH MINOR GAPS` -> `partially_verified`
+- `PASS WITH CRITICAL GAPS` -> `blocked`
+- `FAIL` -> `blocked`
+- Before emitting the verdict, run `scripts/finalization_check.py` on the drafted Finalization block.
+- If the checker returns `downgrade` or `blocked`, lower the state before finalizing.
+
 ### 6. Restrictions
 
 - `/abw-eval` la lenh orchestration, khong tu sua file

@@ -444,6 +444,16 @@ After every deliberation (success or break), append one JSON line:
 2. [Specific source suggestions]
 ```
 
+### Finalization Rule
+Append the terminal block from `workflows/finalization.md` to every answer.
+- Use `verified` only when the answer is supported by explicit evidence and the exit score has cleared the gate.
+- Use `partially_verified` when the answer is the best available but still caveated, partial, or missing some provenance.
+- Use `blocked` when the loop cannot produce enough evidence to close the question safely.
+
+After the answer body, append the `Finalization` block from `workflows/finalization.md`.
+- Do not label a circuit-breaker exit as success.
+- Do not treat a self-score as proof without evidence.
+
 ---
 
 ## Error Handling

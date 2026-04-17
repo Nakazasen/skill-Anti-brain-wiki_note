@@ -67,6 +67,12 @@ Nếu chưa thể xác minh grounding, nói rõ trạng thái là chưa sẵn s�
 - <what to do if MCP / grounding is unavailable>
 ```
 
+### Finalization Rule
+Append the terminal block from `workflows/finalization.md`.
+- Use `verified` only if workspace, grounding, and session state are all explicitly confirmed.
+- Use `partially_verified` if some state is known but another state is still uncertain.
+- Use `blocked` if the startup state cannot be confirmed safely.
+
 ### 5. Restrictions
 
 - Không được tự sửa file trong `/abw-start`
