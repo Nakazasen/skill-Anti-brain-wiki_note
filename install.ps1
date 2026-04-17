@@ -37,6 +37,22 @@ $GeminiMd = "$env:USERPROFILE\.gemini\GEMINI.md"
 $AbwVersionFile = "$env:USERPROFILE\.gemini\abw_version"
 $AbwInstallStateFile = "$env:USERPROFILE\.gemini\abw_install_state.json"
 
+$RequiredRuntimeScripts = @(
+    "abw_accept.py",
+    "abw_runner.py",
+    "finalization_check.py",
+    "continuation_gate.py",
+    "continuation_execute.py",
+    "continuation_status.py",
+    "continuation_claim.py",
+    "continuation_rollback.py",
+    "continuation_detect_unsafe.py"
+)
+
+$RequiredRuntimeWorkflows = @(
+    "finalization.md"
+)
+
 function Get-RemoteVersion {
     try {
         return (Invoke-WebRequest -Uri "$RepoBase/VERSION" -UseBasicParsing).Content.Trim()
@@ -365,6 +381,28 @@ if (-not $Catalog.WorkflowPaths -or -not $Catalog.SkillPaths) {
     exit 1
 }
 
+$requiredScriptErrors = 0
+foreach ($workflowName in $RequiredRuntimeWorkflows) {
+    $relativePath = "workflows/$workflowName"
+    if ($Catalog.WorkflowPaths -notcontains $relativePath) {
+        Write-Host "Installer discovery failed: required runtime workflow missing from source catalog: $relativePath" -ForegroundColor Red
+        $requiredScriptErrors++
+    }
+}
+
+foreach ($scriptName in $RequiredRuntimeScripts) {
+    $relativePath = "scripts/$scriptName"
+    if ($Catalog.ScriptPaths -notcontains $relativePath) {
+        Write-Host "Installer discovery failed: required runtime script missing from source catalog: $relativePath" -ForegroundColor Red
+        $requiredScriptErrors++
+    }
+}
+
+if ($requiredScriptErrors -gt 0) {
+    Write-Host "Refusing to install an incomplete ABW runtime script set." -ForegroundColor Red
+    exit 1
+}
+
 $success = 0
 $missing = 0
 
@@ -499,6 +537,20 @@ foreach ($relativePath in $Catalog.TemplatePaths) {
 foreach ($relativePath in $Catalog.ScriptPaths) {
     if (-not (Test-Path (Join-Path $ScriptsDir (Split-Path -Leaf $relativePath)))) {
         Write-Host "  [!] Missing script: $(Split-Path -Leaf $relativePath)" -ForegroundColor Red
+        $verificationErrors++
+    }
+}
+
+foreach ($scriptName in $RequiredRuntimeScripts) {
+    if (-not (Test-Path (Join-Path $ScriptsDir $scriptName))) {
+        Write-Host "  [!] Missing required runtime script: $scriptName" -ForegroundColor Red
+        $verificationErrors++
+    }
+}
+
+foreach ($workflowName in $RequiredRuntimeWorkflows) {
+    if (-not (Test-Path (Join-Path $GlobalDir $workflowName))) {
+        Write-Host "  [!] Missing required runtime workflow: $workflowName" -ForegroundColor Red
         $verificationErrors++
     }
 }

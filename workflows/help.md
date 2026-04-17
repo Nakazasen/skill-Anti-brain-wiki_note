@@ -340,6 +340,14 @@ Orchestrate toàn bộ chuỗi: `/abw-audit` → `/abw-meta-audit` → rubric sc
 → Audit: 2 findings → Meta-audit: no overclaim → Score: 8.5/10 → Verdict: PASS.
 ```
 
+#### `/finalization` — Kiểm tra Trạng thái Kết thúc
+Áp dụng finalization profile và chạy `scripts/finalization_check.py` trên finalization block trước khi trả lời cuối.
+
+```text
+/finalization
+→ current_state: verified | evidence: direct runtime trace | verdict: pass.
+```
+
 ---
 
 ### Lane 6: Tiện ích và Cấu hình (Utility & Config)

@@ -27,6 +27,22 @@ GEMINI_MD="$HOME/.gemini/GEMINI.md"
 ABW_VERSION_FILE="$HOME/.gemini/abw_version"
 ABW_INSTALL_STATE_FILE="$HOME/.gemini/abw_install_state.json"
 
+REQUIRED_RUNTIME_SCRIPTS=(
+  "abw_accept.py"
+  "abw_runner.py"
+  "finalization_check.py"
+  "continuation_gate.py"
+  "continuation_execute.py"
+  "continuation_status.py"
+  "continuation_claim.py"
+  "continuation_rollback.py"
+  "continuation_detect_unsafe.py"
+)
+
+REQUIRED_RUNTIME_WORKFLOWS=(
+  "finalization.md"
+)
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -340,6 +356,42 @@ if [ "${#WORKFLOW_PATHS[@]}" -eq 0 ] || [ "${#SKILL_PATHS[@]}" -eq 0 ]; then
   exit 1
 fi
 
+required_script_errors=0
+for workflow_name in "${REQUIRED_RUNTIME_WORKFLOWS[@]}"; do
+  rel_path="workflows/$workflow_name"
+  found=0
+  for catalog_path in "${WORKFLOW_PATHS[@]}"; do
+    if [ "$catalog_path" = "$rel_path" ]; then
+      found=1
+      break
+    fi
+  done
+  if [ "$found" -eq 0 ]; then
+    echo -e "${RED}Installer discovery failed: required runtime workflow missing from source catalog: $rel_path${NC}"
+    required_script_errors=$((required_script_errors + 1))
+  fi
+done
+
+for script_name in "${REQUIRED_RUNTIME_SCRIPTS[@]}"; do
+  rel_path="scripts/$script_name"
+  found=0
+  for catalog_path in "${SCRIPT_PATHS[@]}"; do
+    if [ "$catalog_path" = "$rel_path" ]; then
+      found=1
+      break
+    fi
+  done
+  if [ "$found" -eq 0 ]; then
+    echo -e "${RED}Installer discovery failed: required runtime script missing from source catalog: $rel_path${NC}"
+    required_script_errors=$((required_script_errors + 1))
+  fi
+done
+
+if [ "$required_script_errors" -gt 0 ]; then
+  echo -e "${RED}Refusing to install an incomplete ABW runtime script set.${NC}"
+  exit 1
+fi
+
 success=0
 missing=0
 
@@ -464,6 +516,20 @@ done
 for rel_path in "${SCRIPT_PATHS[@]}"; do
   [ -f "$SCRIPTS_DIR/$(basename "$rel_path")" ] || {
     echo -e "  ${RED}[!]${NC} Missing script: $(basename "$rel_path")"
+    verification_errors=$((verification_errors + 1))
+  }
+done
+
+for script_name in "${REQUIRED_RUNTIME_SCRIPTS[@]}"; do
+  [ -f "$SCRIPTS_DIR/$script_name" ] || {
+    echo -e "  ${RED}[!]${NC} Missing required runtime script: $script_name"
+    verification_errors=$((verification_errors + 1))
+  }
+done
+
+for workflow_name in "${REQUIRED_RUNTIME_WORKFLOWS[@]}"; do
+  [ -f "$GLOBAL_DIR/$workflow_name" ] || {
+    echo -e "  ${RED}[!]${NC} Missing required runtime workflow: $workflow_name"
     verification_errors=$((verification_errors + 1))
   }
 done

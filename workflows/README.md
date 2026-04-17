@@ -66,6 +66,7 @@ Workflow hỗ trợ:
 - `/abw-rollback` : Quay về trạng thái an toàn sau thay đổi lỗi
 - `/abw-accept` : Chốt pass/fail cuối cùng
 - `/abw-eval` : Chạy toàn bộ chuỗi evaluation từ đầu đến cuối
+- `/finalization` : Áp dụng finalization profile và checker trước khi trả lời cuối
 
 ### 6. Tiện ích và Cấu hình
 

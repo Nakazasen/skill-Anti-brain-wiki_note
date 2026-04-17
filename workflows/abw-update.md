@@ -1,49 +1,114 @@
 ---
-description: Cập nhật command surface ABW vào Gemini runtime local
+description: Update the Hybrid ABW command surface and runtime scripts in local Antigravity/Gemini runtime
 ---
 
 # WORKFLOW: /abw-update
 
-**Mục đích:** Cập nhật Antigravity Brain Wiki OS / Hybrid ABW lên bản mới nhất của repo và đăng ký lại command surface vào Gemini runtime local.
+Purpose: update the local Antigravity/Gemini Hybrid ABW runtime from the current repo or from the verified remote snapshot.
 
-## Hướng dẫn cho AI
+This is an operational update command, not an AWF update.
 
-Khi user gọi `/abw-update`, thực hiện theo trình tự:
+## Execution
 
-1. Nói rõ lệnh này dùng để cập nhật command surface ABW từ repo hiện tại vào Gemini runtime local.
-2. Nếu user đã gọi trực tiếp `/abw-update` hoặc nói rõ muốn update ngay, xem đó là xác nhận đủ để thực hiện.
-3. Nếu môi trường cho phép chạy lệnh, ưu tiên **chạy lại installer tự động** thay vì chỉ đưa command để user tự copy-paste.
-4. Thứ tự ưu tiên khi update:
+When the user calls `/abw-update` or clearly asks to update now, treat that as enough confirmation to run the installer.
 
-- Nếu đang ở trong local clone của repo trên Windows: chạy `powershell -ExecutionPolicy Bypass -File .\\install.ps1`
-- Nếu đang ở trong local clone của repo trên macOS/Linux: chạy `bash ./install.sh`
-- Nếu không có local clone hoặc không thể chạy shell, đưa đúng lệnh installer remote để user tự chạy
+Preferred commands:
 
-5. Khi cần đưa lệnh remote, dùng đúng lệnh sau:
+- Windows, from a local clone:
 
-### Windows
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+- macOS/Linux, from a local clone:
+
+```bash
+bash ./install.sh
+```
+
+If there is no usable local clone, provide the remote installer command.
+
+Windows:
 
 ```powershell
 irm https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.ps1 | iex
 ```
 
-### macOS / Linux
+macOS/Linux:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_note/main/install.sh | sh
 ```
 
-6. Sau khi update, nhắc user reload IDE hoặc restart Gemini extension nếu slash menu chưa refresh.
-7. Nhắc user gõ lại `/help` hoặc `/abw` để kiểm tra command surface mới.
-8. Báo cáo rõ kết quả:
+## Required Verification
 
-- installer có chạy thành công hay không
-- command nào đã được đăng ký lại
-- có cần reload IDE hay không
+Do not report update success just because the installer printed output. Verify the installed runtime.
 
-## Quy tắc
+Required runtime scripts:
 
-- Không gọi đây là update AWF.
-- Không tự động giả định user muốn cập nhật runtime khác ngoài Gemini local.
-- Không tự nhận update thành công nếu installer chưa thực sự được chạy.
-- Nếu user chỉ hỏi cách update mà không yêu cầu thực hiện, lúc đó mới dùng chế độ hướng dẫn.
+- `abw_accept.py`
+- `abw_runner.py`
+- `finalization_check.py`
+- `continuation_gate.py`
+- `continuation_execute.py`
+- `continuation_status.py`
+- `continuation_claim.py`
+- `continuation_rollback.py`
+- `continuation_detect_unsafe.py`
+
+Required runtime workflows:
+
+- `finalization.md`
+
+On Windows, verify:
+
+```powershell
+Get-ChildItem "$env:USERPROFILE\.gemini\antigravity\scripts" |
+  Select-Object Name,Length
+```
+
+On macOS/Linux, verify:
+
+```bash
+ls -la "$HOME/.gemini/antigravity/scripts"
+```
+
+If any required runtime script is missing, classify the update as `failed`, not `partial` or `successful`.
+If `finalization.md` is missing from the runtime workflow directory, also classify the update as `failed`.
+
+## Workspace Freshness Check
+
+If running inside a git clone of this repo, check whether the workspace itself is stale:
+
+```bash
+git status --short --branch
+```
+
+If the branch is behind `origin/main`, say clearly:
+
+- the Antigravity/Gemini runtime may have been updated from the verified remote snapshot;
+- the IDE workspace clone is still stale;
+- audits that claim to represent the public repo must not use the stale workspace until it is updated.
+
+Do not silently equate "runtime updated" with "workspace clone updated".
+
+## Report
+
+Report:
+
+- whether the installer actually ran;
+- install source mode if available: `LOCAL` or `REMOTE`;
+- whether all required runtime scripts exist;
+- whether `finalization_check.py` exists in the runtime scripts directory;
+- whether `finalization.md` exists in the runtime workflow directory;
+- whether the current IDE workspace is behind `origin/main`;
+- whether the user needs to reload the IDE or Gemini extension.
+
+## Rules
+
+- Do not call this an AWF update.
+- Do not claim success if the installer was not actually run.
+- Do not claim success if `finalization_check.py` or another required runtime script is missing.
+- Do not claim success if `finalization.md` is missing.
+- Do not hide a stale workspace clone behind a successful runtime install.
+- If the user only asks how to update, explain the command instead of running it.
