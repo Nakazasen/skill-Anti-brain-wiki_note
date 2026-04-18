@@ -1,105 +1,67 @@
-# Hybrid ABW Command Model (6 Lanes)
+# Hybrid ABW Workflow Surface
 
-Tài liệu này mô tả command surface chính thức của Hybrid ABW trong repo.
+This directory defines the public workflow command surface for Hybrid ABW.
 
-## Bắt đầu từ đâu?
+## Core Entry Points
 
-- **`/abw-ask`**: entrypoint mặc định cho mọi task, câu hỏi, và yêu cầu chưa rõ lane.
-- **`/abw-eval`**: entrypoint mặc định cho đánh giá và nghiệm thu.
-- **`/abw-start`**: mở phiên làm việc có kiểm tra trạng thái và grounding path.
-- **`/abw-update`**: cập nhật command surface ABW vào Gemini runtime local.
+- `/abw-ask`: primary router for Hybrid ABW requests
+- `/abw-eval`: evaluation and acceptance chain
+- `/abw-start`: session start and runtime status check
+- `/abw-update`: runtime deployment and sync verification
 
-## 6 lane
+## `/abw-update` Runtime Contract
 
-### 1. Khám phá và tư duy
+`/abw-update` is not just a file copy command. It is the deployment path that must prove runtime readiness.
 
-- `/abw-ask` : Router chính theo intent
-- `/abw-query` : Tra cứu nhanh trên wiki
-- `/abw-query-deep` : Phân tích sâu, tradeoff, RCA
-- `/abw-bootstrap` : Tư duy cho bài toán greenfield
-- `/brainstorm` : Chốt brief sản phẩm và MVP
+The update flow must distinguish:
 
-### 2. Dựng nền tri thức
+- `repo_state`
+- `workspace_state`
+- `runtime_state`
+- `mcp_sync_result`
 
-- `/abw-init` : Khởi tạo cấu trúc ABW
-- `/abw-setup` : Cấu hình NotebookLM MCP
-- `/abw-status` : Kiểm tra MCP và queue
-- `/abw-ingest` : Xử lý raw thành wiki
-- `/abw-pack` : Đóng gói tri thức thành package gọn
-- `/abw-sync` : Dry-run hoặc sync package đã duyệt lên NotebookLM
-- `/abw-lint` : Audit sức khỏe wiki, grounding, và manifest
+The update flow must verify:
 
-### 3. Triển khai sản phẩm
+- required runtime scripts exist after install
+- required runtime workflows exist after install
+- MCP config contains a valid `abw_runner` registration
+- the configured runner path exists
+- `GEMINI.md` registration was refreshed if managed by the installer
 
-Luồng delivery chính:
+Required scripts:
 
-- `/plan` : Lập kế hoạch thực thi tính năng
-- `/design` : Thiết kế kỹ thuật và cơ sở dữ liệu
-- `/visualize` : Dựng mockup UI/UX và đặc tả màn hình
-- `/code` : Cài đặt tính năng
-- `/run` : Chạy ứng dụng cục bộ
-- `/debug` : Sửa lỗi có hệ thống
-- `/test` : Chạy test và kiểm tra chất lượng
-- `/deploy` : Triển khai lên môi trường đích
+- `abw_runner.py`
+- `finalization_check.py`
+- `abw_accept.py`
+- `continuation_gate.py`
+- `continuation_execute.py`
 
-Workflow hỗ trợ:
+Required workflows:
 
-- `/refactor` : Dọn code an toàn sau khi đã hiểu rõ hành vi
-- `/audit` : Rà soát sản phẩm, code, hoặc bảo mật trong vòng delivery
+- `abw-ask.md`
+- `abw-update.md`
+- `finalization.md`
 
-### 4. Phiên làm việc và ghi nhớ
+Expected update result fields:
 
-- `/abw-start` : Mở phiên làm việc và kiểm tra trạng thái
-- `/abw-resume` : Khôi phục project đang dở và chọn một next safe step qua Continuation Kernel
-- `/abw-execute` : Thực thi một continuation step đã qua gate và ghi outcome append-only
-- `/abw-learn` : Ghi một bài học hành vi tái sử dụng vào lessons learned
-- `/save-brain` : Lưu tiến độ và chuẩn bị handover
-- `/recap` : Khôi phục bối cảnh từ phiên trước và nạp lessons learned active
-- `/next` : Gợi ý bước tiếp theo
-- `/abw-wrap` : Chốt phiên và wrap lại thay đổi
+- `source_sync_result`
+- `runtime_sync_result`
+- `mcp_sync_result`
+- `verification_result`
+- `final_verdict`
 
-### 5. Đánh giá và nghiệm thu (Gated)
+Allowed verdicts:
 
-- `/abw-review` : Review code, thay đổi, hoặc hiện trạng dự án (evaluation mode)
-- `/abw-audit` : Tự audit workflow, tài liệu, thay đổi, hoặc đầu ra
-- `/abw-meta-audit` : Audit lại chính báo cáo audit
-- `/abw-rollback` : Quay về trạng thái an toàn sau thay đổi lỗi
-- `/abw-accept` : Chốt pass/fail cuối cùng
-- `/abw-eval` : Chạy toàn bộ chuỗi evaluation từ đầu đến cuối
-- `/finalization` : Áp dụng finalization profile và checker trước khi trả lời cuối
+- `PASS`
+- `PARTIAL`
+- `FAIL`
 
-### 6. Tiện ích và Cấu hình
+## Command Naming
 
-- `/customize` : Cài đặt phong cách giao tiếp, persona, và mức độ tự quyết của AI
-- `/help` : Bản đồ hệ thống và bảng tra cứu nhanh
-- `/abw-update` : Cập nhật Command Surface ABW mới nhất vào local runtime
+- `abw-*` commands are the ABW-first workflow surface.
+- Non-`abw-*` commands such as `/plan`, `/code`, and `/test` remain compatibility and delivery workflows.
+- If a public workflow name changes, installer/runtime registration and docs must be updated together.
 
-## First Command Cheat Sheet
+## Operational Rule
 
-### Continuation Kernel
-
-Use `/abw-resume` when the project is already in progress and the agent must continue safely after context loss, quota exhaustion, or handoff.
-
-`/abw-resume` is different from `/next`: it runs Continuation Kernel governance and should present one next safe step, not a broad suggestion list.
-
-Use `/abw-execute` only after `/abw-resume` has selected a gated step. It prepares the active execution state, keeps the agent inside the selected step boundary, and records the outcome to append-only `.brain` logs.
-
-| Muốn làm gì | Lệnh đầu tiên |
-|---|---|
-| Không biết nên bắt đầu từ đâu | `/abw-ask` |
-| Muốn nghiệm thu đầu ra | `/abw-eval` |
-| Muốn cài đặt cá nhân hóa AI | `/customize` |
-| Muốn refactor khi đã rõ phạm vi | `/refactor` |
-| Muốn mở phiên làm việc có kiểm tra trạng thái | `/abw-start` |
-| Muốn agent nhớ một correction để dùng lại | `/abw-learn` |
-| Muốn chốt phiên và handover | `/abw-wrap` |
-| Muốn cập nhật command surface local | `/abw-update` |
-
-## Naming Policy
-
-- Lệnh thuộc public surface chính của hệ thống nên ưu tiên tiền tố `abw-`.
-- Lệnh `abw-*` dùng cho router, grounding, session, evaluation, và những capability ABW-first.
-- Tên lệnh nên ngắn, rõ động từ, và phản ánh đúng mục đích.
-- Không tự ý rename lệnh đang ở public surface nếu chưa cập nhật installer, docs, và runtime registration cùng lúc.
-- Workflow cũ chỉ giữ tên không `abw-` nếu đó là compatibility path có giá trị thực tế hoặc là verb rất tự nhiên như `/plan`, `/code`, `/test`.
-- Nếu sau này thêm alias, alias chỉ là lớp phụ; source of truth vẫn là tên lệnh chính trong `workflows/` và installer.
+Do not claim the runtime is updated unless the installed runtime, MCP registration, and verification checks all pass.

@@ -6,7 +6,6 @@ set -euo pipefail
 REPO_OWNER="Nakazasen"
 REPO_NAME="skill-Anti-brain-wiki_note"
 
-# Detect Repo Ref: Environment Variable > Current Git Branch > default "main"
 if [ -n "${ABW_REPO_REF:-}" ]; then
   REPO_REF="$ABW_REPO_REF"
 elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -18,11 +17,13 @@ fi
 REPO_BASE="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$REPO_REF"
 REPO_API_BASE="https://api.github.com/repos/$REPO_OWNER/$REPO_NAME"
 
-GLOBAL_DIR="$HOME/.gemini/antigravity/global_workflows"
-SCHEMAS_DIR="$HOME/.gemini/antigravity/schemas"
-TEMPLATES_DIR="$HOME/.gemini/antigravity/templates"
-SKILLS_DIR="$HOME/.gemini/antigravity/skills"
-SCRIPTS_DIR="$HOME/.gemini/antigravity/scripts"
+ANTIGRAVITY_DIR="$HOME/.gemini/antigravity"
+GLOBAL_DIR="$ANTIGRAVITY_DIR/global_workflows"
+SCHEMAS_DIR="$ANTIGRAVITY_DIR/schemas"
+TEMPLATES_DIR="$ANTIGRAVITY_DIR/templates"
+SKILLS_DIR="$ANTIGRAVITY_DIR/skills"
+SCRIPTS_DIR="$ANTIGRAVITY_DIR/scripts"
+MCP_CONFIG_PATH="$ANTIGRAVITY_DIR/mcp_config.json"
 GEMINI_MD="$HOME/.gemini/GEMINI.md"
 ABW_VERSION_FILE="$HOME/.gemini/abw_version"
 ABW_INSTALL_STATE_FILE="$HOME/.gemini/abw_install_state.json"
@@ -33,13 +34,11 @@ REQUIRED_RUNTIME_SCRIPTS=(
   "finalization_check.py"
   "continuation_gate.py"
   "continuation_execute.py"
-  "continuation_status.py"
-  "continuation_claim.py"
-  "continuation_rollback.py"
-  "continuation_detect_unsafe.py"
 )
 
 REQUIRED_RUNTIME_WORKFLOWS=(
+  "abw-ask.md"
+  "abw-update.md"
   "finalization.md"
 )
 
@@ -49,6 +48,65 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 GRAY='\033[0;90m'
 NC='\033[0m'
+
+WORKFLOW_PATHS=()
+SKILL_PATHS=()
+SCHEMA_PATHS=()
+TEMPLATE_PATHS=()
+SCRIPT_PATHS=()
+
+SOURCE_SYNC_RESULT="FAIL"
+RUNTIME_SYNC_RESULT="FAIL"
+MCP_SYNC_RESULT="FAIL"
+VERIFICATION_RESULT="FAIL"
+FINAL_VERDICT="FAIL"
+VERIFICATION_LIMITATIONS=()
+SOURCE_ERRORS=()
+RUNTIME_ERRORS=()
+MCP_ERRORS=()
+VERIFY_ERRORS=()
+
+INSTALL_MODE="REMOTE"
+INSTALL_REASON=""
+INSTALL_REMOTE_REF="origin/$REPO_REF"
+REMOTE_VERSION="unknown"
+PYTHON_CMD=""
+PYTHON_FOR_MCP=""
+PYTHON_FOR_REPORT=""
+GEMINI_REFRESHED="false"
+INSTALLER_RAN="false"
+
+json_escape() {
+  local raw="${1:-}"
+  raw="${raw//\\/\\\\}"
+  raw="${raw//\"/\\\"}"
+  raw="${raw//$'\n'/\\n}"
+  raw="${raw//$'\r'/\\r}"
+  raw="${raw//$'\t'/\\t}"
+  printf '%s' "$raw"
+}
+
+append_error() {
+  local array_name="$1"
+  shift
+  local value="$*"
+  eval "$array_name+=(\"\$value\")"
+}
+
+array_to_json() {
+  local array_name="$1"
+  eval "local items=(\"\${${array_name}[@]}\")"
+  local first=1
+  printf '['
+  for item in "${items[@]}"; do
+    if [ "$first" -eq 0 ]; then
+      printf ', '
+    fi
+    first=0
+    printf '"%s"' "$(json_escape "$item")"
+  done
+  printf ']'
+}
 
 get_remote_version() {
   curl -fsSL "$REPO_BASE/VERSION" 2>/dev/null | tr -d '\r\n ' || echo "unknown"
@@ -160,12 +218,6 @@ get_remote_tree_paths() {
     sed 's/^"path":"//; s/"$//' |
     sort
 }
-
-WORKFLOW_PATHS=()
-SKILL_PATHS=()
-SCHEMA_PATHS=()
-TEMPLATE_PATHS=()
-SCRIPT_PATHS=()
 
 load_catalog_from_paths() {
   local tree_paths="$1"
@@ -284,6 +336,8 @@ $(join_commands "${extended_commands[@]}")
 - Source decision: $INSTALL_REASON
 - Workflow directory: \`~/.gemini/antigravity/global_workflows\`
 - Skills directory: \`~/.gemini/antigravity/skills\`
+- MCP config: \`~/.gemini/antigravity/mcp_config.json\`
+- /abw-update must distinguish repo, workspace, runtime, and MCP sync state separately.
 
 ## Fallback Rule
 If NotebookLM MCP is unavailable:
@@ -295,6 +349,7 @@ EOF
   mkdir -p "$(dirname "$GEMINI_MD")"
   if [ ! -f "$GEMINI_MD" ]; then
     printf '%s\n' "$ABW_INSTRUCTIONS" > "$GEMINI_MD"
+    GEMINI_REFRESHED="true"
     return
   fi
 
@@ -309,6 +364,7 @@ EOF
   fi
   printf '\n%s\n' "$ABW_INSTRUCTIONS" >> "$tmp_file"
   mv "$tmp_file" "$GEMINI_MD"
+  GEMINI_REFRESHED="true"
 }
 
 remove_legacy_awf_skills() {
@@ -329,15 +385,277 @@ remove_legacy_awf_skills() {
   done
 }
 
+ensure_required_artifacts_in_catalog() {
+  local missing=0
+  local workflow_name script_name rel_path found catalog_path
+
+  for workflow_name in "${REQUIRED_RUNTIME_WORKFLOWS[@]}"; do
+    rel_path="workflows/$workflow_name"
+    found=0
+    for catalog_path in "${WORKFLOW_PATHS[@]}"; do
+      if [ "$catalog_path" = "$rel_path" ]; then
+        found=1
+        break
+      fi
+    done
+    if [ "$found" -eq 0 ]; then
+      append_error SOURCE_ERRORS "required runtime workflow missing from source catalog: $rel_path"
+      missing=$((missing + 1))
+    fi
+  done
+
+  for script_name in "${REQUIRED_RUNTIME_SCRIPTS[@]}"; do
+    rel_path="scripts/$script_name"
+    found=0
+    for catalog_path in "${SCRIPT_PATHS[@]}"; do
+      if [ "$catalog_path" = "$rel_path" ]; then
+        found=1
+        break
+      fi
+    done
+    if [ "$found" -eq 0 ]; then
+      append_error SOURCE_ERRORS "required runtime script missing from source catalog: $rel_path"
+      missing=$((missing + 1))
+    fi
+  done
+
+  return "$missing"
+}
+
+resolve_python_command() {
+  local candidate
+  for candidate in python3 python; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+      PYTHON_CMD="$(command -v "$candidate")"
+      PYTHON_FOR_MCP="$PYTHON_CMD"
+      PYTHON_FOR_REPORT="$PYTHON_CMD"
+      return 0
+    fi
+  done
+  return 1
+}
+
+patch_mcp_config() {
+  local runner_path="$SCRIPTS_DIR/abw_runner.py"
+
+  if [ -z "$PYTHON_CMD" ]; then
+    append_error MCP_ERRORS "python executable could not be resolved for MCP registration"
+    return 1
+  fi
+
+  if [ ! -f "$runner_path" ]; then
+    append_error MCP_ERRORS "runtime runner script missing at $runner_path"
+    return 1
+  fi
+
+  mkdir -p "$(dirname "$MCP_CONFIG_PATH")"
+  "$PYTHON_CMD" - "$MCP_CONFIG_PATH" "$PYTHON_FOR_MCP" "$runner_path" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+config_path = Path(sys.argv[1])
+command = sys.argv[2]
+runner_path = sys.argv[3]
+
+if config_path.exists():
+    raw = config_path.read_text(encoding="utf-8")
+    data = json.loads(raw) if raw.strip() else {}
+else:
+    data = {}
+
+if not isinstance(data, dict):
+    raise SystemExit("mcp_config root must be a JSON object")
+
+mcp_servers = data.get("mcpServers")
+if mcp_servers is None:
+    mcp_servers = {}
+elif not isinstance(mcp_servers, dict):
+    raise SystemExit("mcpServers must be a JSON object")
+
+mcp_servers["abw_runner"] = {
+    "command": os.path.abspath(command),
+    "args": [os.path.abspath(runner_path)],
+}
+data["mcpServers"] = mcp_servers
+
+config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+verified = json.loads(config_path.read_text(encoding="utf-8"))
+entry = verified["mcpServers"]["abw_runner"]
+if not os.path.isabs(entry["command"]):
+    raise SystemExit("abw_runner command must be absolute")
+if not entry.get("args") or not os.path.isabs(entry["args"][0]):
+    raise SystemExit("abw_runner args[0] must be absolute")
+PY
+}
+
+verify_runtime_artifacts() {
+  local script_name workflow_name rel_path
+
+  for script_name in "${REQUIRED_RUNTIME_SCRIPTS[@]}"; do
+    if [ ! -f "$SCRIPTS_DIR/$script_name" ]; then
+      append_error VERIFY_ERRORS "missing required runtime script: $SCRIPTS_DIR/$script_name"
+    fi
+  done
+
+  for workflow_name in "${REQUIRED_RUNTIME_WORKFLOWS[@]}"; do
+    if [ ! -f "$GLOBAL_DIR/$workflow_name" ]; then
+      append_error VERIFY_ERRORS "missing required runtime workflow: $GLOBAL_DIR/$workflow_name"
+    fi
+  done
+
+  if [ ! -f "$SCRIPTS_DIR/finalization_check.py" ]; then
+    append_error VERIFY_ERRORS "missing finalization_check.py in runtime scripts directory"
+  fi
+
+  if [ ! -f "$GLOBAL_DIR/abw-update.md" ]; then
+    append_error VERIFY_ERRORS "missing abw-update.md in runtime workflow directory"
+  fi
+
+  if [ "$GEMINI_REFRESHED" != "true" ] && ! grep -q "# Hybrid ABW - Antigravity IDE Command Surface" "$GEMINI_MD" 2>/dev/null; then
+    append_error VERIFY_ERRORS "GEMINI.md missing Hybrid ABW registration block"
+  fi
+
+  if [ -n "$PYTHON_CMD" ]; then
+    if ! "$PYTHON_CMD" -m py_compile \
+      "$SCRIPTS_DIR/abw_runner.py" \
+      "$SCRIPTS_DIR/finalization_check.py" \
+      "$SCRIPTS_DIR/abw_accept.py" \
+      "$SCRIPTS_DIR/continuation_gate.py" \
+      "$SCRIPTS_DIR/continuation_execute.py" >/dev/null 2>&1; then
+      append_error VERIFY_ERRORS "py_compile failed for one or more critical runtime scripts"
+    fi
+  else
+    VERIFICATION_LIMITATIONS+=("py_compile skipped because no python executable was available on this host")
+    append_error VERIFY_ERRORS "verification limitation: py_compile could not run because python was unavailable"
+  fi
+
+  if [ ! -f "$MCP_CONFIG_PATH" ]; then
+    append_error VERIFY_ERRORS "missing MCP config: $MCP_CONFIG_PATH"
+  elif [ -n "$PYTHON_CMD" ]; then
+    if ! "$PYTHON_CMD" - "$MCP_CONFIG_PATH" "$SCRIPTS_DIR/abw_runner.py" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+config_path = Path(sys.argv[1])
+runner_path = os.path.abspath(sys.argv[2])
+data = json.loads(config_path.read_text(encoding="utf-8"))
+if not isinstance(data, dict):
+    raise SystemExit(1)
+mcp_servers = data.get("mcpServers")
+if not isinstance(mcp_servers, dict):
+    raise SystemExit(2)
+entry = mcp_servers.get("abw_runner")
+if not isinstance(entry, dict):
+    raise SystemExit(3)
+command = entry.get("command")
+args = entry.get("args")
+if not isinstance(command, str) or not command or not os.path.isabs(command):
+    raise SystemExit(4)
+if not isinstance(args, list) or not args or not isinstance(args[0], str) or not os.path.isabs(args[0]):
+    raise SystemExit(5)
+if os.path.abspath(args[0]) != runner_path:
+    raise SystemExit(6)
+if not Path(args[0]).exists():
+    raise SystemExit(7)
+PY
+    then
+      append_error VERIFY_ERRORS "MCP config does not contain a valid abw_runner entry bound to the installed runtime"
+    fi
+  fi
+}
+
+workspace_sync_state() {
+  local repo_root="$1"
+  local remote_ref="$2"
+  if [ -z "$repo_root" ]; then
+    printf 'not_present'
+    return
+  fi
+  if ! command -v git >/dev/null 2>&1; then
+    printf 'unverified'
+    return
+  fi
+  if ! git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf 'unverified'
+    return
+  fi
+
+  local status ahead behind
+  status="$(git -C "$repo_root" status --porcelain 2>/dev/null || true)"
+  if [ -n "$status" ]; then
+    printf 'dirty'
+    return
+  fi
+
+  ahead="$(git -C "$repo_root" rev-list --count "${remote_ref}..HEAD" 2>/dev/null || echo "")"
+  behind="$(git -C "$repo_root" rev-list --count "HEAD..${remote_ref}" 2>/dev/null || echo "")"
+  if [ -z "$ahead" ] || [ -z "$behind" ]; then
+    printf 'unverified'
+    return
+  fi
+  if [ "$behind" -gt 0 ] && [ "$ahead" -gt 0 ]; then
+    printf 'diverged'
+    return
+  fi
+  if [ "$behind" -gt 0 ]; then
+    printf 'stale'
+    return
+  fi
+  if [ "$ahead" -gt 0 ]; then
+    printf 'ahead'
+    return
+  fi
+  printf 'synced'
+}
+
+write_install_state() {
+  local workspace_state="$1"
+  local runtime_state="$2"
+  local repo_state="$3"
+
+  cat > "$ABW_INSTALL_STATE_FILE" <<EOF
+{
+  "installed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "repo": "$REPO_OWNER/$REPO_NAME",
+  "repo_ref": "$(json_escape "$REPO_REF")",
+  "version": "$(json_escape "$REMOTE_VERSION")",
+  "installer_source_mode": "$(json_escape "$INSTALL_MODE")",
+  "installer_reason": "$(json_escape "$INSTALL_REASON")",
+  "source_sync_result": "$SOURCE_SYNC_RESULT",
+  "runtime_sync_result": "$RUNTIME_SYNC_RESULT",
+  "mcp_sync_result": "$MCP_SYNC_RESULT",
+  "verification_result": "$VERIFICATION_RESULT",
+  "final_verdict": "$FINAL_VERDICT",
+  "repo_state": "$repo_state",
+  "workspace_state": "$workspace_state",
+  "runtime_state": "$runtime_state",
+  "mcp_config_path": "$(json_escape "$MCP_CONFIG_PATH")",
+  "python_command": "$(json_escape "$PYTHON_FOR_MCP")",
+  "required_runtime_scripts": $(array_to_json REQUIRED_RUNTIME_SCRIPTS),
+  "required_runtime_workflows": $(array_to_json REQUIRED_RUNTIME_WORKFLOWS),
+  "source_errors": $(array_to_json SOURCE_ERRORS),
+  "runtime_errors": $(array_to_json RUNTIME_ERRORS),
+  "mcp_errors": $(array_to_json MCP_ERRORS),
+  "verification_errors": $(array_to_json VERIFY_ERRORS),
+  "verification_limitations": $(array_to_json VERIFICATION_LIMITATIONS)
+}
+EOF
+}
+
 REPO_ROOT="$(get_local_repo_root || true)"
 resolve_install_mode "$REPO_ROOT"
-CURRENT_VERSION="$(get_remote_version)"
+REMOTE_VERSION="$(get_remote_version)"
 
 mkdir -p "$GLOBAL_DIR" "$SCHEMAS_DIR" "$TEMPLATES_DIR" "$SKILLS_DIR" "$SCRIPTS_DIR" "$HOME/.gemini"
 
 echo ""
 echo -e "${CYAN}===============================================${NC}"
-echo -e "${CYAN}Hybrid ABW Installer v$CURRENT_VERSION${NC}"
+echo -e "${CYAN}Hybrid ABW Installer v$REMOTE_VERSION${NC}"
 echo -e "${YELLOW}Source mode: $INSTALL_MODE${NC}"
 echo -e "${GRAY}Reason: $INSTALL_REASON${NC}"
 echo -e "${CYAN}===============================================${NC}"
@@ -352,46 +670,25 @@ fi
 load_catalog_from_paths "$TREE_PATHS"
 
 if [ "${#WORKFLOW_PATHS[@]}" -eq 0 ] || [ "${#SKILL_PATHS[@]}" -eq 0 ]; then
-  echo -e "${RED}Installer discovery failed: workflows or skills catalog is empty.${NC}"
+  append_error SOURCE_ERRORS "installer discovery failed: workflows or skills catalog is empty"
+fi
+
+if ! ensure_required_artifacts_in_catalog; then
+  :
+fi
+
+if [ "${#SOURCE_ERRORS[@]}" -gt 0 ]; then
+  SOURCE_SYNC_RESULT="FAIL"
+  echo -e "${RED}Installer discovery failed.${NC}"
+  for item in "${SOURCE_ERRORS[@]}"; do
+    echo -e "  ${RED}[!]${NC} $item"
+  done
+  write_install_state "$(workspace_sync_state "$REPO_ROOT" "$INSTALL_REMOTE_REF")" "missing" "reachable"
   exit 1
 fi
 
-required_script_errors=0
-for workflow_name in "${REQUIRED_RUNTIME_WORKFLOWS[@]}"; do
-  rel_path="workflows/$workflow_name"
-  found=0
-  for catalog_path in "${WORKFLOW_PATHS[@]}"; do
-    if [ "$catalog_path" = "$rel_path" ]; then
-      found=1
-      break
-    fi
-  done
-  if [ "$found" -eq 0 ]; then
-    echo -e "${RED}Installer discovery failed: required runtime workflow missing from source catalog: $rel_path${NC}"
-    required_script_errors=$((required_script_errors + 1))
-  fi
-done
-
-for script_name in "${REQUIRED_RUNTIME_SCRIPTS[@]}"; do
-  rel_path="scripts/$script_name"
-  found=0
-  for catalog_path in "${SCRIPT_PATHS[@]}"; do
-    if [ "$catalog_path" = "$rel_path" ]; then
-      found=1
-      break
-    fi
-  done
-  if [ "$found" -eq 0 ]; then
-    echo -e "${RED}Installer discovery failed: required runtime script missing from source catalog: $rel_path${NC}"
-    required_script_errors=$((required_script_errors + 1))
-  fi
-done
-
-if [ "$required_script_errors" -gt 0 ]; then
-  echo -e "${RED}Refusing to install an incomplete ABW runtime script set.${NC}"
-  exit 1
-fi
-
+SOURCE_SYNC_RESULT="PASS"
+INSTALLER_RAN="true"
 success=0
 missing=0
 
@@ -403,6 +700,7 @@ for rel_path in "${WORKFLOW_PATHS[@]}"; do
     success=$((success + 1))
   else
     echo -e "  ${RED}[X]${NC} FAILED: $leaf"
+    append_error RUNTIME_ERRORS "failed to install workflow: $rel_path"
     missing=$((missing + 1))
   fi
 done
@@ -415,6 +713,7 @@ for rel_path in "${SCHEMA_PATHS[@]}"; do
     success=$((success + 1))
   else
     echo -e "  ${RED}[X]${NC} FAILED: $leaf"
+    append_error RUNTIME_ERRORS "failed to install schema: $rel_path"
     missing=$((missing + 1))
   fi
 done
@@ -427,6 +726,7 @@ for rel_path in "${TEMPLATE_PATHS[@]}"; do
     success=$((success + 1))
   else
     echo -e "  ${RED}[X]${NC} FAILED: $leaf"
+    append_error RUNTIME_ERRORS "failed to install template: $rel_path"
     missing=$((missing + 1))
   fi
 done
@@ -439,6 +739,7 @@ for rel_path in "${SKILL_PATHS[@]}"; do
     success=$((success + 1))
   else
     echo -e "  ${RED}[X]${NC} FAILED: $leaf"
+    append_error RUNTIME_ERRORS "failed to install skill: $rel_path"
     missing=$((missing + 1))
   fi
 done
@@ -454,105 +755,100 @@ for rel_path in "${SCRIPT_PATHS[@]}"; do
     success=$((success + 1))
   else
     echo -e "  ${RED}[X]${NC} FAILED: $leaf"
+    append_error RUNTIME_ERRORS "failed to install script: $rel_path"
     missing=$((missing + 1))
   fi
 done
 
-if [ "$missing" -gt 0 ]; then
-  echo -e "\n${RED}Installation failed while copying $missing components.${NC}"
-  exit 1
-fi
-
-printf '%s\n' "$CURRENT_VERSION" > "$ABW_VERSION_FILE"
-cat > "$ABW_INSTALL_STATE_FILE" <<EOF
-{
-  "installed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "installer_source_mode": "$INSTALL_MODE",
-  "installer_reason": "$INSTALL_REASON",
-  "repo": "$REPO_OWNER/$REPO_NAME",
-  "repo_ref": "$REPO_REF",
-  "version": "$CURRENT_VERSION",
-  "workflow_count": ${#WORKFLOW_PATHS[@]},
-  "skill_count": ${#SKILL_PATHS[@]},
-  "schema_count": ${#SCHEMA_PATHS[@]},
-  "template_count": ${#TEMPLATE_PATHS[@]},
-  "script_count": ${#SCRIPT_PATHS[@]}
-}
-EOF
-
 write_gemini_registration
 
+if ! resolve_python_command; then
+  append_error MCP_ERRORS "python executable could not be resolved; MCP registration cannot be completed"
+fi
+
+if ! patch_mcp_config; then
+  :
+fi
+
+if [ "$missing" -gt 0 ]; then
+  RUNTIME_SYNC_RESULT="FAIL"
+else
+  RUNTIME_SYNC_RESULT="PASS"
+fi
+
+if [ "${#MCP_ERRORS[@]}" -gt 0 ]; then
+  MCP_SYNC_RESULT="FAIL"
+else
+  MCP_SYNC_RESULT="PASS"
+fi
+
+printf '%s\n' "$REMOTE_VERSION" > "$ABW_VERSION_FILE"
+
 echo -e "\n${CYAN}Verifying installation...${NC}"
-verification_errors=0
+verify_runtime_artifacts
 
-for rel_path in "${WORKFLOW_PATHS[@]}"; do
-  [ -f "$GLOBAL_DIR/$(basename "$rel_path")" ] || {
-    echo -e "  ${RED}[!]${NC} Missing workflow: $(basename "$rel_path")"
-    verification_errors=$((verification_errors + 1))
-  }
-done
-
-for rel_path in "${SKILL_PATHS[@]}"; do
-  [ -f "$SKILLS_DIR/$(basename "$rel_path")" ] || {
-    echo -e "  ${RED}[!]${NC} Missing skill: $(basename "$rel_path")"
-    verification_errors=$((verification_errors + 1))
-  }
-done
-
-for rel_path in "${SCHEMA_PATHS[@]}"; do
-  [ -f "$SCHEMAS_DIR/$(basename "$rel_path")" ] || {
-    echo -e "  ${RED}[!]${NC} Missing schema: $(basename "$rel_path")"
-    verification_errors=$((verification_errors + 1))
-  }
-done
-
-for rel_path in "${TEMPLATE_PATHS[@]}"; do
-  [ -f "$TEMPLATES_DIR/$(basename "$rel_path")" ] || {
-    echo -e "  ${RED}[!]${NC} Missing template: $(basename "$rel_path")"
-    verification_errors=$((verification_errors + 1))
-  }
-done
-
-for rel_path in "${SCRIPT_PATHS[@]}"; do
-  [ -f "$SCRIPTS_DIR/$(basename "$rel_path")" ] || {
-    echo -e "  ${RED}[!]${NC} Missing script: $(basename "$rel_path")"
-    verification_errors=$((verification_errors + 1))
-  }
-done
-
-for script_name in "${REQUIRED_RUNTIME_SCRIPTS[@]}"; do
-  [ -f "$SCRIPTS_DIR/$script_name" ] || {
-    echo -e "  ${RED}[!]${NC} Missing required runtime script: $script_name"
-    verification_errors=$((verification_errors + 1))
-  }
-done
-
-for workflow_name in "${REQUIRED_RUNTIME_WORKFLOWS[@]}"; do
-  [ -f "$GLOBAL_DIR/$workflow_name" ] || {
-    echo -e "  ${RED}[!]${NC} Missing required runtime workflow: $workflow_name"
-    verification_errors=$((verification_errors + 1))
-  }
-done
-
-if ! grep -q "# Hybrid ABW - Antigravity IDE Command Surface" "$GEMINI_MD" 2>/dev/null; then
-  echo -e "  ${RED}[!]${NC} GEMINI.md missing ABW block."
-  verification_errors=$((verification_errors + 1))
+if [ "${#VERIFY_ERRORS[@]}" -gt 0 ]; then
+  VERIFICATION_RESULT="FAIL"
+else
+  VERIFICATION_RESULT="PASS"
 fi
 
-if [ "$verification_errors" -gt 0 ]; then
-  echo -e "\n${RED}Installation failed verification. Missing $verification_errors required components.${NC}"
-  exit 1
+workspace_state="$(workspace_sync_state "$REPO_ROOT" "$INSTALL_REMOTE_REF")"
+repo_state="reachable"
+runtime_state="synced"
+
+if [ "${#RUNTIME_ERRORS[@]}" -gt 0 ] || [ "$missing" -gt 0 ]; then
+  runtime_state="missing"
 fi
+if [ "${#VERIFY_ERRORS[@]}" -gt 0 ]; then
+  runtime_state="stale"
+fi
+
+if [ "$SOURCE_SYNC_RESULT" = "FAIL" ] || [ "$RUNTIME_SYNC_RESULT" = "FAIL" ] || [ "$MCP_SYNC_RESULT" = "FAIL" ] || [ "$VERIFICATION_RESULT" = "FAIL" ]; then
+  FINAL_VERDICT="FAIL"
+elif [ "$workspace_state" = "stale" ] || [ "$workspace_state" = "dirty" ] || [ "$workspace_state" = "diverged" ]; then
+  FINAL_VERDICT="PARTIAL"
+else
+  FINAL_VERDICT="PASS"
+fi
+
+write_install_state "$workspace_state" "$runtime_state" "$repo_state"
 
 echo ""
 echo -e "${YELLOW}Installed $success files.${NC}"
 echo -e "${GRAY}ABW version file: $ABW_VERSION_FILE${NC}"
 echo -e "${GRAY}ABW install state: $ABW_INSTALL_STATE_FILE${NC}"
-echo -e "${GRAY}Workflows: $GLOBAL_DIR${NC}"
-echo -e "${GRAY}Skills: $SKILLS_DIR${NC}"
+echo -e "${GRAY}MCP config: $MCP_CONFIG_PATH${NC}"
+echo -e "${GRAY}Runtime workflows: $GLOBAL_DIR${NC}"
+echo -e "${GRAY}Runtime scripts: $SCRIPTS_DIR${NC}"
 echo ""
-echo -e "${CYAN}Next steps:${NC}"
-echo -e "  1. Reload Gemini or your IDE slash-command surface if it still shows stale commands."
-echo -e "  2. Run /help or /abw to confirm the command list refreshed."
-echo -e "  3. Use /abw-learn or /audit to validate the newly installed workflows."
-echo ""
+echo "source_sync_result=$SOURCE_SYNC_RESULT"
+echo "runtime_sync_result=$RUNTIME_SYNC_RESULT"
+echo "mcp_sync_result=$MCP_SYNC_RESULT"
+echo "verification_result=$VERIFICATION_RESULT"
+echo "repo_state=$repo_state"
+echo "workspace_state=$workspace_state"
+echo "runtime_state=$runtime_state"
+echo "final_verdict=$FINAL_VERDICT"
+
+if [ "${#SOURCE_ERRORS[@]}" -gt 0 ]; then
+  printf '%s\n' "${SOURCE_ERRORS[@]}"
+fi
+if [ "${#RUNTIME_ERRORS[@]}" -gt 0 ]; then
+  printf '%s\n' "${RUNTIME_ERRORS[@]}"
+fi
+if [ "${#MCP_ERRORS[@]}" -gt 0 ]; then
+  printf '%s\n' "${MCP_ERRORS[@]}"
+fi
+if [ "${#VERIFY_ERRORS[@]}" -gt 0 ]; then
+  printf '%s\n' "${VERIFY_ERRORS[@]}"
+fi
+if [ "${#VERIFICATION_LIMITATIONS[@]}" -gt 0 ]; then
+  printf '%s\n' "${VERIFICATION_LIMITATIONS[@]}"
+fi
+
+if [ "$FINAL_VERDICT" = "FAIL" ]; then
+  exit 1
+fi
+
+exit 0

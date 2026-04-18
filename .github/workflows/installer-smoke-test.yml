@@ -36,7 +36,10 @@ jobs:
             "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-execute.md",
             "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-sync.md",
             "$env:USERPROFILE\.gemini\antigravity\global_workflows\abw-update.md",
+            "$env:USERPROFILE\.gemini\antigravity\global_workflows\finalization.md",
             "$env:USERPROFILE\.gemini\antigravity\skills\continuation-kernel.md",
+            "$env:USERPROFILE\.gemini\antigravity\scripts\abw_runner.py",
+            "$env:USERPROFILE\.gemini\antigravity\scripts\finalization_check.py",
             "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_gate.py",
             "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_execute.py",
             "$env:USERPROFILE\.gemini\antigravity\scripts\continuation_status.py",
@@ -62,6 +65,28 @@ jobs:
             $legacyPath = Join-Path "$env:USERPROFILE\.gemini\antigravity\skills" $legacySkill
             if (Test-Path $legacyPath) {
               throw "Legacy AWF helper skill should not be installed: $legacySkill"
+            }
+          }
+          $mcpConfig = Get-Content "$env:USERPROFILE\.gemini\antigravity\mcp_config.json" -Raw | ConvertFrom-Json
+          if (-not $mcpConfig.mcpServers.abw_runner) {
+            throw "mcp_config.json missing abw_runner entry"
+          }
+          if (-not [System.IO.Path]::IsPathRooted($mcpConfig.mcpServers.abw_runner.command)) {
+            throw "abw_runner command is not absolute"
+          }
+          if (-not [System.IO.Path]::IsPathRooted($mcpConfig.mcpServers.abw_runner.args[0])) {
+            throw "abw_runner args[0] is not absolute"
+          }
+          if (-not (Test-Path $mcpConfig.mcpServers.abw_runner.args[0])) {
+            throw "abw_runner runtime path does not exist"
+          }
+          $installState = Get-Content "$env:USERPROFILE\.gemini\abw_install_state.json" -Raw | ConvertFrom-Json
+          if ($installState.final_verdict -notin @("PASS", "PARTIAL")) {
+            throw "Unexpected installer verdict: $($installState.final_verdict)"
+          }
+          foreach ($field in @("source_sync_result", "runtime_sync_result", "mcp_sync_result", "verification_result")) {
+            if (-not $installState.$field) {
+              throw "Install state missing field: $field"
             }
           }
           Get-Content "$env:USERPROFILE\.gemini\antigravity\templates\resume_state.example.json" -Raw | ConvertFrom-Json | Out-Null
@@ -125,7 +150,10 @@ jobs:
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-execute.md"
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-sync.md"
           test -f "$HOME/.gemini/antigravity/global_workflows/abw-update.md"
+          test -f "$HOME/.gemini/antigravity/global_workflows/finalization.md"
           test -f "$HOME/.gemini/antigravity/skills/continuation-kernel.md"
+          test -f "$HOME/.gemini/antigravity/scripts/abw_runner.py"
+          test -f "$HOME/.gemini/antigravity/scripts/finalization_check.py"
           test -f "$HOME/.gemini/antigravity/scripts/continuation_gate.py"
           test -f "$HOME/.gemini/antigravity/scripts/continuation_execute.py"
           test -f "$HOME/.gemini/antigravity/scripts/continuation_status.py"
@@ -143,6 +171,20 @@ jobs:
           for legacy_skill in awf-adaptive-language awf-auto-save awf-context-help awf-error-translator awf-onboarding awf-session-restore; do
             test ! -e "$HOME/.gemini/antigravity/skills/$legacy_skill"
           done
+          python -m json.tool "$HOME/.gemini/antigravity/mcp_config.json" >/dev/null
+          python - <<'PY'
+import json
+from pathlib import Path
+cfg = json.loads(Path.home().joinpath(".gemini/antigravity/mcp_config.json").read_text(encoding="utf-8"))
+entry = cfg["mcpServers"]["abw_runner"]
+assert Path(entry["command"]).is_absolute()
+assert Path(entry["args"][0]).is_absolute()
+assert Path(entry["args"][0]).exists()
+state = json.loads(Path.home().joinpath(".gemini/abw_install_state.json").read_text(encoding="utf-8"))
+assert state["final_verdict"] in {"PASS", "PARTIAL"}
+for key in ("source_sync_result", "runtime_sync_result", "mcp_sync_result", "verification_result"):
+    assert key in state and state[key]
+PY
           python -m json.tool "$HOME/.gemini/antigravity/templates/resume_state.example.json" >/dev/null
           python -m json.tool "$HOME/.gemini/antigravity/templates/continuation_backlog.example.json" >/dev/null
           python -m json.tool "$HOME/.gemini/antigravity/templates/continuation_policy.example.json" >/dev/null

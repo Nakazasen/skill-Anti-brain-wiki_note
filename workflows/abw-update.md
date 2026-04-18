@@ -1,32 +1,97 @@
 ---
-description: Update the Hybrid ABW command surface and runtime scripts in local Antigravity/Gemini runtime
+description: Perform a full Hybrid ABW runtime update with MCP patching and post-install verification
 ---
 
 # WORKFLOW: /abw-update
 
-Purpose: update the local Antigravity/Gemini Hybrid ABW runtime from the current repo or from the verified remote snapshot.
+Purpose: update the installed Hybrid ABW runtime and prove that the runtime is actually ready.
 
-This is an operational update command, not an AWF update.
+This is an operational deployment command. It must not report success just because files were copied.
+
+## What `/abw-update` Must Distinguish
+
+Always report these separately:
+
+- `repo_state`
+- `workspace_state`
+- `runtime_state`
+- `mcp_sync_result`
+
+Do not collapse them into one vague "updated" message.
+
+Examples of legitimate states:
+
+- repo updated, workspace stale, runtime stale
+- repo reachable, workspace synced, runtime updated, MCP stale
+- runtime updated, MCP updated, workspace still behind remote
+- all synced
+
+## Required Runtime Artifacts
+
+Required scripts:
+
+- `abw_runner.py`
+- `finalization_check.py`
+- `abw_accept.py`
+- `continuation_gate.py`
+- `continuation_execute.py`
+
+Required workflows:
+
+- `abw-ask.md`
+- `abw-update.md`
+- `finalization.md`
+
+If any required artifact is missing in the source catalog or missing after install, classify the update as `FAIL`.
+
+## Required MCP Runtime Registration
+
+The installer must patch:
+
+- Windows: `%USERPROFILE%\.gemini\antigravity\mcp_config.json`
+- POSIX: `$HOME/.gemini/antigravity/mcp_config.json`
+
+Expected shape:
+
+```json
+{
+  "mcpServers": {
+    "abw_runner": {
+      "command": "ABSOLUTE_PYTHON_OR_LAUNCHER",
+      "args": ["ABSOLUTE_PATH_TO_RUNTIME/scripts/abw_runner.py"]
+    }
+  }
+}
+```
+
+Rules:
+
+- preserve unrelated MCP servers
+- create `mcpServers` if missing
+- use absolute paths
+- validate JSON after patch
+- validate that the configured `abw_runner.py` path exists
+- if MCP patching or validation fails, classify the update as `FAIL`
 
 ## Execution
 
-When the user calls `/abw-update` or clearly asks to update now, treat that as enough confirmation to run the installer.
+When the user explicitly asks to update now, run the installer for the current host.
 
 Preferred commands:
 
-- Windows, from a local clone:
+Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-- macOS/Linux, from a local clone:
+macOS/Linux:
 
 ```bash
 bash ./install.sh
 ```
 
-If there is no usable local clone, provide the remote installer command.
+If no usable local clone exists, provide the remote installer command instead of pretending the local workspace was updated.
 
 Windows:
 
@@ -42,73 +107,67 @@ curl -fsSL https://raw.githubusercontent.com/Nakazasen/skill-Anti-brain-wiki_not
 
 ## Required Verification
 
-Do not report update success just because the installer printed output. Verify the installed runtime.
+Do not stop at installer stdout. Verify the installed runtime.
 
-Required runtime scripts:
+Minimum verification:
 
-- `abw_accept.py`
-- `abw_runner.py`
-- `finalization_check.py`
-- `continuation_gate.py`
-- `continuation_execute.py`
-- `continuation_status.py`
-- `continuation_claim.py`
-- `continuation_rollback.py`
-- `continuation_detect_unsafe.py`
+- required scripts exist in the runtime scripts directory
+- required workflows exist in the runtime workflow directory
+- MCP config parses as valid JSON
+- MCP config contains a valid `abw_runner` entry
+- MCP config points to the installed runtime `abw_runner.py`
+- `finalization_check.py` exists
+- `abw-update.md` exists
+- `GEMINI.md` still contains the Hybrid ABW registration block if the installer manages it
 
-Required runtime workflows:
+Additional verification where available:
 
-- `finalization.md`
+- `py_compile` for critical runtime scripts
+- command-surface docs validation if the workflow/help surface changed
 
-On Windows, verify:
+If a verification step cannot run on the current host, report that limitation explicitly. Do not silently skip it.
 
-```powershell
-Get-ChildItem "$env:USERPROFILE\.gemini\antigravity\scripts" |
-  Select-Object Name,Length
-```
+## Final Output Contract
 
-On macOS/Linux, verify:
+The update report must include:
 
-```bash
-ls -la "$HOME/.gemini/antigravity/scripts"
-```
+1. `source_sync_result`
+2. `runtime_sync_result`
+3. `mcp_sync_result`
+4. `verification_result`
+5. `final_verdict`
 
-If any required runtime script is missing, classify the update as `failed`, not `partial` or `successful`.
-If `finalization.md` is missing from the runtime workflow directory, also classify the update as `failed`.
+Allowed verdicts:
 
-## Workspace Freshness Check
+- `PASS`
+- `PARTIAL`
+- `FAIL`
 
-If running inside a git clone of this repo, check whether the workspace itself is stale:
+Verdict rules:
 
-```bash
-git status --short --branch
-```
+- missing required artifact -> `FAIL`
+- MCP patch missing or invalid -> `FAIL`
+- verification skipped without explicit limitation -> `FAIL`
+- runtime updated but workspace stale -> `PARTIAL`
+- runtime and MCP verified, workspace acceptable -> `PASS`
 
-If the branch is behind `origin/main`, say clearly:
+## Reporting Guidance
 
-- the Antigravity/Gemini runtime may have been updated from the verified remote snapshot;
-- the IDE workspace clone is still stale;
-- audits that claim to represent the public repo must not use the stale workspace until it is updated.
+The final user-facing report should say:
 
-Do not silently equate "runtime updated" with "workspace clone updated".
-
-## Report
-
-Report:
-
-- whether the installer actually ran;
-- install source mode if available: `LOCAL` or `REMOTE`;
-- whether all required runtime scripts exist;
-- whether `finalization_check.py` exists in the runtime scripts directory;
-- whether `finalization.md` exists in the runtime workflow directory;
-- whether the current IDE workspace is behind `origin/main`;
-- whether the user needs to reload the IDE or Gemini extension.
+- whether the installer actually ran
+- whether the source was `LOCAL` or `REMOTE`
+- whether required runtime scripts exist
+- whether required runtime workflows exist
+- whether MCP registration for `abw_runner` is valid
+- whether the workspace itself is stale relative to remote
+- whether a reload may still be needed for slash-command discovery
 
 ## Rules
 
 - Do not call this an AWF update.
-- Do not claim success if the installer was not actually run.
-- Do not claim success if `finalization_check.py` or another required runtime script is missing.
-- Do not claim success if `finalization.md` is missing.
+- Do not claim success if the installer did not actually run.
+- Do not claim success if MCP patching failed.
+- Do not claim success if required runtime artifacts are missing.
 - Do not hide a stale workspace clone behind a successful runtime install.
-- If the user only asks how to update, explain the command instead of running it.
+- Do not say "all synced" unless repo, workspace, runtime, and MCP are all explicitly verified.
