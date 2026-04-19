@@ -13,6 +13,11 @@ import abw_runner  # noqa: E402
 import abw_proof  # noqa: E402
 
 
+def make_proof(answer, finalization_block, runtime_id="123", nonce=None, binding_source="mcp"):
+    nonce = nonce or ("a" * 32)
+    return abw_proof.generate_proof(answer, finalization_block, runtime_id, nonce, binding_source)
+
+
 class AbwRunnerBindingTests(unittest.TestCase):
     def test_render_with_visibility_lock_verified_output(self):
         rendered = abw_runner.render_with_visibility_lock(
@@ -159,7 +164,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
 
             self.assertIn("memory_warning", result)
             self.assertEqual(result["memory_warning"]["pattern"], "skip_validation")
-            self.assertEqual(result["binding_status"], "runner_enforced")
+            self.assertEqual(result["binding_status"], "runner_checked")
 
     def test_missing_finalization_block_is_forced_blocked(self):
         result = abw_runner.run_finalization_gate("plain model output without a final block")
@@ -210,13 +215,71 @@ class AbwRunnerBindingTests(unittest.TestCase):
 
         self.assertEqual(result["runner_status"], "completed")
         self.assertEqual(result["binding_status"], "runner_enforced")
+        self.assertEqual(result["evaluation"]["verdict"], "pass")
+        self.assertTrue(result["evaluation"]["accepted"])
+        self.assertTrue(result["artifact_path"].startswith(".brain/runner_artifacts/"))
+        self.assertTrue(result["acceptance_request"].startswith(".brain/acceptance_requests/"))
         self.assertEqual(
             result["validation_proof"],
-            abw_proof.generate_proof(result["answer"], result["finalization_block"], result["runtime_id"]),
+            abw_proof.generate_proof(
+                result["answer"],
+                result["finalization_block"],
+                result["runtime_id"],
+                result["nonce"],
+                result["binding_source"],
+            ),
         )
         self.assertEqual(result["current_state"], "verified")
         self.assertIn("hello world", result["answer"])
         self.assertIn("## Finalization", result["answer"])
+
+    def test_abw_accept_failure_downgrades_binding_status(self):
+        with patch(
+            "abw_runner.abw_accept.evaluate_file",
+            return_value={
+                "status": "evaluated",
+                "verdict": "fail",
+                "accepted": False,
+                "fail_reasons": ["runtime_marker_missing_or_invalid"],
+            },
+        ):
+            result = abw_runner.dispatch_request(
+                task="print hello world",
+                task_kind="execution",
+                binding_source="mcp",
+            )
+
+        self.assertEqual(result["binding_status"], "runner_checked")
+        self.assertEqual(result["evaluation"]["verdict"], "fail")
+
+    def test_abw_accept_requires_accepted_true_for_runner_enforced(self):
+        with patch(
+            "abw_runner.abw_accept.evaluate_file",
+            return_value={
+                "status": "evaluated",
+                "verdict": "pass",
+                "accepted": False,
+                "fail_reasons": [],
+            },
+        ):
+            result = abw_runner.dispatch_request(
+                task="print hello world",
+                task_kind="execution",
+                binding_source="mcp",
+            )
+
+        self.assertEqual(result["binding_status"], "runner_checked")
+        self.assertEqual(result["evaluation"]["verdict"], "pass")
+        self.assertFalse(result["evaluation"]["accepted"])
+
+    def test_execution_preserves_binding_source_from_caller(self):
+        result = abw_runner.dispatch_request(
+            task="print hello world",
+            task_kind="execution",
+            binding_source="cli",
+        )
+
+        self.assertEqual(result["binding_source"], "cli")
 
     def test_fallback_validation_sets_runner_checked(self):
         candidate = "Tentative answer.\n\n## Finalization\n- current_state: verified\n- evidence: terminal output showed tests passed with exit code 0\n- gaps_or_limitations: no known gaps\n- next_steps: commit the change"
@@ -290,20 +353,21 @@ class AbwRunnerBindingTests(unittest.TestCase):
 
     def test_knowledge_execution_exposes_binding_and_tier(self):
         result = abw_runner.dispatch_request(
-            task="explain ABW",
+            task="explain PostgreSQL selection rationale",
             task_kind="execution",
             binding_source="mcp",
         )
 
         self.assertEqual(result["runner_status"], "completed")
-        self.assertEqual(result["binding_status"], "runner_enforced")
+        self.assertEqual(result["binding_status"], "runner_checked")
         self.assertEqual(result["current_state"], "knowledge_answered")
-        self.assertEqual(result["knowledge_evidence_tier"], "E1_fallback")
-        self.assertEqual(result["knowledge_source_score"], 1)
-        self.assertEqual(result["knowledge"]["tier"], "E1_fallback")
-        self.assertEqual(result["knowledge"]["score"], 1)
-        self.assertIn("Knowledge answer for 'explain ABW'", result["answer"])
-        self.assertIn("knowledge_evidence_tier: E1_fallback", result["answer"])
+        self.assertEqual(result["knowledge_evidence_tier"], "E2_wiki")
+        self.assertGreaterEqual(result["knowledge_source_score"], 1)
+        self.assertEqual(result["knowledge"]["tier"], "E2_wiki")
+        self.assertEqual(result["knowledge"]["source_summary"], "local_wiki")
+        self.assertEqual(result["knowledge"]["source"], "wiki")
+        self.assertIn("PostgreSQL was selected", result["answer"])
+        self.assertIn("knowledge_evidence_tier: E2_wiki", result["answer"])
 
     def test_unknown_knowledge_topic_stays_visible(self):
         result = abw_runner.dispatch_request(
@@ -314,15 +378,27 @@ class AbwRunnerBindingTests(unittest.TestCase):
         )
 
         self.assertEqual(result["runner_status"], "completed")
-        self.assertEqual(result["binding_status"], "runner_enforced")
+        self.assertEqual(result["binding_status"], "runner_checked")
         self.assertEqual(result["current_state"], "knowledge_gap_logged")
         self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
         self.assertTrue(result["knowledge"]["gap_logged"])
+        self.assertEqual(result["knowledge"]["source"], "none")
         self.assertIn("binding_status", result)
+
+    def test_unimplemented_execution_path_stays_runner_checked(self):
+        result = abw_runner.dispatch_request(
+            task="do something unsupported",
+            task_kind="execution",
+            binding_source="mcp",
+        )
+
+        self.assertEqual(result["binding_status"], "runner_checked")
+        self.assertEqual(result["runner_status"], "blocked")
+        self.assertEqual(result["current_state"], "blocked")
 
     def test_prompt_only_soft_mode_is_explicit(self):
         result = abw_runner.validate_candidate_answer(
-            task="explain ABW",
+            task="explain PostgreSQL selection rationale",
             candidate_answer="",
             route={"intent": "knowledge"},
             binding_mode="SOFT",
@@ -331,6 +407,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
         self.assertEqual(result["binding_status"], "prompt_only")
         self.assertEqual(result["runner_status"], "not_run")
         self.assertIn("knowledge", result)
+        self.assertEqual(result["knowledge"]["tier"], "E2_wiki")
 
     def test_missing_binding_status_is_rejected(self):
         result = abw_runner.enforce_output_acceptance(
@@ -352,6 +429,8 @@ class AbwRunnerBindingTests(unittest.TestCase):
                 "binding_status": "runner_checked",
                 "current_state": "verified",
                 "finalization_block": "## Finalization\n- current_state: verified",
+                "binding_source": "mcp",
+                "nonce": "a" * 32,
                 "runtime_id": "123",
                 "task": "print hello world",
             },
@@ -368,8 +447,10 @@ class AbwRunnerBindingTests(unittest.TestCase):
                 "answer": "Validated looking output.\n\n## Finalization\n- current_state: verified",
                 "binding_status": "runner_checked",
                 "validation_proof": "fake",
+                "binding_source": "mcp",
                 "current_state": "verified",
                 "finalization_block": "## Finalization\n- current_state: verified",
+                "nonce": "a" * 32,
                 "runtime_id": "123",
                 "task": "print hello world",
             },
@@ -395,12 +476,14 @@ class AbwRunnerBindingTests(unittest.TestCase):
                 ),
                 "finalization_block": "## Finalization\n- current_state: verified",
                 "binding_status": "runner_checked",
-                "validation_proof": abw_proof.generate_proof(
+                "binding_source": "mcp",
+                "validation_proof": make_proof(
                     "Rewritten summary.\n\n## Finalization\n- current_state: verified",
                     "## Finalization\n- current_state: verified",
                     "123",
                 ),
                 "current_state": "verified",
+                "nonce": "a" * 32,
                 "runtime_id": "123",
                 "task": "print hello world",
             },
@@ -435,7 +518,9 @@ class AbwRunnerBindingTests(unittest.TestCase):
                 "current_state": "knowledge_answered",
                 "intent": "knowledge",
                 "validation_proof": "fake",
+                "binding_source": "mcp",
                 "finalization_block": "## Finalization\n- current_state: knowledge_answered",
+                "nonce": "a" * 32,
                 "runtime_id": "123",
                 "knowledge": {
                     "score": 1,
@@ -452,31 +537,48 @@ class AbwRunnerBindingTests(unittest.TestCase):
     def test_blocked_knowledge_state_is_semantically_reclassified(self):
         result = {
             "current_state": "blocked",
-            "evidence": "fallback_used: weak knowledge answer",
-            "fallback_used": True,
+            "evidence": "wiki retrieval matched wiki/concepts/postgresql-selection-rationale.md",
+            "knowledge_context": {
+                "source": "wiki",
+                "content": "PostgreSQL was selected for the analytics service.",
+                "confidence": 0.8,
+            },
         }
 
         abw_runner.apply_knowledge_semantics(result, "what is ABW")
 
         self.assertEqual(result["current_state"], "knowledge_answered")
         self.assertTrue(result["semantic_fix_applied"])
-        self.assertEqual(result["knowledge_evidence_tier"], "E1_fallback")
+        self.assertEqual(result["knowledge_evidence_tier"], "E2_wiki")
 
-    def test_refinement_can_still_improve_to_grounded(self):
-        result = {
-            "evidence": "no usable source found",
-            "gap_logged": True,
-            "local_source_retry_weak": True,
-            "rephrase_retry_hit": True,
-        }
+    def test_explicit_local_source_is_grounded(self):
+        result = abw_runner.dispatch_request(
+            task="explain wiki/concepts/postgresql-selection-rationale.md",
+            task_kind="execution",
+            route={"intent": "knowledge"},
+            binding_source="mcp",
+        )
 
-        refined = abw_runner.refine_knowledge(result, "what is ABW")
-        abw_runner.apply_knowledge_semantics(refined, "what is ABW")
+        self.assertEqual(result["current_state"], "knowledge_answered")
+        self.assertEqual(result["knowledge_evidence_tier"], "E3_grounded")
+        self.assertEqual(result["knowledge"]["source"], "local")
+        self.assertEqual(result["knowledge"]["source_summary"], "explicit_local")
 
-        self.assertEqual(refined["knowledge_evidence_tier"], "E3_grounded")
-        self.assertEqual(len(refined["refinement_history"]), 2)
-        self.assertTrue(refined["refinement_history"][0]["improved"])
-        self.assertTrue(refined["refinement_history"][1]["improved"])
+    def test_missing_source_logs_knowledge_gap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="explain ABW",
+                task_kind="execution",
+                route={"intent": "knowledge"},
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            gap_path = Path(tmp) / ".brain" / "knowledge_gaps.json"
+            self.assertTrue(gap_path.exists())
+            payload = json.loads(gap_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["gaps"][0]["query"], "explain ABW")
 
     def test_knowledge_state_without_evidence_does_not_hard_block(self):
         output = """Body.
@@ -501,7 +603,9 @@ class AbwRunnerBindingTests(unittest.TestCase):
                 "finalization_block": "## Finalization\n- current_state: verified",
                 "binding_status": "runner_checked",
                 "validation_proof": "fake",
+                "binding_source": "mcp",
                 "current_state": "verified",
+                "nonce": "a" * 32,
                 "runtime_id": "123",
                 "task": "print hello world",
             },
@@ -511,6 +615,27 @@ class AbwRunnerBindingTests(unittest.TestCase):
         self.assertEqual(result["binding_status"], "rejected")
         self.assertEqual(result["current_state"], "blocked")
 
+    def test_validation_knowledge_tier_ignores_answer_wording(self):
+        result = abw_runner.dispatch_request(
+            task="explain ABW",
+            task_kind="validation",
+            candidate_answer=(
+                "Theo wiki va sources, day la cau tra loi.\n\n"
+                "## Finalization\n"
+                "- current_state: knowledge_answered\n"
+                "- evidence: cited from wiki wording only\n"
+                "- gaps_or_limitations: none\n"
+                "- next_steps: none\n"
+            ),
+            route={"intent": "knowledge"},
+            binding_mode="STRICT",
+            workspace=".",
+        )
+
+        self.assertEqual(result["binding_status"], "runner_checked")
+        self.assertEqual(result["current_state"], "knowledge_gap_logged")
+        self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+
     def test_modified_answer_is_rejected_when_proof_was_for_original_answer(self):
         finalization_block = "## Finalization\n- current_state: verified"
         result = abw_runner.enforce_output_acceptance(
@@ -519,12 +644,14 @@ class AbwRunnerBindingTests(unittest.TestCase):
                 "validated_answer": "Modified answer.\n\n## Finalization\n- current_state: verified",
                 "finalization_block": finalization_block,
                 "binding_status": "runner_checked",
-                "validation_proof": abw_proof.generate_proof(
+                "binding_source": "mcp",
+                "validation_proof": make_proof(
                     "Original answer.\n\n## Finalization\n- current_state: verified",
                     finalization_block,
                     "123",
                 ),
                 "current_state": "verified",
+                "nonce": "a" * 32,
                 "runtime_id": "123",
                 "task": "print hello world",
             },
@@ -545,7 +672,13 @@ class AbwRunnerBindingTests(unittest.TestCase):
         self.assertEqual(accepted["binding_status"], "runner_enforced")
         self.assertEqual(
             accepted["validation_proof"],
-            abw_proof.generate_proof(accepted["answer"], accepted["finalization_block"], accepted["runtime_id"]),
+            abw_proof.generate_proof(
+                accepted["answer"],
+                accepted["finalization_block"],
+                accepted["runtime_id"],
+                accepted["nonce"],
+                accepted["binding_source"],
+            ),
         )
 
     def test_negative_memory_does_not_change_behavior(self):

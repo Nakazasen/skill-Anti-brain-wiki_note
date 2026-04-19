@@ -12,6 +12,7 @@ if str(current_dir) not in sys.path:
 
 import abw_accept
 import abw_health
+import abw_knowledge
 import abw_proof
 import finalization_check
 
@@ -32,13 +33,7 @@ FINALIZATION_TEMPLATE = """## Finalization
 - gap_logged: {gap_logged}
 """
 
-KNOWLEDGE_KEYWORDS = ("what is", "explain", "why", "là gì", "giải thích")
-KNOWLEDGE_TIER_RANK = {
-    "E0_unknown": 0,
-    "E1_fallback": 1,
-    "E2_wiki": 2,
-    "E3_grounded": 3,
-}
+KNOWLEDGE_KEYWORDS = ("what is", "explain", "why", "la gi", "giai thich")
 MEMORY_SCOPE = os.environ.get("ABW_MEMORY_SCOPE", "workspace")
 VALID_BINDING_MODES = {"STRICT", "SOFT"}
 VALID_TASK_KINDS = {"execution", "validation"}
@@ -302,191 +297,24 @@ def is_knowledge_task(task: str) -> bool:
     return any(token in kw for token in KNOWLEDGE_KEYWORDS)
 
 
+def get_knowledge_context(task: str) -> dict:
+    return abw_knowledge.get_knowledge_context(task)
+
+
 def compute_knowledge_score(result):
-    score = 0
-
-    if result.get("grounded") or result.get("source_refs"):
-        score += 3
-
-    if "wiki_hit" in result:
-        score += 2
-
-    if "fallback_used" in result:
-        score += 1
-
-    if result.get("gap_logged"):
-        score -= 1
-
-    return score
+    return abw_knowledge.compute_knowledge_score(result)
 
 
 def compute_knowledge_tier(result):
-    if result.get("multi_source"):
-        return "E3_grounded"
-
-    if result.get("wiki_hit"):
-        return "E2_wiki"
-
-    if result.get("fallback_used"):
-        return "E1_fallback"
-
-    return "E0_unknown"
+    return abw_knowledge.compute_knowledge_tier(result)
 
 
 def build_source_summary(result):
-    if result.get("multi_source"):
-        return "multi_source"
-    if result.get("wiki_hit"):
-        return "local_wiki"
-    if result.get("fallback_used"):
-        return "general_knowledge"
-    return "unknown"
+    return abw_knowledge.build_source_summary(result)
 
 
-def knowledge_rank(tier):
-    return KNOWLEDGE_TIER_RANK.get(tier, 0)
-
-
-def choose_pass1_strategy(task, result):
-    text = str(task or "").lower()
-
-    if any(k in text for k in ["what is", "là gì", "explain", "giải thích"]):
-        return "local_first"
-
-    if any(k in text for k in ["error", "bug", "fix", "stacktrace"]):
-        return "scan_code"
-
-    if result.get("fallback_used"):
-        return "rephrase_first"
-
-    return "local_first"
-
-
-def rephrase_task(task):
-    return f"rephrased: {task}"
-
-
-def retry_local_sources(task, result):
-    refined = dict(result)
-    refined["last_refined_task"] = task
-    refined["last_refinement_action"] = "retry_local_sources"
-
-    if str(task).startswith("rephrased:") and (
-        refined.get("rephrase_retry_hit") or refined.get("rephrased_source_refs")
-    ):
-        refined["multi_source"] = True
-        refined["source_refs"] = refined.get("source_refs") or refined.get("rephrased_source_refs") or ["rephrased-query"]
-        refined["gap_logged"] = False
-        refined["evidence"] = "source_refs: rephrased retry found stronger knowledge evidence"
-    elif refined.get("local_source_retry_hit") or refined.get("local_sources"):
-        refined["wiki_hit"] = True
-        refined["gap_logged"] = False
-        refined["evidence"] = "wiki_hit: local source retry found relevant project knowledge"
-    elif refined.get("local_source_retry_weak"):
-        refined["fallback_used"] = True
-        refined["gap_logged"] = False
-        refined["evidence"] = "fallback_used: local source retry found weak related knowledge"
-
-    return refined
-
-
-def retry_code_and_logs(task, result):
-    refined = dict(result)
-    refined["last_refined_task"] = task
-    refined["last_refinement_action"] = "scan_code"
-    if refined.get("code_log_hit") or refined.get("log_hit"):
-        refined["multi_source"] = True
-        refined["source_refs"] = refined.get("source_refs") or ["code-or-log-scan"]
-        refined["gap_logged"] = False
-        refined["evidence"] = "source_refs: code/log scan found relevant evidence"
-    return refined
-
-
-def run_pass(task, result, strategy):
-    if strategy == "local_first":
-        return retry_local_sources(task, result)
-
-    if strategy == "rephrase_first":
-        return retry_local_sources(rephrase_task(task), result)
-
-    if strategy == "scan_code":
-        return retry_code_and_logs(task, result)
-
-    return result
-
-
-def run_refinement_pass(result, task, pass_number, strategy=None):
-    if pass_number == 1:
-        selected = strategy or choose_pass1_strategy(task, result)
-        refined = run_pass(task, result, selected)
-    elif pass_number == 2:
-        selected = "rephrase_if_needed"
-        refined = retry_local_sources(rephrase_task(task), result)
-    else:
-        selected = "not_run"
-        refined = dict(result)
-
-    refined["last_refinement_strategy"] = selected
-    refined["last_refinement_pass"] = pass_number
-    return refined
-
-
-def refine_knowledge(result, task, max_passes=2):
-    refinement_history = []
-    result["refinement_history"] = refinement_history
-    strategy = choose_pass1_strategy(task, result)
-    result["strategy_trace"] = {
-        "pass1": strategy,
-        "pass2": "rephrase_if_needed",
-    }
-
-    for pass_number in range(1, min(max_passes, 2) + 1):
-        before_tier = compute_knowledge_tier(result)
-        before_score = compute_knowledge_score(result)
-        if knowledge_rank(before_tier) >= knowledge_rank("E2_wiki"):
-            break
-
-        candidate = run_refinement_pass(
-            result,
-            task,
-            pass_number,
-            strategy if pass_number == 1 else None,
-        )
-        after_tier = compute_knowledge_tier(candidate)
-        after_score = compute_knowledge_score(candidate)
-        improved = (
-            knowledge_rank(after_tier) > knowledge_rank(before_tier)
-            or after_score > before_score
-        )
-        refinement_history.append(
-            {
-                "pass": pass_number,
-                "action": candidate.get("last_refinement_action"),
-                "strategy": candidate.get("last_refinement_strategy"),
-                "before_tier": before_tier,
-                "after_tier": after_tier,
-                "before_score": before_score,
-                "after_score": after_score,
-                "improved": improved,
-            }
-        )
-
-        if not improved:
-            break
-
-        result = candidate
-        result["refinement_history"] = refinement_history
-        result["strategy_trace"] = {
-            "pass1": strategy,
-            "pass2": "rephrase_if_needed",
-        }
-
-    result["refinement_history"] = refinement_history
-    result["strategy_trace"] = {
-        "pass1": strategy,
-        "pass2": "rephrase_if_needed",
-    }
-    return result
+def enrich_knowledge_result(task, workspace="."):
+    return abw_knowledge.enrich_knowledge_result(task, workspace=workspace)
 
 
 def is_knowledge_intent(task, route=None):
@@ -517,14 +345,16 @@ def apply_knowledge_semantics(result, task, route=None):
 
 
 def attach_knowledge_output(result, answer_text=None):
-    result["knowledge_output"] = {
-        "answer": answer_text if answer_text is not None else result.get("answer") or result.get("execution_result"),
-        "tier": result.get("knowledge_evidence_tier"),
-        "score": result.get("knowledge_source_score"),
-        "gap_logged": result.get("gap_logged", False),
-        "source_summary": build_source_summary(result),
-    }
-    return result
+    return abw_knowledge.attach_knowledge_output(result, answer_text=answer_text)
+
+
+def log_knowledge_gap(task, workspace=".", searched_locations=None, reason="No local knowledge source matched the task."):
+    return abw_knowledge.log_knowledge_gap(
+        task,
+        workspace=workspace,
+        searched_locations=searched_locations,
+        reason=reason,
+    )
 
 
 def enforce_knowledge_output(result):
@@ -722,12 +552,20 @@ def enforce_output_acceptance(result, mode="STRICT"):
         runtime_id = str(result.get("runtime_id") or "").strip()
         if not runtime_id:
             return rejected_output("missing required field: runtime_id", task=result.get("task", ""))
-        expected_proof = abw_proof.generate_proof(
+        nonce = str(result.get("nonce") or "").strip()
+        if not nonce:
+            return rejected_output("missing required field: nonce", task=result.get("task", ""))
+        binding_source = str(result.get("binding_source") or "").strip()
+        if not binding_source:
+            return rejected_output("missing required field: binding_source", task=result.get("task", ""))
+        if not abw_proof.verify_proof(
+            result.get("validation_proof"),
             result.get("answer", ""),
             result.get("finalization_block", ""),
             runtime_id,
-        )
-        if result.get("validation_proof") != expected_proof:
+            nonce,
+            binding_source,
+        ):
             return rejected_non_runner_output(task=result.get("task", ""))
         if not has_echo_locked_runner_output(result):
             return rejected_non_runner_output(task=result.get("task", ""))
@@ -738,14 +576,27 @@ def enforce_output_acceptance(result, mode="STRICT"):
     return result
 
 
-def base_result(task, binding_status, answer, finalization_gate, runner_status, knowledge=None, extra=None, runtime_id=None):
+def base_result(
+    task,
+    binding_status,
+    answer,
+    finalization_gate,
+    runner_status,
+    knowledge=None,
+    extra=None,
+    runtime_id=None,
+    binding_source="mcp",
+):
     runtime_id = str(runtime_id or new_runtime_id())
+    nonce = abw_proof.new_nonce()
     result = {
         "answer": answer,
         "binding_status": binding_status,
+        "binding_source": str(binding_source or "mcp"),
         "current_state": extract_current_state(finalization_gate),
         "finalization_block": finalization_gate["block"],
         "finalization_gate": finalization_gate["report"],
+        "nonce": nonce,
         "runner_status": runner_status,
         "task": task,
         "runtime_id": runtime_id,
@@ -759,11 +610,15 @@ def base_result(task, binding_status, answer, finalization_gate, runner_status, 
         result.get("answer", ""),
         result.get("finalization_block", ""),
         result["runtime_id"],
+        result["nonce"],
+        result["binding_source"],
     )
     return result
 
 
 def knowledge_body(task, result):
+    context = result.get("knowledge_context") or {}
+    content = context.get("content") or ""
     if result.get("knowledge_evidence_tier") == "E0_unknown":
         return (
             f"Incomplete knowledge answer for '{task}'. "
@@ -771,12 +626,11 @@ def knowledge_body(task, result):
         )
     if result.get("knowledge_evidence_tier") == "E2_wiki":
         return (
-            f"Knowledge answer for '{task}' was satisfied from local project knowledge "
-            "with wiki-level evidence."
+            f"Knowledge answer for '{task}' was retrieved from local wiki evidence: {content}"
         )
     if result.get("knowledge_evidence_tier") == "E3_grounded":
         return (
-            f"Knowledge answer for '{task}' was satisfied from stronger multi-source style evidence."
+            f"Knowledge answer for '{task}' was retrieved from an explicit local source: {content}"
         )
     return (
         f"Knowledge answer for '{task}' is allowed as a fallback answer, "
@@ -784,8 +638,172 @@ def knowledge_body(task, result):
     )
 
 
-def binding_status_for_execution(binding_source):
-    return "runner_enforced"
+def binding_status_for_execution(binding_source, execution_result=None):
+    execution_result = execution_result if isinstance(execution_result, dict) else {}
+    if execution_result.get("command_executed"):
+        return "runner_enforced"
+    if execution_result.get("verified_artifact"):
+        return "runner_enforced"
+    if execution_result.get("command") and isinstance(execution_result.get("command_result"), dict):
+        return "runner_enforced"
+    return "runner_checked"
+
+
+def execution_artifact_relpath(runtime_id):
+    return f".brain/runner_artifacts/{runtime_id}.txt"
+
+
+def acceptance_request_relpath(runtime_id):
+    return f".brain/acceptance_requests/{runtime_id}.json"
+
+
+def write_execution_artifact(workspace, result):
+    runtime_id = str(result.get("runtime_id") or new_runtime_id())
+    relpath = execution_artifact_relpath(runtime_id)
+    path = Path(workspace) / relpath
+    path.parent.mkdir(parents=True, exist_ok=True)
+    command_result = result.get("command_result") or {}
+    status = "passed" if int(command_result.get("exit_code", 1)) == 0 else "failed"
+    content = "\n".join(
+        [
+            f"runtime_id: {runtime_id}",
+            f"status: {status}",
+            f"command: {result.get('command') or ''}",
+            f"exit_code: {command_result.get('exit_code')}",
+            "stdout:",
+            str(command_result.get("stdout") or "").rstrip(),
+            "stderr:",
+            str(command_result.get("stderr") or "").rstrip(),
+            "",
+        ]
+    )
+    path.write_text(content, encoding="utf-8")
+    return relpath
+
+
+def build_acceptance_request(result, artifact_path):
+    runtime_id = str(result.get("runtime_id") or "")
+    command_result = result.get("command_result") or {}
+    exit_code = int(command_result.get("exit_code", 1))
+    passed = exit_code == 0
+    status = "passed" if passed else "failed"
+    return {
+        "step_id": f"step-{runtime_id}",
+        "scope": result.get("task") or "ABW execution",
+        "artifact": {
+            "id": "runner-artifact",
+            "path": artifact_path,
+            "type": "execution_log",
+        },
+        "candidate_files": [artifact_path],
+        "rubric": [
+            {
+                "id": "artifact-present",
+                "description": "Execution artifact exists inside accepted scope.",
+                "required": True,
+                "passed": True,
+                "evidence": {
+                    "type": "artifact_presence",
+                    "ref": artifact_path,
+                    "ref_type": "file",
+                    "ref_check": "contains: passed" if passed else "contains: failed",
+                    "source": "trusted",
+                    "context_id": f"step-{runtime_id}",
+                    "runtime_id": runtime_id,
+                    "status": status,
+                    "machine_checkable": True,
+                    "strength": "required_machine",
+                    "claim_id": "rubric:artifact-present",
+                    "proves": "The runner wrote an execution artifact with runtime marker.",
+                    "mechanism": "artifact_presence",
+                    "result": status,
+                    "details": "Artifact written by runner.",
+                },
+            },
+        ],
+        "checks": [
+            {
+                "id": "command-executed",
+                "type": "command_exit_code",
+                "subject": result.get("command") or "command",
+                "status": status,
+                "expected": "pass" if passed else "fail",
+                "required": True,
+                "description": "Runner command executed with expected exit code.",
+                "evidence": {
+                    "type": "command_result",
+                    "ref": result.get("command") or "",
+                    "ref_type": "command",
+                    "ref_check": f"exit_code:{exit_code}",
+                    "source": "trusted",
+                    "context_id": f"step-{runtime_id}",
+                    "runtime_id": runtime_id,
+                    "status": status,
+                    "machine_checkable": True,
+                    "strength": "required_machine",
+                    "claim_id": "check:command-executed",
+                    "proves": "The bounded runner command executed with the expected exit code.",
+                    "mechanism": "test_result",
+                    "result": status,
+                    "details": "Command replay must match expected exit code.",
+                },
+            },
+            {
+                "id": "runtime-artifact",
+                "type": "file_exists",
+                "subject": artifact_path,
+                "status": "passed",
+                "expected": "pass",
+                "required": True,
+                "description": "Execution artifact exists with runtime marker.",
+                "evidence": {
+                    "type": "execution_log",
+                    "ref": artifact_path,
+                    "ref_type": "file",
+                    "ref_check": "contains: passed" if passed else "contains: failed",
+                    "source": "trusted",
+                    "context_id": f"step-{runtime_id}",
+                    "runtime_id": runtime_id,
+                    "status": status,
+                    "machine_checkable": True,
+                    "strength": "required_machine",
+                    "claim_id": "check:runtime-artifact",
+                    "proves": "The execution artifact exists and carries the runtime marker.",
+                    "mechanism": "artifact_presence",
+                    "result": status,
+                    "details": "Runner wrote a machine-checkable execution log.",
+                },
+            },
+        ],
+    }
+
+
+def apply_acceptance_validation(result, workspace="."):
+    if not isinstance(result, dict):
+        return result
+    if not result.get("command") or not isinstance(result.get("command_result"), dict):
+        return result
+
+    runtime_id = str(result.get("runtime_id") or new_runtime_id())
+    artifact_path = write_execution_artifact(workspace, result)
+    request = build_acceptance_request(result, artifact_path)
+    request_relpath = acceptance_request_relpath(runtime_id)
+    request_path = Path(workspace) / request_relpath
+    request_path.parent.mkdir(parents=True, exist_ok=True)
+    request_path.write_text(json.dumps(request, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    eval_result = abw_accept.evaluate_file(
+        workspace,
+        request_path,
+        runtime_id=runtime_id,
+    )
+    updated = dict(result)
+    updated["evaluation"] = eval_result
+    updated["acceptance_request"] = request_relpath
+    updated["artifact_path"] = artifact_path
+    if eval_result.get("accepted") is not True:
+        updated["binding_status"] = "runner_checked"
+    return updated
 
 
 def prompt_only_result(task, candidate_answer, route=None):
@@ -797,13 +815,15 @@ def prompt_only_result(task, candidate_answer, route=None):
         "task": task,
     }
     if is_knowledge_intent(task, route):
+        knowledge_result = enrich_knowledge_result(task, workspace=".")
+        apply_knowledge_semantics(knowledge_result, task, route)
         result["intent"] = "knowledge"
         result["knowledge"] = {
             "answer": str(candidate_answer or "").strip(),
-            "tier": "E1_fallback",
-            "score": 1,
-            "gap_logged": False,
-            "source_summary": "general_knowledge",
+            "tier": knowledge_result["knowledge_evidence_tier"],
+            "score": knowledge_result["knowledge_source_score"],
+            "gap_logged": knowledge_result.get("gap_logged", False),
+            "source_summary": build_source_summary(knowledge_result),
         }
     return result
 
@@ -819,8 +839,11 @@ def command_for_task(task):
 
 def execute_task(task, workspace=".", task_kind="execution", route=None, binding_source="mcp"):
     task = str(task or "").strip()
-    binding_status = binding_status_for_execution(binding_source)
     if not task:
+        binding_status = binding_status_for_execution(
+            binding_source,
+            {"execution_path": "none"},
+        )
         body = "Request blocked because no executable task was provided."
         model_output = """## Finalization
 - current_state: blocked
@@ -830,24 +853,20 @@ def execute_task(task, workspace=".", task_kind="execution", route=None, binding
 """
         gate = run_finalization_gate(model_output, task_kind="run")
         answer = compose_answer(body, gate["block"])
-        return base_result(task, binding_status, answer, gate, "blocked")
+        return base_result(task, binding_status, answer, gate, "blocked", binding_source=binding_source)
 
     if is_knowledge_intent(task, route):
-        normalized_task = task.lower()
-        result = {
-            "task": task,
-            "evidence": "fallback_used: runner classified request as knowledge intent",
-            "fallback_used": True,
-            "gap_logged": False,
-        }
-        if "unknown" in normalized_task:
-            result.pop("fallback_used", None)
-            result["evidence"] = "no usable knowledge source found"
-        elif "wiki" in normalized_task or "local docs" in normalized_task or "local documentation" in normalized_task:
-            result["wiki_hit"] = True
-            result["evidence"] = "wiki_hit: local documentation supplied relevant knowledge"
-
-        result = refine_knowledge(result, task)
+        binding_status = binding_status_for_execution(
+            binding_source,
+            {"execution_path": "knowledge"},
+        )
+        result = enrich_knowledge_result(task, workspace=workspace)
+        if result.get("gap_logged"):
+            result["gap_id"] = log_knowledge_gap(
+                task,
+                workspace=workspace,
+                searched_locations=["wiki/", "explicit local sources"],
+            )
         apply_knowledge_semantics(result, task, route)
         body = knowledge_body(task, result)
         attach_knowledge_output(result, answer_text=body)
@@ -857,8 +876,8 @@ def execute_task(task, workspace=".", task_kind="execution", route=None, binding
 ## Finalization
 - current_state: {result["current_state"]}
 - evidence: {result["evidence"]}
-- gaps_or_limitations: lightweight knowledge handling only; knowledge_evidence_tier={result.get("knowledge_evidence_tier")}; knowledge_source_score={result.get("knowledge_source_score")}
-- next_steps: use grounded wiki evidence for stronger provenance if needed
+- gaps_or_limitations: retrieval source={result["knowledge_output"]["source_summary"]}; knowledge_evidence_tier={result.get("knowledge_evidence_tier")}; knowledge_source_score={result.get("knowledge_source_score")}
+- next_steps: {"add grounded source material to wiki or provide an explicit local source" if result.get("gap_logged") else "use the retrieved local source for follow-up questions if needed"}
 - knowledge_evidence_tier: {result.get("knowledge_evidence_tier")}
 - knowledge_source_score: {result.get("knowledge_source_score")}
 - source_summary: {result["knowledge_output"]["source_summary"]}
@@ -883,9 +902,14 @@ def execute_task(task, workspace=".", task_kind="execution", route=None, binding
             runner_status,
             knowledge=result["knowledge_output"],
             extra=extra,
+            binding_source=binding_source,
         )
 
     if "fake verified" in task.lower():
+        binding_status = binding_status_for_execution(
+            binding_source,
+            {"execution_path": "validation_only"},
+        )
         body = "Candidate execution claim was checked and did not qualify for verified status."
         model_output = """## Finalization
 - current_state: verified
@@ -896,10 +920,14 @@ def execute_task(task, workspace=".", task_kind="execution", route=None, binding
         gate = run_finalization_gate(model_output, task_kind="verify")
         answer = compose_answer(body, gate["block"])
         runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
-        return base_result(task, binding_status, answer, gate, runner_status)
+        return base_result(task, binding_status, answer, gate, runner_status, binding_source=binding_source)
 
     command = command_for_task(task)
     if command is None:
+        binding_status = binding_status_for_execution(
+            binding_source,
+            {"execution_path": "none"},
+        )
         body = f"Request blocked because the runner does not implement a bounded execution path for '{task}'."
         model_output = f"""## Finalization
 - current_state: blocked
@@ -909,9 +937,16 @@ def execute_task(task, workspace=".", task_kind="execution", route=None, binding
 """
         gate = run_finalization_gate(model_output, task_kind="run")
         answer = compose_answer(body, gate["block"])
-        return base_result(task, binding_status, answer, gate, "blocked")
+        return base_result(task, binding_status, answer, gate, "blocked", binding_source=binding_source)
 
     cmd_result = run_command(command, workspace)
+    execution_result = {
+        "command_executed": True,
+        "execution_path": "command",
+        "command": command,
+        "command_result": cmd_result,
+    }
+    binding_status = binding_status_for_execution(binding_source, execution_result)
     stdout = cmd_result["stdout"].strip() or "<empty>"
     body = f"Executed bounded task '{task}' and observed stdout: {stdout}"
     model_output = f"""{body}
@@ -929,29 +964,16 @@ def execute_task(task, workspace=".", task_kind="execution", route=None, binding
         "command": command,
         "command_result": cmd_result,
     }
-    return base_result(task, binding_status, answer, gate, runner_status, extra=extra)
+    return base_result(task, binding_status, answer, gate, runner_status, extra=extra, binding_source=binding_source)
 
 
-def infer_validation_knowledge(task, candidate_answer, route=None):
-    result = {"task": task, "gap_logged": False}
-    lowered = f"{task}\n{candidate_answer}".lower()
-    if "unknown" in str(task).lower():
-        result["evidence"] = "no usable knowledge source found"
-    elif "wiki" in lowered or "local docs" in lowered or "local documentation" in lowered:
-        result["wiki_hit"] = True
-        result["evidence"] = "wiki_hit: candidate answer claims local project knowledge"
-    elif "source" in lowered or "sources:" in lowered:
-        result["multi_source"] = True
-        result["source_refs"] = ["candidate-answer"]
-        result["evidence"] = "source_refs: candidate answer exposes stronger provenance"
-    else:
-        result["fallback_used"] = True
-        result["evidence"] = "fallback_used: candidate answer is fallback knowledge without strong provenance"
+def infer_validation_knowledge(task, candidate_answer, route=None, workspace="."):
+    result = enrich_knowledge_result(task, workspace=workspace)
     apply_knowledge_semantics(result, task, route)
     return result
 
 
-def validate_candidate_answer(task, candidate_answer, route=None, binding_mode="STRICT"):
+def validate_candidate_answer(task, candidate_answer, route=None, binding_mode="STRICT", workspace="."):
     binding_mode = normalize_binding_mode(binding_mode)
     if not str(candidate_answer or "").strip():
         if binding_mode == "SOFT":
@@ -972,15 +994,25 @@ def validate_candidate_answer(task, candidate_answer, route=None, binding_mode="
     candidate_text = compose_answer(body, existing_finalization) if existing_finalization else body
 
     if is_knowledge_intent(task, route):
-        knowledge_result = infer_validation_knowledge(task, candidate_text, route=route)
+        knowledge_result = infer_validation_knowledge(task, candidate_text, route=route, workspace=workspace)
+        if knowledge_result.get("gap_logged"):
+            knowledge_result["gap_id"] = log_knowledge_gap(
+                task,
+                workspace=workspace,
+                searched_locations=["wiki/", "explicit local sources"],
+            )
         payload = finalization_payload_from_text(candidate_answer)
         payload["current_state"] = knowledge_result["current_state"]
         payload["evidence"] = knowledge_result["evidence"]
         payload["gaps_or_limitations"] = payload.get("gaps_or_limitations") or (
-            f"validated fallback knowledge path; knowledge_evidence_tier={knowledge_result['knowledge_evidence_tier']}; "
+            f"validated retrieval path; knowledge_evidence_tier={knowledge_result['knowledge_evidence_tier']}; "
             f"knowledge_source_score={knowledge_result['knowledge_source_score']}"
         )
-        payload["next_steps"] = payload.get("next_steps") or "Use grounded wiki evidence for stronger provenance if needed."
+        payload["next_steps"] = payload.get("next_steps") or (
+            "Add grounded source material to wiki or provide an explicit local source."
+            if knowledge_result.get("gap_logged")
+            else "Use the retrieved local source for follow-up questions if needed."
+        )
         payload["knowledge_evidence_tier"] = knowledge_result["knowledge_evidence_tier"]
         payload["knowledge_source_score"] = knowledge_result["knowledge_source_score"]
         payload["source_summary"] = build_source_summary(knowledge_result)
@@ -1040,7 +1072,11 @@ def dispatch_request(
     if str(task).strip() == "/abw-health":
         result = abw_health.run_health(
             workspace=workspace,
-            binding_status=binding_status_for_execution(binding_source),
+            binding_status=binding_status_for_execution(
+                binding_source,
+                {"verified_artifact": True, "execution_path": "artifact"},
+            ),
+            binding_source=binding_source,
         )
         return enforce_output_acceptance(result, mode=binding_mode)
 
@@ -1052,6 +1088,7 @@ def dispatch_request(
             candidate_answer=candidate_answer,
             route=route,
             binding_mode=binding_mode,
+            workspace=workspace,
         )
         result = enforce_output_acceptance(result, mode=binding_mode)
         if result.get("binding_status") == "rejected" or result.get("current_state") == "blocked":
@@ -1072,6 +1109,7 @@ def dispatch_request(
         route=route,
         binding_source=binding_source,
     )
+    result = apply_acceptance_validation(result, workspace=workspace)
     result = enforce_output_acceptance(result, mode=binding_mode)
     if result.get("binding_status") == "rejected" or result.get("current_state") == "blocked":
         log_negative_memory(
@@ -1183,7 +1221,16 @@ def main():
     body = cmd_result["stdout"].strip() or "Command finished without stdout."
     final_output = {
         "answer": compose_answer(body, finalization_gate["block"]),
-        "binding_status": binding_status_for_execution(args.binding_source),
+        "binding_status": binding_status_for_execution(
+            args.binding_source,
+            {
+                "command_executed": True,
+                "execution_path": "command",
+                "command": args.command,
+                "command_result": cmd_result,
+            },
+        ),
+        "binding_source": args.binding_source,
         "current_state": extract_current_state(finalization_gate),
         "runner_status": "blocked" if finalization_decision == "blocked" else "completed",
         "command_exit_code": cmd_result["exit_code"],
@@ -1192,12 +1239,15 @@ def main():
         "evaluation": eval_result,
         "finalization_gate": finalization_gate["report"],
         "finalization_block": finalization_gate["block"],
+        "nonce": abw_proof.new_nonce(),
         "runtime_id": eval_result.get("runtime_id") or new_runtime_id(),
     }
     final_output["validation_proof"] = abw_proof.generate_proof(
         final_output.get("answer", ""),
         final_output.get("finalization_block", ""),
         final_output["runtime_id"],
+        final_output["nonce"],
+        final_output["binding_source"],
     )
     final_output = enforce_output_acceptance(final_output, mode=args.binding_mode)
     if final_output.get("binding_status") == "rejected" or final_output.get("current_state") == "blocked":

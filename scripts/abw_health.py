@@ -349,6 +349,7 @@ def run_health(
     workspace=".",
     runtime_root=None,
     binding_status="runner_enforced",
+    binding_source="cli",
     validation_source=None,
     mode="audit",
 ):
@@ -445,13 +446,16 @@ def run_health(
         ]
     )
     runtime_id = new_runtime_id()
+    nonce = abw_proof.new_nonce()
     return {
         "task": "/abw-health" if mode == "audit" else "/abw-repair",
         "answer": answer,
         "binding_status": binding_status,
+        "binding_source": binding_source,
         "current_state": current_state,
         "runner_status": "completed" if healthy else "blocked",
         "mode": mode,
+        "nonce": nonce,
         "runtime_id": runtime_id,
         "health": {
             "drift_before": initial_drift,
@@ -465,7 +469,13 @@ def run_health(
         },
         "health_dashboard": health_dashboard,
         "finalization_block": finalization_block,
-        "validation_proof": abw_proof.generate_proof(answer, finalization_block, runtime_id),
+        "validation_proof": abw_proof.generate_proof(
+            answer,
+            finalization_block,
+            runtime_id,
+            nonce,
+            binding_source,
+        ),
     }
 
 
@@ -482,6 +492,7 @@ def main(argv=None):
         workspace=args.workspace,
         runtime_root=args.runtime_root,
         binding_status=args.binding_status,
+        binding_source="cli",
         validation_source=args.validation_source,
         mode=args.mode,
     )

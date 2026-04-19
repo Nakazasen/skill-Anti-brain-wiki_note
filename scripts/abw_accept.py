@@ -502,10 +502,10 @@ def check_passed(check):
     return result == expected
 
 
-def evaluate_request(workspace, request):
+def evaluate_request(workspace, request, runtime_id=None):
     workspace = Path(workspace).resolve()
     start_time = time.time()
-    runtime_id = str(int(start_time * 1000))
+    runtime_id = str(runtime_id or int(start_time * 1000))
     allowed_paths = allowed_evidence_paths(request)
     artifact = request.get("artifact") or {}
     artifacts = request.get("artifacts") or ([artifact] if artifact else [])
@@ -671,11 +671,11 @@ def evaluate_request(workspace, request):
     return result
 
 
-def evaluate_file(workspace, request_path, write_log=True):
+def evaluate_file(workspace, request_path, write_log=True, runtime_id=None):
     request = load_json(request_path)
     if request is None:
         return {"status": "error", "error": f"Acceptance request not found: {request_path}"}
-    result = evaluate_request(workspace, request)
+    result = evaluate_request(workspace, request, runtime_id=runtime_id)
     if write_log:
         append_jsonl(Path(workspace) / ".brain" / "acceptance_log.jsonl", result)
     return result
