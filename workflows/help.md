@@ -13,6 +13,8 @@ This document is the quick reference for the Hybrid ABW command surface.
 - Continuing interrupted work: `/abw-resume`
 - Evaluating results before acceptance: `/abw-eval`
 - Updating installed runtime: `/abw-update`
+- Read-only runtime audit: `/abw-health`
+- Runtime repair: `/abw-repair`
 
 ## Key Operational Commands
 
@@ -25,6 +27,8 @@ This document is the quick reference for the Hybrid ABW command surface.
 - `/abw-eval`: audit, meta-audit, and acceptance chain
 - `/finalization`: apply and check finalization state
 - `/abw-update`: install and verify the runtime
+- `/abw-health`: inspect runtime drift, encoding issues, and health metrics without modifying files
+- `/abw-repair`: repair runtime drift and encoding issues
 
 ## `/abw-update` Guidance
 

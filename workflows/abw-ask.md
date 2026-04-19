@@ -2,6 +2,59 @@
 description: ABW Dispatcher + Executor - Route and execute immediately
 ---
 
+## BINDING STRATEGY
+
+- `/abw-ask` MUST execute through the CLI runner only.
+- You MUST invoke `py scripts/abw_runner.py --json-input` and pass the task payload through stdin.
+- Every answer is only a DRAFT until the CLI runner executes or validates it.
+- If execution mode is not used, validation mode is mandatory and MUST include `candidate_answer`.
+- You MUST return the runner output only.
+- Do not rewrite, summarize, or restate anything after the runner returns.
+- After the runner returns, you MUST pass the payload through the outer binding shim `py scripts/abw_output.py`.
+- The final output boundary MUST return the shim result only.
+- Returning a raw model answer is invalid.
+- Final output must expose `binding_status`.
+
+## MANDATORY CLI EXECUTION
+
+You MUST execute:
+
+```text
+py scripts/abw_runner.py --json-input
+```
+
+Then you MUST validate the returned payload through:
+
+```text
+py scripts/abw_output.py
+```
+
+You MUST send a structured JSON payload with:
+
+```json
+{
+  "task": "<original user request>",
+  "task_kind": "execution or validation",
+  "candidate_answer": "<draft answer when validation is used>"
+}
+```
+
+## VISIBILITY LOCK
+
+Before returning:
+- You MUST expose `binding_status`.
+- You MUST expose `validation_proof`.
+- If either is missing or invalid, you MUST mark the output as `UNVERIFIED`.
+- If the outer binding shim rejects the payload, you MUST return only:
+
+```json
+{
+  "binding_status": "rejected",
+  "current_state": "blocked",
+  "reason": "output not produced by runner"
+}
+```
+
 # WORKFLOW: /abw-ask — ABW Dispatcher + Executor
 
 Bạn đang chạy trong chế độ: **ABW Dispatcher + Executor**

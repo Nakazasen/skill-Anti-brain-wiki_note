@@ -6,7 +6,7 @@ Use this profile for any terminal answer, report, audit, acceptance verdict, or 
 
 - `code_changed_only`
 - `runs_one_case`
-- `partially_verified`
+- `checked_only`
 - `verified`
 - `blocked`
 
@@ -14,7 +14,7 @@ Use this profile for any terminal answer, report, audit, acceptance verdict, or 
 
 - `code_changed_only`: files or docs changed, but there is no runtime proof yet.
 - `runs_one_case`: one example, one test, or one weak signal only. This is not verification.
-- `partially_verified`: some evidence exists, but it is incomplete or not independently checkable enough for a stronger label.
+- `checked_only`: some evidence exists, but it is incomplete or not independently checkable enough for a stronger label.
 - `verified`: the claim or change has direct checkable evidence.
   - For code or runtime work: terminal output, test output, logs, or another reproducible execution trace.
   - For knowledge answers: explicit provenance and source traceability.
@@ -33,7 +33,7 @@ Every terminal output must end with:
 
 ```markdown
 ## Finalization
-- current_state: <code_changed_only|runs_one_case|partially_verified|verified|blocked>
+- current_state: <code_changed_only|runs_one_case|checked_only|verified|blocked>
 - evidence: <what directly supports the state>
 - gaps_or_limitations: <what is still missing or uncertain>
 - next_steps: <the smallest safe next action>
@@ -43,7 +43,7 @@ Every terminal output must end with:
 
 - If you changed code but did not verify it, use `code_changed_only`.
 - If you only ran one case, use `runs_one_case`.
-- If evidence is real but incomplete, use `partially_verified`.
+- If evidence is real but incomplete, use `checked_only`.
 - If the task is closed by checkable proof, use `verified`.
 - If proof is missing or the task cannot be closed, use `blocked`.
 

@@ -9,8 +9,22 @@ STATE_ORDER = {
     "blocked": 0,
     "code_changed_only": 1,
     "runs_one_case": 2,
-    "partially_verified": 3,
+    "checked_only": 3,
     "verified": 4,
+    "knowledge_gap_logged": 1,
+    "knowledge_answered": 2,
+}
+
+KNOWLEDGE_STATES = {
+    "knowledge_answered",
+    "knowledge_gap_logged",
+}
+
+KNOWLEDGE_EVIDENCE_TIERS = {
+    "E0_unknown",
+    "E1_fallback",
+    "E2_wiki",
+    "E3_grounded",
 }
 
 TASK_RUNTIME_REQUIRED = {
@@ -122,6 +136,9 @@ def downgrade_state(current_state, evidence_kind, task_kind):
     if current_state == "blocked":
         return "blocked"
 
+    if current_state == "knowledge_answered" and task_kind == "knowledge":
+        return "knowledge_gap_logged"
+
     if current_state == "verified":
         if evidence_kind["static_only"]:
             return "code_changed_only"
@@ -130,9 +147,9 @@ def downgrade_state(current_state, evidence_kind, task_kind):
         if task_kind in TASK_RUNTIME_REQUIRED and not evidence_kind["runtime"]:
             return "blocked"
         if not evidence_kind["runtime"]:
-            return "partially_verified"
+            return "checked_only"
 
-    if current_state == "partially_verified":
+    if current_state == "checked_only":
         if evidence_kind["static_only"]:
             return "code_changed_only"
         if evidence_kind["weak_runtime"]:
@@ -150,6 +167,10 @@ def check_finalization(payload, task_kind):
     evidence = payload.get("evidence", "").strip()
     gaps = payload.get("gaps_or_limitations", "").strip()
     next_steps = payload.get("next_steps", "").strip()
+    knowledge_tier = payload.get("knowledge_evidence_tier", "").strip()
+
+    if current_state.startswith("knowledge"):
+        return "pass", "knowledge state is classified without hard blocking"
 
     if not current_state or not evidence or not gaps or not next_steps:
         return "blocked", "missing required finalization field(s)"
@@ -162,6 +183,15 @@ def check_finalization(payload, task_kind):
             return "blocked", "blocked state requires non-empty next_steps"
         return "pass", "blocked state is consistent"
 
+    if current_state in KNOWLEDGE_STATES:
+        if not evidence:
+            return "blocked", "knowledge state requires evidence"
+        if knowledge_tier and knowledge_tier not in KNOWLEDGE_EVIDENCE_TIERS:
+            return "downgrade", f"unknown knowledge_evidence_tier: {knowledge_tier}"
+        if current_state == "knowledge_answered" and knowledge_tier == "E0_unknown":
+            return "downgrade", "E0_unknown knowledge answer must be downgraded unless a gap is logged"
+        return "pass", "knowledge state is acceptable"
+
     if current_state == "verified":
         if evidence_kind["static_only"]:
             return "downgrade", "verified requires runtime-style evidence, but evidence is static only"
@@ -170,7 +200,7 @@ def check_finalization(payload, task_kind):
         if not evidence_kind["runtime"]:
             return "downgrade", "verified lacks directly checkable evidence"
 
-    if current_state == "partially_verified":
+    if current_state == "checked_only":
         if evidence_kind["static_only"]:
             return "downgrade", "static-only evidence supports at most code_changed_only"
         if evidence_kind["weak_runtime"]:
@@ -187,7 +217,7 @@ def check_finalization(payload, task_kind):
             return "downgrade", f"{task_kind}-style task only has static evidence"
         return "downgrade", f"{task_kind}-style task lacks runtime evidence"
 
-    if has_contradiction and current_state in {"verified", "partially_verified"}:
+    if has_contradiction and current_state in {"verified", "checked_only"}:
         return "downgrade", "gaps_or_limitations contradict strong completion"
 
     if current_state == "verified" and not evidence_kind["runtime"] and evidence_kind["static_only"]:
@@ -226,12 +256,19 @@ def main():
     payload = parse_block(lines)
     current_state = payload.get("current_state", "").strip()
     decision, reason = check_finalization(payload, args.task_kind.strip().lower())
+    checked_state = current_state
+    if decision == "downgrade":
+        checked_state = downgrade_state(
+            current_state,
+            classify_evidence(payload.get("evidence", "")),
+            args.task_kind.strip().lower(),
+        )
 
     report = {
         "decision": decision,
         "reason": reason,
         "state": current_state,
-        "checked_state": current_state,
+        "checked_state": checked_state,
         "evidence": payload.get("evidence", ""),
         "gaps_or_limitations": payload.get("gaps_or_limitations", ""),
         "next_steps": payload.get("next_steps", ""),

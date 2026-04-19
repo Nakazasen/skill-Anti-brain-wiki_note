@@ -8,6 +8,8 @@ This directory defines the public workflow command surface for Hybrid ABW.
 - `/abw-eval`: evaluation and acceptance chain
 - `/abw-start`: session start and runtime status check
 - `/abw-update`: runtime deployment and sync verification
+- `/abw-health`: read-only runtime health audit
+- `/abw-repair`: runtime health repair path
 
 ## `/abw-update` Runtime Contract
 
