@@ -1,157 +1,96 @@
 # Hybrid ABW (Anti-Brain-Wiki)
 
-🌐 **Language**
+🌐 **Language**  
 > 🇻🇳 **Tiếng Việt** | 🇬🇧 [English](#english)
 
 ---
 
 # 🇻🇳 Tiếng Việt
 
-## 🧠 ABW là gì
+## ABW là gì
 
-ABW là một **execution boundary cho hệ AI**.
+ABW là execution boundary cho hệ AI theo hướng CLI-first.
 
-> 🔒 Chỉ output có proof hợp lệ mới được chấp nhận
+- Output chỉ được chấp nhận nếu đi qua runner
+- Output phải có `validation_proof`
+- Validation không được giả làm execution
+- Health chỉ quan sát, không điều khiển
 
-ABW không làm AI thông minh hơn.  
-ABW đảm bảo:
-
-> Nếu sai → không thể trông giống đúng
-
----
-
-## ⚙️ Execution Flow (ASCII)
-
-          ┌────────────┐
-          │   User     │
-          └─────┬──────┘
-                │
-                ▼
-        ┌───────────────┐
-        │  abw_entry.py │
-        └─────┬─────────┘
-              │
-              ▼
-        ┌───────────────┐
-        │ abw_runner.py │
-        │ (exec/validate)
-        └─────┬─────────┘
-              │
-              ▼
-   ┌──────────────────────────┐
-   │ enforce_output_acceptance│
-   └─────┬────────────────────┘
-         │
-         ▼
-   ┌──────────────────────────┐
-   │ validation_proof (hash)  │
-   └─────┬────────────────────┘
-         │
-         ▼
-   ┌──────────────────────────┐
-   │   abw_output.py (shim)   │
-   └─────┬────────────────────┘
-         │
-         ▼
-   ┌──────────────────────────┐
-   │ render_with_visibility   │
-   └─────┬────────────────────┘
-         │
-         ▼
-   ┌──────────────────────────┐
-   │      FINAL OUTPUT        │
-   └──────────────────────────┘
+> Nếu hệ sai, ABW phải làm cho nó không thể trông giống đúng
 
 ---
 
-## 🔒 Trust State Machine
+## Sơ đồ boundary hệ thống
 
-                  ┌────────────────────┐
-                  │  runner_enforced   │
-                  │  (execution thật)  │
-                  └─────────┬──────────┘
-                            │
-                            │ validation path
-                            ▼
-                  ┌────────────────────┐
-                  │  runner_checked    │
-                  │  ↓                │
-                  │  checked_only     │
-                  │ (NO execution)    │
-                  └─────────┬──────────┘
-                            │
-                            │ invalid / tampered
-                            ▼
-                  ┌────────────────────┐
-                  │      rejected      │
-                  │      (blocked)     │
-                  └────────────────────┘
+```mermaid
+flowchart TD
+    U[User / CLI] --> E[abw_entry.py]
+    E --> R[abw_runner.py]
+    R --> A[enforce_output_acceptance]
+    A --> P[validation_proof check]
+    P --> O[abw_output.py]
+    O --> V[visibility lock]
+    V --> F[Final Output]
+
+    H[abw_health.py] -. observe only .-> R
+    H -. observe only .-> A
+    H -. signals only .-> O
+```
 
 ---
 
-## 🔍 Acceptance Logic (REAL)
+## Trust state machine
 
-INPUT RESULT
-     │
-     ▼
-Is dict?
- ├─ NO → rejected
- └─ YES
-      │
-      ▼
-Has binding_status + proof?
- ├─ NO → rejected
- └─ YES
-      │
-      ▼
-Recompute hash proof
- ├─ mismatch → rejected
- └─ match
-      │
-      ▼
-Check echo-lock
- ├─ mismatch → rejected
- └─ OK
-      │
-      ▼
-binding_status?
- ├─ runner_enforced → VERIFIED
- ├─ runner_checked → checked_only
- └─ other → rejected
+```mermaid
+stateDiagram-v2
+    [*] --> runner_enforced: real execution
+    runner_enforced --> runner_checked: validation path
+    runner_enforced --> rejected: tampered / invalid proof
+    runner_checked --> checked_only: accepted as lower trust
+    runner_checked --> rejected: invalid / malformed
+    checked_only --> rejected: contract violation
+    rejected --> [*]
+```
 
 ---
 
-## 🧾 Proof System
+## Knowledge flow
 
-validation_proof = sha256(answer + finalization_block + runtime_id)
-
-### Enforcement
-
-- Sinh tại `abw_runner`
-- Verify tại `enforce_output_acceptance()`
-- Sai → reject ngay
-
-### Đảm bảo
-
-- Không thể sửa output sau runner
-- Không thể fake runner output
-- Không thể reuse proof
+```mermaid
+flowchart LR
+    Q[User Request] --> G{Grounded data available?}
+    G -->|Yes| W[wiki / raw]
+    G -->|No| B[bootstrap / uncertainty mode]
+    W --> X[runner execution or validation]
+    B --> X
+    X --> Y[acceptance + proof]
+    Y --> Z[final answer or rejection]
+```
 
 ---
 
-## 🏗️ Kiến trúc hệ
+## Proof system
 
-| Layer | Vai trò |
+`validation_proof = sha256(answer + finalization_block + runtime_id)`
+
+- Sinh tại runner
+- Verify tại acceptance gate
+- Proof sai hoặc stale proof phải bị reject
+
+---
+
+## Trust model
+
+| State | Ý nghĩa |
 |------|--------|
-| Entry (`abw_entry.py`) | Nhận command |
-| Runner (`abw_runner.py`) | Thực thi / validate |
-| Acceptance | Kiểm proof + contract |
-| Output Shim (`abw_output.py`) | Chặn output không hợp lệ |
-| Health (`abw_health.py`) | Quan sát hệ |
+| `runner_enforced` | execution thật |
+| `runner_checked` | kết quả validation, trust thấp hơn |
+| `checked_only` | output được hạ mức tin cậy |
+| `rejected` | bị chặn |
 
 ---
 
-## 🛡️ Health System
+## Health layer
 
 ### Integrity
 - drift
@@ -167,22 +106,13 @@ validation_proof = sha256(answer + finalization_block + runtime_id)
 - fallback / policy split
 
 ### Invariant
-validation_rate == fallback + policy
+- `validation_rate == fallback + policy`
 
-- Sai → flag invariant_violation
-- Không crash hệ
-
-### Anomaly
-- DEGRADING
-- RECOVERING
-- WEAK_DEGRADING
-- STABLE
-
-> ⚠️ Chỉ là signal, không trigger action
+> Các signal này dùng để quan sát. Chúng không được lái control logic.
 
 ---
 
-## 💻 CLI Usage
+## CLI
 
 - `py scripts/abw_entry.py /abw-ask "task"`
 - `py scripts/abw_entry.py /abw-health`
@@ -190,221 +120,108 @@ validation_rate == fallback + policy
 
 ---
 
-## ⚠️ Failure Scenarios
+## Failure scenarios
 
 <details>
-<summary>Click để xem</summary>
+<summary>Xem chi tiết</summary>
 
-### F1 Raw output
-→ reject
-
-### F2 Fake proof
-→ reject
-
-### F3 Rewrite sau runner
-→ reject
-
-### F4 Reuse proof
-→ reject
-
-### F5 Validation giả execution
-→ downgrade → checked_only
-
-### F6 Missing finalization
-→ blocked / downgrade
-
-### F7 Runtime drift
-→ detect (health)
-
-### F8 Encoding lỗi
-→ detect
-
-### F9 Mojibake
-→ detect (không auto-fix)
-
-### F10 Không gọi CLI
-→ ABW không can thiệp được
+- Raw output -> reject
+- Fake proof -> reject
+- Post-runner rewrite -> reject
+- Validation giả execution -> downgrade
+- Runtime drift -> detect
+- Mojibake -> detect
 
 </details>
-
----
-
-## ❌ ABW KHÔNG đảm bảo
-
-- Logic business đúng
-- Không thay thế testing
-- Không enforce ở IDE / host
-- Không sửa lỗi logic
-
----
-
-## 🎯 Design Principles
-
-- Trust = proof, không phải format
-- Validation ≠ execution
-- Health = observer, không phải controller
-- Không thêm rule nếu chưa thêm signal
-- Boundary phải rõ
-
----
-
-## 📌 Final Note
-
-ABW không làm AI đúng hơn.
-
-ABW đảm bảo:
-
-> Nếu sai → không thể trông giống đúng
 
 ---
 
 # English
 
-## 🧠 What ABW Is
+## What ABW Is
 
-ABW is an **execution boundary for AI systems**.
+ABW is a CLI-first execution boundary for AI systems.
 
-> 🔒 Only outputs with valid proof are accepted
+- Output must pass through the runner
+- Output must carry `validation_proof`
+- Validation must not pretend to be execution
+- Health remains observer-only
 
-ABW does not make AI smarter.  
-It ensures:
-
-> If the system is wrong → it cannot appear correct
-
----
-
-## ⚙️ Execution Flow (ASCII)
-
-          ┌────────────┐
-          │   User     │
-          └─────┬──────┘
-                │
-                ▼
-        ┌───────────────┐
-        │  abw_entry.py │
-        └─────┬─────────┘
-              │
-              ▼
-        ┌───────────────┐
-        │ abw_runner.py │
-        │ (exec/validate)
-        └─────┬─────────┘
-              │
-              ▼
-   ┌──────────────────────────┐
-   │ enforce_output_acceptance│
-   └─────┬────────────────────┘
-         │
-         ▼
-   ┌──────────────────────────┐
-   │ validation_proof (hash)  │
-   └─────┬────────────────────┘
-         │
-         ▼
-   ┌──────────────────────────┐
-   │   abw_output.py (shim)   │
-   └─────┬────────────────────┘
-         │
-         ▼
-   ┌──────────────────────────┐
-   │ render_with_visibility   │
-   └─────┬────────────────────┘
-         │
-         ▼
-   ┌──────────────────────────┐
-   │      FINAL OUTPUT        │
-   └──────────────────────────┘
+> If the system is wrong, ABW should prevent it from appearing correct
 
 ---
 
-## 🔒 Trust State Machine
+## System boundary diagram
 
-                  ┌────────────────────┐
-                  │  runner_enforced   │
-                  │  (real execution)  │
-                  └─────────┬──────────┘
-                            │
-                            │ validation path
-                            ▼
-                  ┌────────────────────┐
-                  │  runner_checked    │
-                  │  ↓                │
-                  │   checked_only    │
-                  │  (NO execution)   │
-                  └─────────┬──────────┘
-                            │
-                            │ invalid / tampered
-                            ▼
-                  ┌────────────────────┐
-                  │      rejected      │
-                  │      (blocked)     │
-                  └────────────────────┘
+```mermaid
+flowchart TD
+    U[User / CLI] --> E[abw_entry.py]
+    E --> R[abw_runner.py]
+    R --> A[enforce_output_acceptance]
+    A --> P[validation_proof check]
+    P --> O[abw_output.py]
+    O --> V[visibility lock]
+    V --> F[Final Output]
+
+    H[abw_health.py] -. observe only .-> R
+    H -. observe only .-> A
+    H -. signals only .-> O
+```
 
 ---
 
-## 🔍 Acceptance Logic (REAL)
+## Trust state machine
 
-INPUT RESULT
-     │
-     ▼
-Is dict?
- ├─ NO → rejected
- └─ YES
-      │
-      ▼
-Has binding_status + proof?
- ├─ NO → rejected
- └─ YES
-      │
-      ▼
-Recompute hash proof
- ├─ mismatch → rejected
- └─ match
-      │
-      ▼
-Check echo-lock
- ├─ mismatch → rejected
- └─ OK
-      │
-      ▼
-binding_status?
- ├─ runner_enforced → VERIFIED
- ├─ runner_checked → checked_only
- └─ other → rejected
+```mermaid
+stateDiagram-v2
+    [*] --> runner_enforced: real execution
+    runner_enforced --> runner_checked: validation path
+    runner_enforced --> rejected: tampered / invalid proof
+    runner_checked --> checked_only: accepted as lower trust
+    runner_checked --> rejected: invalid / malformed
+    checked_only --> rejected: contract violation
+    rejected --> [*]
+```
 
 ---
 
-## 🧾 Proof System
+## Knowledge flow
 
-validation_proof = sha256(answer + finalization_block + runtime_id)
-
-### Enforcement
-
-- Generated in `abw_runner`
-- Verified in `enforce_output_acceptance()`
-- Mismatch → reject
-
-### Guarantees
-
-- Output cannot be modified after runner
-- Fake runner output cannot pass
-- Old proof cannot be reused
+```mermaid
+flowchart LR
+    Q[User Request] --> G{Grounded data available?}
+    G -->|Yes| W[wiki / raw]
+    G -->|No| B[bootstrap / uncertainty mode]
+    W --> X[runner execution or validation]
+    B --> X
+    X --> Y[acceptance + proof]
+    Y --> Z[final answer or rejection]
+```
 
 ---
 
-## 🏗️ System Architecture
+## Proof system
 
-| Layer | Role |
-|------|------|
-| Entry (`abw_entry.py`) | Command dispatch |
-| Runner (`abw_runner.py`) | Execute / validate |
-| Acceptance | Verify proof + contract |
-| Output Shim (`abw_output.py`) | Block invalid output |
-| Health (`abw_health.py`) | Observe system state |
+`validation_proof = sha256(answer + finalization_block + runtime_id)`
+
+- Generated in the runner
+- Verified at the acceptance gate
+- Invalid or stale proof must be rejected
 
 ---
 
-## 🛡️ Health System
+## Trust model
+
+| State | Meaning |
+|------|---------|
+| `runner_enforced` | real execution |
+| `runner_checked` | validation result, lower trust |
+| `checked_only` | downgraded accepted output |
+| `rejected` | blocked |
+
+---
+
+## Health layer
 
 ### Integrity
 - drift
@@ -420,22 +237,13 @@ validation_proof = sha256(answer + finalization_block + runtime_id)
 - fallback / policy split
 
 ### Invariant
-validation_rate == fallback + policy
+- `validation_rate == fallback + policy`
 
-- Mismatch → flag invariant_violation
-- Does not crash the system
-
-### Anomaly
-- DEGRADING
-- RECOVERING
-- WEAK_DEGRADING
-- STABLE
-
-> ⚠️ Signal only, never an action trigger
+> These signals are for observation only. They must not leak into control logic.
 
 ---
 
-## 💻 CLI Usage
+## CLI
 
 - `py scripts/abw_entry.py /abw-ask "task"`
 - `py scripts/abw_entry.py /abw-health`
@@ -443,68 +251,16 @@ validation_rate == fallback + policy
 
 ---
 
-## ⚠️ Failure Scenarios
+## Failure scenarios
 
 <details>
-<summary>Click to expand</summary>
+<summary>View details</summary>
 
-### F1 Raw output
-→ rejected
-
-### F2 Fake proof
-→ rejected
-
-### F3 Post-runner rewrite
-→ rejected
-
-### F4 Proof reuse
-→ rejected
-
-### F5 Validation pretending to be execution
-→ downgraded → checked_only
-
-### F6 Missing finalization
-→ blocked / downgraded
-
-### F7 Runtime drift
-→ detected (health)
-
-### F8 Encoding errors
-→ detected
-
-### F9 Mojibake
-→ detected (no auto-fix)
-
-### F10 No CLI execution
-→ ABW cannot protect against this
+- Raw output -> reject
+- Fake proof -> reject
+- Post-runner rewrite -> reject
+- Validation pretending to be execution -> downgrade
+- Runtime drift -> detect
+- Mojibake -> detect
 
 </details>
-
----
-
-## ❌ What ABW Does NOT Guarantee
-
-- Business logic correctness
-- Replacement for testing
-- Host-level enforcement
-- Automatic logic repair
-
----
-
-## 🎯 Design Principles
-
-- Trust = proof, not format
-- Validation ≠ execution
-- Health = observer, not controller
-- No new rules without new signals
-- Boundaries must stay explicit
-
----
-
-## 📌 Final Note
-
-ABW does not make AI smarter.
-
-ABW guarantees:
-
-> If the system is wrong → it cannot appear correct
