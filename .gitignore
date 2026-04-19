@@ -69,6 +69,10 @@ __pycache__/
 .env
 .env.local
 .abw/
+.abw_version.json
+.abw_update.lock
+.abw_update_staging/
+.abw_backup/
 
 # --- ABW session-specific artifacts ---
 scratch/

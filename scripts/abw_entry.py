@@ -10,9 +10,10 @@ if str(current_dir) not in sys.path:
 import abw_health
 import abw_output
 import abw_runner
+import abw_update
 
 
-SUPPORTED_COMMANDS = {"/abw-ask", "/abw-health", "/abw-repair"}
+SUPPORTED_COMMANDS = {"/abw-ask", "/abw-health", "/abw-repair", "/abw-update", "/abw-rollback"}
 
 
 def final_output(result):
@@ -34,8 +35,20 @@ def execute_command(
     task_kind="execution",
     candidate_answer=None,
 ):
+    runtime_state = abw_update.initialize_runtime(workspace)
     if command not in SUPPORTED_COMMANDS:
         return {"binding_status": "rejected", "current_state": "blocked", "reason": "unsupported command"}
+
+    if (
+        runtime_state["integrity"]["state"] == "integrity_compromised"
+        and command == "/abw-ask"
+    ):
+        return {
+            "binding_status": "rejected",
+            "current_state": "integrity_compromised",
+            "reason": "runtime integrity mismatch detected",
+            "integrity": runtime_state["integrity"],
+        }
 
     if command == "/abw-ask":
         return abw_runner.dispatch_request(
@@ -54,6 +67,13 @@ def execute_command(
             binding_status="runner_enforced",
             mode="audit",
         )
+
+    if command == "/abw-update":
+        target_ref = str(task or "").strip() or None
+        return abw_update.perform_update(workspace=workspace, target_ref=target_ref)
+
+    if command == "/abw-rollback":
+        return abw_update.perform_rollback(workspace=workspace)
 
     return abw_health.run_health(
         workspace=workspace,

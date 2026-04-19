@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -11,6 +12,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import abw_entry  # noqa: E402
 import abw_proof  # noqa: E402
 import abw_runner  # noqa: E402
+import abw_update  # noqa: E402
 
 
 def make_proof(answer, finalization_block, runtime_id="123", nonce=None, binding_source="mcp"):
@@ -138,3 +140,43 @@ class AbwEntryTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0)
             self.assertIn("[ABW] binding=runner_enforced | validation_proof=", completed.stdout)
             self.assertIn("ABW health repair completed.", completed.stdout)
+
+    def test_update_command_routes_to_update_module(self):
+        fake = abw_update.build_result(
+            binding_source="cli",
+            binding_status="runner_enforced",
+            current_state="verified",
+            runner_status="completed",
+            task="/abw-update",
+            body="ABW update completed.",
+            evidence="repo synced",
+            gaps_or_limitations="none",
+            next_steps="none",
+            details={"changed": False},
+        )
+        with patch("abw_entry.abw_update.perform_update", return_value=fake) as update_mock:
+            result = abw_entry.execute_command("/abw-update", task="abc123", workspace=".")
+
+        update_mock.assert_called_once_with(workspace=".", target_ref="abc123")
+        self.assertEqual(result["task"], "/abw-update")
+        self.assertEqual(result["binding_status"], "runner_enforced")
+
+    def test_rollback_command_routes_to_update_module(self):
+        fake = abw_update.build_result(
+            binding_source="cli",
+            binding_status="runner_enforced",
+            current_state="verified",
+            runner_status="completed",
+            task="/abw-rollback",
+            body="ABW rollback completed.",
+            evidence="repo restored",
+            gaps_or_limitations="none",
+            next_steps="none",
+            details={"update_result": "rollback"},
+        )
+        with patch("abw_entry.abw_update.perform_rollback", return_value=fake) as rollback_mock:
+            result = abw_entry.execute_command("/abw-rollback", workspace=".")
+
+        rollback_mock.assert_called_once_with(workspace=".")
+        self.assertEqual(result["task"], "/abw-rollback")
+        self.assertEqual(result["binding_status"], "runner_enforced")
