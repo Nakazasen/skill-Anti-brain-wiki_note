@@ -5,42 +5,35 @@
 
 ---
 
-<details open>
-<summary>🇻🇳 <b>Tiếng Việt</b> (đang xem)</summary>
-
----
+# 🇻🇳 Tiếng Việt
 
 ## 🧠 ABW là gì
 
-ABW là một execution boundary cho hệ AI.
+ABW là execution boundary cho hệ AI.
 
-- Chỉ cho phép output đi qua runner
-- Yêu cầu proof (validation_proof)
-- Ngăn AI “giả vờ đúng”
+> 🔒 Chỉ output có proof hợp lệ mới được chấp nhận
 
 ---
 
 ## ⚙️ Luồng thực thi
 
-
-User → abw_entry → abw_runner → acceptance → proof → output → result
-
+User → Entry → Runner → Acceptance → Proof → Output
 
 ---
 
 ## 🔒 Trust Model
 
-- 🟢 `runner_enforced` → execution thật
-- 🟡 `runner_checked` → `checked_only`
-- 🔴 `rejected`
+| State | Ý nghĩa |
+|------|--------|
+| runner_enforced | execution thật |
+| runner_checked → checked_only | chỉ validation |
+| rejected | bị chặn |
 
 ---
 
 ## 🧾 Proof System
 
-
 sha256(answer + finalization_block + runtime_id)
-
 
 ---
 
@@ -54,136 +47,65 @@ sha256(answer + finalization_block + runtime_id)
 
 ---
 
-## 🛡️ Hệ thống Health
+## 🛡️ Health
 
-- integrity → drift / encoding / mojibake
-- cleanliness → clean_pass
-- operational → validation_rate
-- invariant check
+- drift
+- encoding
+- mojibake
+- clean_pass
+- validation_rate
 
 ---
 
 ## ⚠️ Failure Scenarios
 
 <details>
-<summary>Click để xem</summary>
+<summary>Click</summary>
 
 - Fake output → reject
 - Rewrite → reject
 - Fake proof → reject
 - Validation giả execution → downgrade
-- Drift runtime → detect
-- Mojibake → detect
 
 </details>
 
 ---
 
-## 💻 CLI
-
-
-/abw-ask
-/abw-health
-/abw-repair
-
-
----
-
-</details>
-
----
-
-<details>
-<summary>🇬🇧 <b>English</b></summary>
-
----
+# 🇬🇧 English
 
 ## 🧠 What ABW Is
 
 ABW is an execution boundary for AI systems.
 
-- Forces runner usage
-- Requires proof-bound output
-- Prevents fake correctness
+> Only proof-bound output is accepted
 
 ---
 
-## ⚙️ Execution Flow
+## ⚙️ Flow
 
-
-User → abw_entry → abw_runner → acceptance → proof → output → result
-
+User → Entry → Runner → Acceptance → Proof → Output
 
 ---
 
 ## 🔒 Trust Model
 
-- 🟢 runner_enforced → real execution
-- 🟡 runner_checked → checked_only
-- 🔴 rejected
+| State | Meaning |
+|------|--------|
+| runner_enforced | real execution |
+| runner_checked → checked_only | validation only |
+| rejected | blocked |
 
 ---
 
-## 🧾 Proof System
-
+## 🧾 Proof
 
 sha256(answer + finalization_block + runtime_id)
 
-
 ---
 
-## 🏗️ Architecture
+DONE WHEN:
 
-- Entry
-- Runner
-- Acceptance
-- Output Shim
-- Health
-
----
-
-## 🛡️ Health System
-
-- integrity → drift / encoding / mojibake
-- cleanliness → clean_pass
-- operational → validation_rate
-
----
-
-## ⚠️ Failure Scenarios
-
-<details>
-<summary>Click to expand</summary>
-
-- Fake output → rejected
-- Rewrite → rejected
-- Fake proof → rejected
-- Validation pretending execution → downgraded
-- Runtime drift → detected
-- Mojibake → detected
-
-</details>
-
----
-
-## 💻 CLI
-
-
-/abw-ask
-/abw-health
-/abw-repair
-
-
----
-
-</details>
-
----
-
-## 📌 Final Note
-
-ABW does not make AI smarter.
-
-It ensures:
-
-> If the system is wrong → it cannot appear correct.
+- README updated
+- commit created
+- pushed to main
+- preview printed
