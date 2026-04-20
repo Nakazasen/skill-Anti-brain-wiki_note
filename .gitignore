@@ -32,7 +32,11 @@
 .brain/runner_artifacts/
 .brain/health_log.jsonl
 .brain/negative_memory.jsonl
+.brain/route_log.jsonl
 .brain/query_deep_runs.jsonl
+.brain/ingest_queue.json
+.brain/ingest_runs.jsonl
+.brain/review_log.jsonl
 
 # Bootstrap reasoning state (do not commit greenfield assumptions/plans)
 .brain/bootstrap/*.json
