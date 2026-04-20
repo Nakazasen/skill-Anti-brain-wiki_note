@@ -260,6 +260,148 @@ F -->|Pass| G[Accepted Output]
 
 ---
 
+## 🧪 End-to-End Demo (Thực thi từ đầu đến cuối)
+
+### 🇻🇳 Tiếng Việt
+
+Mục tiêu: Chứng minh hệ thống thực thi thật với:
+- execution (chạy lệnh / xử lý)
+- artifact (file/log)
+- validation (abw_accept)
+- proof (HMAC)
+- acceptance gate
+
+#### Input (Yêu cầu)
+
+`/abw-ask "Dịch thuật ngữ: 'drum unit' trong tài liệu máy in và trích nguồn"`
+
+#### Execution (Thực thi)
+
+- Truy vấn wiki nội bộ: `wiki/glossary_printer.md`
+- Tìm thấy:
+  - `drum unit -> cụm trống`
+- Không có source ngoài -> không dùng LLM để đoán
+
+#### Artifact (Bằng chứng)
+
+`.artifacts/run_20250101_101530.txt`
+
+```text
+runtime_id: 1704100530
+source: wiki/glossary_printer.md
+term: drum unit
+result: cụm trống
+```
+
+#### Validation (Kiểm chứng)
+
+`abw_accept` kiểm tra:
+- file tồn tại
+- `runtime_id` khớp
+- nội dung hợp lệ
+
+`evaluation.accepted = True`
+
+#### Proof (Bằng chứng mật mã)
+
+`proof = HMAC(secret, answer + finalization_block + runtime_id + nonce + binding_source)`
+
+```text
+validation_proof: a8f3c2e1...
+nonce: 9b12f0...
+binding_source: cli
+```
+
+#### Acceptance (Chấp nhận)
+
+- verify proof -> PASS
+- check finalization -> PASS
+
+`binding_status: runner_enforced`
+
+#### Output (Kết quả cuối)
+
+`"drum unit" = "cụm trống"`
+
+`Nguồn: wiki/glossary_printer.md`
+
+#### Trường hợp thiếu tri thức
+
+`/abw-ask "Giải thích công nghệ XYZ-123"`
+
+Kết quả:
+- Không tìm thấy tri thức đáng tin cậy.
+- Đã ghi nhận vào `knowledge_gaps`.
+
+---
+
+### 🇬🇧 English
+
+Goal: Demonstrate real execution with:
+- execution
+- artifact generation
+- validation via `abw_accept`
+- cryptographic proof
+- acceptance enforcement
+
+#### Input
+
+`/abw-ask "Translate 'drum unit' and provide source"`
+
+#### Execution
+
+- Query local wiki: `wiki/glossary_printer.md`
+- Found:
+  - `drum unit -> cụm trống`
+- No guessing or hallucination
+
+#### Artifact
+
+`.artifacts/run_20250101_101530.txt`
+
+```text
+runtime_id: 1704100530
+source: wiki/glossary_printer.md
+term: drum unit
+result: cụm trống
+```
+
+#### Validation
+
+`abw_accept` checks:
+- file exists
+- `runtime_id` matches
+- content valid
+
+`evaluation.accepted = True`
+
+#### Proof
+
+`proof = HMAC(secret, answer + finalization_block + runtime_id + nonce + binding_source)`
+
+#### Acceptance
+
+- proof verified
+- finalization valid
+
+`binding_status: runner_enforced`
+
+#### Output
+
+`"drum unit" = "cụm trống"`
+
+`Source: wiki/glossary_printer.md`
+
+#### Missing knowledge case
+
+`/abw-ask "Explain XYZ-123 technology"`
+
+Result:
+- No trusted knowledge found.
+- Logged as knowledge gap.
+
+---
+
 # English
 
 ## What ABW Is
