@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 SUPPORTED_LANES = {
+    "coverage",
     "query",
     "query_deep",
     "resume",
@@ -42,6 +43,14 @@ BOOTSTRAP_TOKENS = (
     "start from scratch",
     "project setup",
     "setup project",
+)
+COVERAGE_TOKENS = (
+    "coverage",
+    "knowledge coverage",
+    "gap report",
+    "coverage report",
+    "missing knowledge",
+    "top gaps",
 )
 DEEP_QUERY_TOKENS = (
     "compare",
@@ -135,7 +144,7 @@ def _normalize_provided_route(route):
             "source": "provided_route",
         }
 
-    if intent in {"resume", "bootstrap", "ingest"}:
+    if intent in {"resume", "bootstrap", "ingest", "coverage"}:
         return {
             "intent": intent,
             "lane": intent,
@@ -246,6 +255,15 @@ def route_request(task, *, workspace=".", route=None):
             "intent": "resume",
             "lane": "resume",
             "reason": "resume intent detected",
+            "fallback_allowed": True,
+            "source": "router",
+        }
+
+    if _task_has_any(lowered, COVERAGE_TOKENS):
+        return {
+            "intent": "coverage",
+            "lane": "coverage",
+            "reason": "coverage/gap analysis intent detected",
             "fallback_allowed": True,
             "source": "router",
         }

@@ -33,6 +33,12 @@ class AbwRouterTests(unittest.TestCase):
         self.assertEqual(route["lane"], "legacy_execution")
         self.assertEqual(route["intent"], "legacy_execution")
 
+    def test_router_selects_coverage_for_gap_report_intent(self):
+        route = abw_router.route_request("show coverage report and top gaps", workspace=".")
+
+        self.assertEqual(route["lane"], "coverage")
+        self.assertEqual(route["intent"], "coverage")
+
     def test_router_uses_bootstrap_only_for_explicit_intent_or_repeated_gaps(self):
         with tempfile.TemporaryDirectory() as tmp:
             route = abw_router.route_request("how does this work?", workspace=tmp)

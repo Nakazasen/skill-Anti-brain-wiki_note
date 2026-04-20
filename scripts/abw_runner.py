@@ -11,7 +11,9 @@ if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
 
 import abw_accept
+import abw_coverage
 import abw_health
+import abw_ingest
 import abw_knowledge
 import abw_proof
 import abw_query_deep
@@ -664,46 +666,48 @@ def bootstrap_lane_result(task, workspace=".", route=None, binding_source="mcp")
     )
 
 
-def ingest_queue_path(workspace="."):
-    return Path(workspace) / ".brain" / "ingest_queue.json"
+def coverage_lane_result(task, workspace=".", route=None, binding_source="mcp"):
+    report = abw_coverage.run_coverage(workspace)
+    body = (
+        f"Coverage report for '{task}'. "
+        f"Success={report['success']}, weak={report['weak']}, fail={report['fail']}, "
+        f"coverage_ratio={report['coverage_ratio']}."
+    )
+    model_output = f"""{body}
 
-
-def record_ingest_draft(task, workspace=".", route=None):
-    queue_path = ingest_queue_path(workspace)
-    payload = load_json(queue_path, {"items": [], "updated_at": now_iso()})
-    draft_id = f"draft-{new_runtime_id()}"
-    raw_refs = [token for token in str(task or "").split() if "raw/" in token or "raw\\" in token]
-    item = {
-        "id": draft_id,
-        "task": str(task or ""),
-        "status": "review_needed",
-        "created_at": now_iso(),
-        "raw_refs": raw_refs,
-        "draft_wiki_target": None,
-        "trusted_wiki_written": False,
-        "route": dict(route or {}),
-    }
-    payload.setdefault("items", []).append(item)
-    payload["updated_at"] = now_iso()
-    save_json(queue_path, payload)
-    return item, queue_path
+## Finalization
+- current_state: checked_only
+- evidence: coverage analysis read wiki and query_deep run logs; total_questions={report['total_questions']}; wiki_topics={report['wiki_topic_count']}
+- gaps_or_limitations: coverage is based on local query_deep logs only and does not prove complete domain coverage
+- next_steps: review top_gaps and add targeted wiki material or raw sources for the missing topics
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(route, coverage_report=report),
+        binding_source=binding_source,
+    )
 
 
 def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
-    item, queue_path = record_ingest_draft(task, workspace=workspace, route=route)
-    workspace_root = Path(workspace).resolve()
-    queue_relpath = str(queue_path.resolve().relative_to(workspace_root))
+    ingest_result = abw_ingest.run(task, workspace)
     body = (
-        f"Ingest lane queued a draft ingest item for '{task}'. "
+        f"Ingest lane created a draft knowledge artifact for '{task}'. "
         "The draft is review-needed and has not been promoted into trusted wiki."
     )
     model_output = f"""{body}
 
 ## Finalization
 - current_state: checked_only
-- evidence: ingest queue logs review_needed draft_id={item['id']} at {queue_path}
-- gaps_or_limitations: ingest lane stores draft review metadata only; trusted wiki is unchanged until explicit review
-- next_steps: review the draft ingest item and run /abw-ingest or a manual review flow before updating wiki
+- evidence: ingest created draft_file={ingest_result['draft_file']} from raw_file={ingest_result['raw_file']}
+- gaps_or_limitations: ingest lane creates processed manifest + draft + queue item only; trusted wiki is unchanged until explicit review
+- next_steps: review the draft file and ingest queue item before any manual promotion into wiki
 """
     gate = run_finalization_gate(model_output, task_kind="")
     answer = compose_answer(body, gate["block"])
@@ -716,8 +720,15 @@ def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
         runner_status,
         extra=route_extra(
             route,
-            ingest_draft=item,
-            ingest_queue=queue_relpath,
+            ingest_result=ingest_result,
+            ingest_draft={
+                "id": Path(ingest_result["draft_file"]).stem,
+                "raw": ingest_result["raw_file"],
+                "draft": ingest_result["draft_file"],
+                "status": ingest_result["queue_status"],
+                "trusted_wiki_written": False,
+            },
+            ingest_queue=".brain/ingest_queue.json",
         ),
         binding_source=binding_source,
     )
@@ -726,6 +737,7 @@ def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
 def execute_lane(task, workspace=".", route=None, binding_source="mcp"):
     lane = route_lane(route) or "legacy_execution"
     handlers = {
+        "coverage": lambda: coverage_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
         "query": lambda: query_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, deep=False),
         "query_deep": lambda: query_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, deep=True),
         "resume": lambda: resume_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
