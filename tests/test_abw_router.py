@@ -39,6 +39,62 @@ class AbwRouterTests(unittest.TestCase):
         self.assertEqual(route["lane"], "coverage")
         self.assertEqual(route["intent"], "coverage")
 
+    def test_router_selects_help_intent(self):
+        route = abw_router.route_request("help", workspace=".")
+
+        self.assertEqual(route["lane"], "help")
+        self.assertEqual(route["intent"], "help")
+
+    def test_router_selects_dashboard_intent(self):
+        route = abw_router.route_request("dashboard", workspace=".")
+
+        self.assertEqual(route["lane"], "dashboard")
+        self.assertEqual(route["intent"], "dashboard")
+
+    def test_router_matches_vietnamese_help_without_exact_ascii(self):
+        route = abw_router.route_request("trợ giúp", workspace=".")
+
+        self.assertEqual(route["lane"], "help")
+        self.assertEqual(route["intent"], "help")
+
+    def test_router_selects_list_drafts_for_pending_drafts_intent(self):
+        route = abw_router.route_request("list drafts", workspace=".")
+
+        self.assertEqual(route["lane"], "list_drafts")
+        self.assertEqual(route["intent"], "list_drafts")
+
+    def test_router_selects_review_drafts_for_batch_review_intent(self):
+        route = abw_router.route_request("review drafts", workspace=".")
+
+        self.assertEqual(route["lane"], "review_drafts")
+        self.assertEqual(route["intent"], "review_drafts")
+
+    def test_router_selects_approve_draft_only_when_path_is_present(self):
+        route = abw_router.route_request("approve draft drafts/example_draft.md", workspace=".")
+
+        self.assertEqual(route["lane"], "approve_draft")
+        self.assertEqual(route["intent"], "approve_draft")
+        self.assertEqual(route["params"]["draft_path"], "drafts/example_draft.md")
+
+    def test_router_selects_explain_draft_only_when_path_is_present(self):
+        route = abw_router.route_request("explain draft drafts/example_draft.md", workspace=".")
+
+        self.assertEqual(route["lane"], "explain_draft")
+        self.assertEqual(route["intent"], "explain_draft")
+        self.assertEqual(route["params"]["draft_path"], "drafts/example_draft.md")
+
+    def test_router_falls_back_when_approve_draft_has_no_path(self):
+        route = abw_router.route_request("approve draft", workspace=".")
+
+        self.assertNotEqual(route["lane"], "approve_draft")
+        self.assertEqual(route["lane"], "legacy_execution")
+
+    def test_router_falls_back_when_explain_draft_has_no_path(self):
+        route = abw_router.route_request("explain draft", workspace=".")
+
+        self.assertNotEqual(route["lane"], "explain_draft")
+        self.assertEqual(route["lane"], "query")
+
     def test_router_uses_bootstrap_only_for_explicit_intent_or_repeated_gaps(self):
         with tempfile.TemporaryDirectory() as tmp:
             route = abw_router.route_request("how does this work?", workspace=tmp)
