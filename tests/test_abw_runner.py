@@ -756,6 +756,71 @@ class AbwRunnerBindingTests(unittest.TestCase):
                 self.assertEqual(len(rows), 1)
                 self.assertEqual(rows[0]["pattern"], "skip_validation")
 
+    def test_query_and_query_deep_routes_are_visible_in_result(self):
+        shallow = abw_runner.dispatch_request(
+            task="What is PostgreSQL selection rationale?",
+            task_kind="execution",
+            binding_source="mcp",
+        )
+        deep = abw_runner.dispatch_request(
+            task="Compare PostgreSQL versus MongoDB tradeoffs for this architecture",
+            task_kind="execution",
+            binding_source="mcp",
+        )
+
+        self.assertEqual(shallow["route"]["lane"], "query")
+        self.assertEqual(deep["route"]["lane"], "query_deep")
+        self.assertEqual(deep["binding_status"], "runner_checked")
+
+    def test_resume_lane_falls_back_to_query_when_no_safe_step_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="resume prior work",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "query")
+            self.assertEqual(result["route"]["fallback_from"], "resume")
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            route_log = Path(tmp) / ".brain" / "route_log.jsonl"
+            self.assertTrue(route_log.exists())
+            self.assertEqual(len(route_log.read_text(encoding="utf-8").splitlines()), 2)
+
+    def test_bootstrap_lane_is_controlled_and_does_not_write_bootstrap_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="bootstrap this greenfield idea",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "bootstrap")
+            self.assertIn("bootstrap_proposal", result)
+            self.assertFalse((Path(tmp) / ".brain" / "bootstrap").exists())
+            self.assertEqual(result["binding_status"], "runner_checked")
+
+    def test_ingest_lane_creates_draft_queue_without_trusted_wiki_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_path = Path(tmp) / "raw" / "sample.md"
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text("# Sample\n", encoding="utf-8")
+
+            result = abw_runner.dispatch_request(
+                task="ingest raw/sample.md into wiki",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "ingest")
+            self.assertIn("ingest_draft", result)
+            self.assertFalse(result["ingest_draft"]["trusted_wiki_written"])
+            self.assertTrue((Path(tmp) / ".brain" / "ingest_queue.json").exists())
+            self.assertEqual(list((Path(tmp) / "wiki").rglob("*.md")) if (Path(tmp) / "wiki").exists() else [], [])
+
 
 if __name__ == "__main__":
     unittest.main()

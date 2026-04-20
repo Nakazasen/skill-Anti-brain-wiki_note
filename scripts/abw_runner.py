@@ -14,6 +14,9 @@ import abw_accept
 import abw_health
 import abw_knowledge
 import abw_proof
+import abw_router
+import continuation_execute
+import continuation_gate
 import finalization_check
 
 try:
@@ -317,10 +320,19 @@ def enrich_knowledge_result(task, workspace="."):
     return abw_knowledge.enrich_knowledge_result(task, workspace=workspace)
 
 
+def route_lane(route=None):
+    if not isinstance(route, dict):
+        return ""
+    return str(route.get("lane") or "").strip().lower()
+
+
 def is_knowledge_intent(task, route=None):
     route = route or {}
     intent = route.get("intent") if isinstance(route, dict) else None
-    return intent == "knowledge" or (intent is None and is_knowledge_task(task))
+    lane = route_lane(route)
+    return intent in {"knowledge", "query", "query_deep"} or lane in {"query", "query_deep"} or (
+        intent is None and lane == "" and is_knowledge_task(task)
+    )
 
 
 def apply_knowledge_semantics(result, task, route=None):
@@ -363,6 +375,288 @@ def enforce_knowledge_output(result):
     if not knowledge or any(knowledge.get(field) is None for field in required_fields):
         raise RuntimeError("Knowledge output missing required visibility block")
     return result
+
+
+def resolve_route(task, workspace=".", route=None):
+    return abw_router.route_request(task, workspace=workspace, route=route)
+
+
+def build_lane_route(route, lane, *, reason=None, fallback_from=None, fallback_reason=None):
+    payload = dict(route or {})
+    payload["lane"] = lane
+    payload["intent"] = lane
+    if reason:
+        payload["reason"] = reason
+    if fallback_from:
+        payload["fallback_from"] = fallback_from
+    if fallback_reason:
+        payload["fallback_reason"] = fallback_reason
+    return payload
+
+
+def route_extra(route, **extra):
+    payload = {"route": dict(route or {})}
+    payload.update(extra)
+    return payload
+
+
+def load_json(path, default):
+    path = Path(path)
+    if not path.exists():
+        return default
+    with path.open("r", encoding="utf-8-sig") as handle:
+        return json.load(handle)
+
+
+def save_json(path, payload):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, deep=False):
+    lane = "query_deep" if deep else "query"
+    binding_status = binding_status_for_execution(
+        binding_source,
+        {"execution_path": lane},
+    )
+    result = enrich_knowledge_result(task, workspace=workspace)
+    if result.get("gap_logged"):
+        result["gap_id"] = log_knowledge_gap(
+            task,
+            workspace=workspace,
+            searched_locations=["wiki/", "explicit local sources"],
+            reason=(
+                "Deep query lane could not find grounded evidence."
+                if deep
+                else "Query lane could not find grounded evidence."
+            ),
+        )
+    apply_knowledge_semantics(result, task, route)
+    body = knowledge_body(task, result)
+    attach_knowledge_output(result, answer_text=body)
+    enforce_knowledge_output(result)
+    model_output = f"""{body}
+
+## Finalization
+- current_state: {result["current_state"]}
+- evidence: {result["evidence"]}
+- gaps_or_limitations: retrieval source={result["knowledge_output"]["source_summary"]}; lane={lane}; knowledge_evidence_tier={result.get("knowledge_evidence_tier")}; knowledge_source_score={result.get("knowledge_source_score")}
+- next_steps: {"add grounded source material to wiki or provide an explicit local source" if result.get("gap_logged") else "use the retrieved local source for follow-up questions if needed"}
+- knowledge_evidence_tier: {result.get("knowledge_evidence_tier")}
+- knowledge_source_score: {result.get("knowledge_source_score")}
+- source_summary: {result["knowledge_output"]["source_summary"]}
+- gap_logged: {result.get("gap_logged", False)}
+"""
+    gate = run_finalization_gate(model_output, task_kind="knowledge")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+    extra = route_extra(
+        route,
+        gap_logged=result.get("gap_logged", False),
+        knowledge_evidence_tier=result.get("knowledge_evidence_tier"),
+        knowledge_source_score=result.get("knowledge_source_score"),
+        refinement_history=result.get("refinement_history", []),
+        semantic_fix_applied=result.get("semantic_fix_applied", False),
+        strategy_trace={
+            **(result.get("strategy_trace", {}) or {}),
+            "lane": lane,
+            "mode": "reuse_current_knowledge_runtime",
+        },
+    )
+    return base_result(
+        task,
+        binding_status,
+        answer,
+        gate,
+        runner_status,
+        knowledge=result["knowledge_output"],
+        extra=extra,
+        binding_source=binding_source,
+    )
+
+
+def resume_lane_result(task, workspace=".", route=None, binding_source="mcp"):
+    gate_result = continuation_gate.evaluate_workspace(Path(workspace).resolve())
+    selected = gate_result.get("selected")
+    if not selected:
+        raise RuntimeError("resume gate did not select a safe step")
+
+    approvals = selected.get("required_approvals", [])
+    if approvals:
+        body = (
+            f"Resume lane found a governed next step for '{task}', but approval is still required "
+            f"before execution can be prepared: {selected.get('step_id')}."
+        )
+        evidence = (
+            f"continuation gate logs selected step_id={selected.get('step_id')} "
+            f"with required_approvals={len(approvals)}"
+        )
+        next_steps = "approve the governed step explicitly, then run /abw-execute or ask /abw-ask to continue again"
+    else:
+        prepared = continuation_execute.prepare_execution(workspace, approved=False)
+        if prepared.get("status") != "prepared":
+            raise RuntimeError(prepared.get("reason") or prepared.get("error") or "resume prepare failed")
+        body = (
+            f"Resume lane prepared governed continuation step {prepared.get('step_id')} for '{task}'. "
+            "The next safe step is now active in the continuation runtime."
+        )
+        evidence = (
+            f"continuation gate logs selected step_id={prepared.get('step_id')} and "
+            "continuation execute recorded an active execution"
+        )
+        next_steps = "perform the prepared governed step through /abw-execute or inspect the active execution state"
+
+    model_output = f"""{body}
+
+## Finalization
+- current_state: checked_only
+- evidence: {evidence}
+- gaps_or_limitations: resume lane prepares governed continuation only; it does not claim the underlying work is complete
+- next_steps: {next_steps}
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(
+            route,
+            resume_gate=gate_result,
+            resume_step_id=selected.get("step_id"),
+            resume_requires_approval=bool(approvals),
+        ),
+        binding_source=binding_source,
+    )
+
+
+def count_open_knowledge_gaps(workspace="."):
+    path = Path(workspace) / ".brain" / "knowledge_gaps.json"
+    payload = load_json(path, {"gaps": []})
+    gaps = payload.get("gaps", [])
+    return sum(1 for gap in gaps if gap.get("status") == "open")
+
+
+def bootstrap_lane_result(task, workspace=".", route=None, binding_source="mcp"):
+    open_gap_count = count_open_knowledge_gaps(workspace)
+    wiki_root = Path(workspace) / "wiki"
+    raw_root = Path(workspace) / "raw"
+    wiki_present = wiki_root.exists() and any(path.is_file() for path in wiki_root.rglob("*"))
+    raw_present = raw_root.exists() and any(path.is_file() for path in raw_root.rglob("*"))
+    body = (
+        f"Bootstrap lane generated a controlled proposal for '{task}'. "
+        "This path does not mutate project state; it only summarizes the safest next bootstrap actions."
+    )
+    proposal = {
+        "workspace_has_wiki": wiki_present,
+        "workspace_has_raw": raw_present,
+        "open_knowledge_gaps": open_gap_count,
+        "next_actions": [
+            "capture assumptions before implementation",
+            "define competing hypotheses",
+            "write the cheapest validation backlog",
+        ],
+    }
+    model_output = f"""{body}
+
+## Finalization
+- current_state: checked_only
+- evidence: bootstrap proposal logs workspace_has_wiki={wiki_present}; workspace_has_raw={raw_present}; open_knowledge_gaps={open_gap_count}
+- gaps_or_limitations: bootstrap lane returns a proposal only and does not write bootstrap artifacts automatically
+- next_steps: review the proposal, then run /abw-bootstrap explicitly if you want stateful bootstrap artifacts
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(route, bootstrap_proposal=proposal),
+        binding_source=binding_source,
+    )
+
+
+def ingest_queue_path(workspace="."):
+    return Path(workspace) / ".brain" / "ingest_queue.json"
+
+
+def record_ingest_draft(task, workspace=".", route=None):
+    queue_path = ingest_queue_path(workspace)
+    payload = load_json(queue_path, {"items": [], "updated_at": now_iso()})
+    draft_id = f"draft-{new_runtime_id()}"
+    raw_refs = [token for token in str(task or "").split() if "raw/" in token or "raw\\" in token]
+    item = {
+        "id": draft_id,
+        "task": str(task or ""),
+        "status": "review_needed",
+        "created_at": now_iso(),
+        "raw_refs": raw_refs,
+        "draft_wiki_target": None,
+        "trusted_wiki_written": False,
+        "route": dict(route or {}),
+    }
+    payload.setdefault("items", []).append(item)
+    payload["updated_at"] = now_iso()
+    save_json(queue_path, payload)
+    return item, queue_path
+
+
+def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
+    item, queue_path = record_ingest_draft(task, workspace=workspace, route=route)
+    workspace_root = Path(workspace).resolve()
+    queue_relpath = str(queue_path.resolve().relative_to(workspace_root))
+    body = (
+        f"Ingest lane queued a draft ingest item for '{task}'. "
+        "The draft is review-needed and has not been promoted into trusted wiki."
+    )
+    model_output = f"""{body}
+
+## Finalization
+- current_state: checked_only
+- evidence: ingest queue logs review_needed draft_id={item['id']} at {queue_path}
+- gaps_or_limitations: ingest lane stores draft review metadata only; trusted wiki is unchanged until explicit review
+- next_steps: review the draft ingest item and run /abw-ingest or a manual review flow before updating wiki
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(
+            route,
+            ingest_draft=item,
+            ingest_queue=queue_relpath,
+        ),
+        binding_source=binding_source,
+    )
+
+
+def execute_lane(task, workspace=".", route=None, binding_source="mcp"):
+    lane = route_lane(route) or "legacy_execution"
+    handlers = {
+        "query": lambda: query_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, deep=False),
+        "query_deep": lambda: query_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, deep=True),
+        "resume": lambda: resume_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
+        "bootstrap": lambda: bootstrap_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
+        "ingest": lambda: ingest_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
+    }
+    if lane == "legacy_execution":
+        return None
+    handler = handlers.get(lane)
+    if handler is None:
+        return None
+    return handler()
 
 
 def run_finalization_gate(model_output, task_kind=""):
@@ -855,55 +1149,14 @@ def execute_task(task, workspace=".", task_kind="execution", route=None, binding
         answer = compose_answer(body, gate["block"])
         return base_result(task, binding_status, answer, gate, "blocked", binding_source=binding_source)
 
-    if is_knowledge_intent(task, route):
-        binding_status = binding_status_for_execution(
-            binding_source,
-            {"execution_path": "knowledge"},
-        )
-        result = enrich_knowledge_result(task, workspace=workspace)
-        if result.get("gap_logged"):
-            result["gap_id"] = log_knowledge_gap(
-                task,
-                workspace=workspace,
-                searched_locations=["wiki/", "explicit local sources"],
-            )
-        apply_knowledge_semantics(result, task, route)
-        body = knowledge_body(task, result)
-        attach_knowledge_output(result, answer_text=body)
-        enforce_knowledge_output(result)
-        model_output = f"""{body}
-
-## Finalization
-- current_state: {result["current_state"]}
-- evidence: {result["evidence"]}
-- gaps_or_limitations: retrieval source={result["knowledge_output"]["source_summary"]}; knowledge_evidence_tier={result.get("knowledge_evidence_tier")}; knowledge_source_score={result.get("knowledge_source_score")}
-- next_steps: {"add grounded source material to wiki or provide an explicit local source" if result.get("gap_logged") else "use the retrieved local source for follow-up questions if needed"}
-- knowledge_evidence_tier: {result.get("knowledge_evidence_tier")}
-- knowledge_source_score: {result.get("knowledge_source_score")}
-- source_summary: {result["knowledge_output"]["source_summary"]}
-- gap_logged: {result.get("gap_logged", False)}
-"""
-        gate = run_finalization_gate(model_output, task_kind="knowledge")
-        answer = compose_answer(body, gate["block"])
-        runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
-        extra = {
-            "gap_logged": result.get("gap_logged", False),
-            "knowledge_evidence_tier": result.get("knowledge_evidence_tier"),
-            "knowledge_source_score": result.get("knowledge_source_score"),
-            "refinement_history": result.get("refinement_history", []),
-            "semantic_fix_applied": result.get("semantic_fix_applied", False),
-            "strategy_trace": result.get("strategy_trace", {}),
-        }
-        return base_result(
-            task,
-            binding_status,
-            answer,
-            gate,
-            runner_status,
-            knowledge=result["knowledge_output"],
-            extra=extra,
-            binding_source=binding_source,
-        )
+    lane_result = execute_lane(
+        task,
+        workspace=workspace,
+        route=route,
+        binding_source=binding_source,
+    )
+    if lane_result is not None:
+        return lane_result
 
     if "fake verified" in task.lower():
         binding_status = binding_status_for_execution(
@@ -920,7 +1173,15 @@ def execute_task(task, workspace=".", task_kind="execution", route=None, binding
         gate = run_finalization_gate(model_output, task_kind="verify")
         answer = compose_answer(body, gate["block"])
         runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
-        return base_result(task, binding_status, answer, gate, runner_status, binding_source=binding_source)
+        return base_result(
+            task,
+            binding_status,
+            answer,
+            gate,
+            runner_status,
+            extra=route_extra(route),
+            binding_source=binding_source,
+        )
 
     command = command_for_task(task)
     if command is None:
@@ -937,7 +1198,15 @@ def execute_task(task, workspace=".", task_kind="execution", route=None, binding
 """
         gate = run_finalization_gate(model_output, task_kind="run")
         answer = compose_answer(body, gate["block"])
-        return base_result(task, binding_status, answer, gate, "blocked", binding_source=binding_source)
+        return base_result(
+            task,
+            binding_status,
+            answer,
+            gate,
+            "blocked",
+            extra=route_extra(route),
+            binding_source=binding_source,
+        )
 
     cmd_result = run_command(command, workspace)
     execution_result = {
@@ -964,6 +1233,7 @@ def execute_task(task, workspace=".", task_kind="execution", route=None, binding
         "command": command,
         "command_result": cmd_result,
     }
+    extra.update(route_extra(route))
     return base_result(task, binding_status, answer, gate, runner_status, extra=extra, binding_source=binding_source)
 
 
@@ -1081,12 +1351,14 @@ def dispatch_request(
         return enforce_output_acceptance(result, mode=binding_mode)
 
     memory_item = check_negative_memory(task, workspace=workspace, memory_scope=memory_scope)
+    resolved_route = resolve_route(task, workspace=workspace, route=route)
+    abw_router.log_route_decision(workspace, task, resolved_route, event="selected")
 
     if task_kind == "validation":
         result = validate_candidate_answer(
             task=task,
             candidate_answer=candidate_answer,
-            route=route,
+            route=resolved_route,
             binding_mode=binding_mode,
             workspace=workspace,
         )
@@ -1102,13 +1374,69 @@ def dispatch_request(
             )
         return attach_memory_warning(result, memory_item)
 
-    result = execute_task(
-        task=task,
-        workspace=workspace,
-        task_kind=task_kind,
-        route=route,
-        binding_source=binding_source,
-    )
+    try:
+        result = execute_task(
+            task=task,
+            workspace=workspace,
+            task_kind=task_kind,
+            route=resolved_route,
+            binding_source=binding_source,
+        )
+    except Exception as exc:  # noqa: BLE001 - lane failures must fall back safely when allowed.
+        lane = route_lane(resolved_route)
+        fallback_allowed = bool(resolved_route.get("fallback_allowed", True))
+        if lane in {"resume", "query_deep"} and fallback_allowed:
+            fallback_route = build_lane_route(
+                resolved_route,
+                "query",
+                reason="fallback to query after lane failure",
+                fallback_from=lane,
+                fallback_reason=str(exc),
+            )
+            abw_router.log_route_decision(
+                workspace,
+                task,
+                fallback_route,
+                event="fallback",
+                details={"error": str(exc)},
+            )
+            result = query_lane_result(
+                task,
+                workspace=workspace,
+                route=fallback_route,
+                binding_source=binding_source,
+                deep=False,
+            )
+        elif lane == "ingest":
+            log_knowledge_gap(
+                task,
+                workspace=workspace,
+                searched_locations=["raw/", ".brain/ingest_queue.json"],
+                reason=f"ingest lane failed: {exc}",
+            )
+            fallback_route = build_lane_route(
+                resolved_route,
+                "query",
+                reason="fallback to query after ingest failure",
+                fallback_from="ingest",
+                fallback_reason=str(exc),
+            )
+            abw_router.log_route_decision(
+                workspace,
+                task,
+                fallback_route,
+                event="fallback",
+                details={"error": str(exc)},
+            )
+            result = query_lane_result(
+                task,
+                workspace=workspace,
+                route=fallback_route,
+                binding_source=binding_source,
+                deep=False,
+            )
+        else:
+            raise
     result = apply_acceptance_validation(result, workspace=workspace)
     result = enforce_output_acceptance(result, mode=binding_mode)
     if result.get("binding_status") == "rejected" or result.get("current_state") == "blocked":
