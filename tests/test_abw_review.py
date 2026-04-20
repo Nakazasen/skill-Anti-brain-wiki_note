@@ -34,6 +34,32 @@ class AbwReviewTests(unittest.TestCase):
             self.assertEqual(result["wiki"], "wiki/latency-notes.md")
             self.assertEqual(result["message"], "Draft promoted to trusted wiki")
 
+    def test_list_drafts_returns_empty_when_queue_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_review.list_drafts(tmp)
+
+            self.assertEqual(result, {"pending_drafts": []})
+
+    def test_list_drafts_returns_review_needed_items_only(self):
+        tmp, workspace, ingest_result = self.make_ingested_workspace()
+        with tmp:
+            queue_path = workspace / ".brain" / "ingest_queue.json"
+            payload = json.loads(queue_path.read_text(encoding="utf-8"))
+            payload["items"].append(
+                {
+                    "id": "done-1",
+                    "raw": "raw/done.md",
+                    "draft": "drafts/done_draft.md",
+                    "status": "approved",
+                }
+            )
+            queue_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+            result = abw_review.list_drafts(str(workspace))
+
+            self.assertEqual(len(result["pending_drafts"]), 1)
+            self.assertEqual(result["pending_drafts"][0]["draft"], ingest_result["draft_file"])
+
     def test_queue_updated_after_review(self):
         tmp, workspace, ingest_result = self.make_ingested_workspace()
         with tmp:

@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import sys
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,12 +13,17 @@ if str(current_dir) not in sys.path:
 
 import abw_accept
 import abw_coverage
+import abw_dashboard
 import abw_health
+import abw_help
 import abw_ingest
 import abw_knowledge
 import abw_proof
 import abw_query_deep
+import abw_review
+import abw_review_explain
 import abw_router
+import abw_suggestions
 import continuation_execute
 import continuation_gate
 import finalization_check
@@ -397,6 +403,13 @@ def build_lane_route(route, lane, *, reason=None, fallback_from=None, fallback_r
     return payload
 
 
+def route_params(route=None):
+    if not isinstance(route, dict):
+        return {}
+    params = route.get("params")
+    return dict(params) if isinstance(params, dict) else {}
+
+
 def route_extra(route, **extra):
     payload = {"route": dict(route or {})}
     payload.update(extra)
@@ -695,6 +708,84 @@ def coverage_lane_result(task, workspace=".", route=None, binding_source="mcp"):
     )
 
 
+def help_lane_result(task, workspace=".", route=None, binding_source="mcp"):
+    help_result = abw_help.run(workspace)
+    sections = help_result["sections"]
+    snapshot = help_result["state_snapshot"]
+    lines = [help_result["message"]]
+    for section in sections:
+        lines.append(section["title"])
+        for item in section.get("items", []):
+            if isinstance(item, dict) and item.get("label") and item.get("command"):
+                lines.append(f"- {item['label']}: {item['command']}")
+            else:
+                lines.append(f"- {item}")
+    body = "\n".join(lines)
+    model_output = f"""{body}
+
+## Finalization
+- current_state: checked_only
+- evidence: help lane read workspace state raw_files={snapshot['raw_files']}; draft_files={snapshot['draft_files']}; wiki_files={snapshot['wiki_files']}; pending_drafts={snapshot['pending_drafts']}; coverage_ratio={snapshot['coverage_ratio']}
+- gaps_or_limitations: help only suggests commands and does not execute anything
+- next_steps: chọn một lệnh gợi ý rồi gửi lại qua /abw-ask
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(
+            route,
+            message=help_result["message"],
+            sections=sections,
+            state_snapshot=snapshot,
+            help_result=help_result,
+            next_actions=help_result["next_actions"],
+        ),
+        binding_source=binding_source,
+    )
+
+
+def dashboard_lane_result(task, workspace=".", route=None, binding_source="mcp"):
+    dashboard = abw_dashboard.run_dashboard(workspace)
+    body = dashboard["rendered"]
+    health = dashboard["health"]
+    knowledge = dashboard["knowledge"]
+    model_output = f"""{body}
+
+## Finalization
+- current_state: checked_only
+- evidence: dashboard read audit/help/suggestion state modules={health['modules']}; lanes={health['lanes']}; wiki_files={knowledge['wiki_files']}; pending_drafts={knowledge['pending_drafts']}
+- gaps_or_limitations: dashboard is read-only and summarizes local ABW state; it does not execute next actions
+- next_steps: choose a next_action explicitly if you want to continue from the dashboard
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(
+            route,
+            dashboard=dashboard,
+            header=dashboard["header"],
+            health=dashboard["health"],
+            knowledge=dashboard["knowledge"],
+            bottleneck=dashboard["bottleneck"],
+            top_gaps=dashboard["top_gaps"],
+            next_actions=dashboard["next_actions"],
+        ),
+        binding_source=binding_source,
+    )
+
+
 def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
     ingest_result = abw_ingest.run(task, workspace)
     body = (
@@ -734,10 +825,208 @@ def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
     )
 
 
+def list_drafts_lane_result(task, workspace=".", route=None, binding_source="mcp", params=None):
+    draft_listing = abw_review.list_drafts(workspace)
+    pending = draft_listing.get("pending_drafts", [])
+    if not pending:
+        body = "No pending drafts."
+    else:
+        draft_lines = "\n".join(f"- {item.get('draft')}" for item in pending if item.get("draft"))
+        body = f"Pending drafts:\n{draft_lines}"
+    model_output = f"""{body}
+
+## Finalization
+- current_state: checked_only
+- evidence: review listing read .brain/ingest_queue.json and found pending_drafts={len(pending)}
+- gaps_or_limitations: list_drafts only reports queue items currently marked review_needed
+- next_steps: run approve draft <path> explicitly if you want to promote one reviewed draft into trusted wiki
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(route, pending_drafts=pending),
+        binding_source=binding_source,
+    )
+
+
+def explain_draft_lane_result(task, workspace=".", route=None, binding_source="mcp", params=None):
+    params = dict(params or {})
+    explain_target = params.get("draft_path") or task
+    explain_result = abw_review_explain.explain_draft(explain_target, workspace)
+    if explain_result.get("status") != "ok":
+        body = f"Draft explanation request blocked. {explain_result.get('reason', 'Unknown review error.')}"
+        evidence = explain_result.get("reason", "draft validation failed")
+        gaps = "draft explanation requires a queued draft file under drafts/"
+        next_steps = "Provide a valid draft path from list drafts before asking for explanation."
+        explain_status = "blocked"
+    else:
+        body = explain_result["summary"]
+        evidence = (
+            f"rule-based draft explanation read {explain_result['draft']} "
+            f"and extracted key_points={len(explain_result.get('key_points', []))}; "
+            f"missing={len(explain_result.get('missing', []))}; confidence={explain_result.get('confidence')}"
+        )
+        gaps = (
+            "explanation is derived only from the draft text itself and does not validate technical correctness"
+        )
+        next_steps = (
+            "Use the missing/suggestions fields to improve the draft, then approve it explicitly only after review."
+        )
+        explain_status = "ok"
+
+    model_output = f"""{body}
+
+## Finalization
+- current_state: {"checked_only" if explain_status == "ok" else "blocked"}
+- evidence: {evidence}
+- gaps_or_limitations: {gaps}
+- next_steps: {next_steps}
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if explain_status == "blocked" or gate["report"].get("decision") == "blocked" else "completed"
+    extra = route_extra(
+        route,
+        explain_status=explain_status,
+    )
+    if explain_status == "ok":
+        extra["draft_explanation"] = explain_result
+    else:
+        extra["draft_explanation_error"] = explain_result
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=extra,
+        binding_source=binding_source,
+    )
+
+
+def review_drafts_lane_result(task, workspace=".", route=None, binding_source="mcp", params=None):
+    review_result = abw_review_explain.review_drafts(workspace)
+    items = review_result.get("items", [])
+    if not items:
+        body = "No pending drafts."
+    else:
+        lines = []
+        for item in items:
+            missing = ", ".join(item.get("missing", [])) or "none"
+            lines.append(
+                f"- {item.get('draft')}: confidence={item.get('confidence')}, "
+                f"suggestion={item.get('suggestion')}, missing={missing}"
+            )
+        body = "Draft batch review:\n" + "\n".join(lines)
+
+    model_output = f"""{body}
+
+## Finalization
+- current_state: checked_only
+- evidence: batch review reused list_drafts and explain_draft for review_items={len(items)}
+- gaps_or_limitations: batch review is rule-based only and capped to the first 5 pending drafts
+- next_steps: explain an individual draft for more detail or approve a specific draft explicitly after manual review
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(route, draft_batch_review=review_result),
+        binding_source=binding_source,
+    )
+
+
+def approve_draft_lane_result(task, workspace=".", route=None, binding_source="mcp", params=None):
+    params = dict(params or {})
+    draft_relpath = params.get("draft_path") or abw_review.extract_draft_reference(task, workspace=workspace)
+    draft_path = Path(workspace).resolve() / str(draft_relpath or "")
+    queue_item = None
+    if draft_relpath:
+        _, queue_item = abw_review.validate_queue_entry(workspace, draft_relpath)
+
+    if not draft_relpath:
+        body = "Draft approval request blocked because no draft path was provided."
+        evidence = "approve_draft intent requires an explicit drafts/<name> path in the task"
+        gaps = "approval is not allowed without an explicit draft target"
+        next_steps = "Provide a command like approve draft drafts/example_draft.md."
+        review_status = "blocked"
+    elif not draft_relpath.startswith("drafts/"):
+        body = f"Draft approval request blocked for '{draft_relpath}'."
+        evidence = f"requested path was {draft_relpath}"
+        gaps = "approval is allowed only for files inside drafts/"
+        next_steps = "Use a path under drafts/."
+        review_status = "blocked"
+    elif not draft_path.exists() or not draft_path.is_file():
+        body = f"Draft approval request blocked for '{draft_relpath}'."
+        evidence = f"draft file {draft_relpath} does not exist in workspace"
+        gaps = "missing draft file cannot be promoted"
+        next_steps = "Create the draft through ingest first, then review it explicitly."
+        review_status = "blocked"
+    elif queue_item is None:
+        body = f"Draft approval request blocked for '{draft_relpath}'."
+        evidence = f"draft file {draft_relpath} is not present in .brain/ingest_queue.json"
+        gaps = "only queued review_needed drafts can be promoted"
+        next_steps = "Run ingest for the raw file first so the draft enters the review queue."
+        review_status = "blocked"
+    else:
+        review_result = abw_review.run(task, workspace)
+        body = review_result["message"]
+        evidence = f"review promoted {review_result['draft']} to {review_result['wiki']}"
+        gaps = "promotion is manual and only updates the selected draft"
+        next_steps = "Query the trusted wiki or list drafts again to verify remaining queue items."
+        review_status = "approved"
+
+    model_output = f"""{body}
+
+## Finalization
+- current_state: {"checked_only" if review_status == "approved" else "blocked"}
+- evidence: {evidence}
+- gaps_or_limitations: {gaps}
+- next_steps: {next_steps}
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if review_status == "blocked" or gate["report"].get("decision") == "blocked" else "completed"
+    extra = route_extra(
+        route,
+        review_status=review_status,
+        requested_draft=draft_relpath,
+    )
+    if review_status == "approved":
+        extra["review_result"] = review_result
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=extra,
+        binding_source=binding_source,
+    )
+
+
 def execute_lane(task, workspace=".", route=None, binding_source="mcp"):
     lane = route_lane(route) or "legacy_execution"
+    params = route_params(route)
     handlers = {
+        "approve_draft": lambda: approve_draft_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, params=params),
         "coverage": lambda: coverage_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
+        "dashboard": lambda: dashboard_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
+        "explain_draft": lambda: explain_draft_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, params=params),
+        "help": lambda: help_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
+        "list_drafts": lambda: list_drafts_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, params=params),
+        "review_drafts": lambda: review_drafts_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, params=params),
         "query": lambda: query_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, deep=False),
         "query_deep": lambda: query_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, deep=True),
         "resume": lambda: resume_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
@@ -763,6 +1052,7 @@ def run_finalization_gate(model_output, task_kind=""):
         command,
         input=block,
         capture_output=True,
+        encoding="utf-8",
         text=True,
         check=False,
     )
@@ -820,6 +1110,39 @@ def compose_answer(body, finalization_block):
     return str(finalization_block or "").strip()
 
 
+def render_guidance_block(guidance, current_state="checked_only"):
+    text = str(guidance or "").strip()
+    if not text:
+        return ""
+    marker = "⚠️" if str(current_state or "").strip().lower() == "blocked" else "✔"
+    return f"{marker} {text}"
+
+
+def render_next_actions_block(next_actions):
+    actions = abw_suggestions.normalize_next_actions(next_actions)
+    if not actions:
+        return ""
+    return "👉 Bạn có thể tiếp tục:\n" + "\n".join(
+        f"- {action['label']}: {action['command']}" for action in actions
+    )
+
+
+def attach_guided_ux(answer, finalization_block, guidance, next_actions, current_state="checked_only"):
+    guidance_block = render_guidance_block(guidance, current_state=current_state)
+    actions_block = render_next_actions_block(next_actions)
+    if not guidance_block and not actions_block:
+        return str(answer or "").strip()
+    body, _ = split_answer_and_finalization(answer)
+    body = body.strip()
+    blocks = [block for block in (guidance_block, actions_block) if block]
+    ux_block = "\n\n".join(blocks).strip()
+    if body:
+        body = f"{body}\n\n{ux_block}"
+    else:
+        body = ux_block
+    return compose_answer(body, finalization_block)
+
+
 def extract_current_state(finalization_gate):
     report = finalization_gate.get("report", {})
     return report.get("checked_state") or report.get("state") or "blocked"
@@ -855,6 +1178,83 @@ def rejected_non_runner_output(task=""):
     return rejected_output("output not produced by runner", task=task)
 
 
+def attach_state_based_next_actions(result, workspace="."):
+    if not isinstance(result, dict):
+        return result
+    updated = dict(result)
+    updated["next_actions"] = abw_suggestions.suggest_next_actions(workspace)
+    return updated
+
+
+def render_action_menu(next_actions):
+    actions = abw_suggestions.normalize_next_actions(next_actions)
+    if not actions:
+        return ""
+    lines = ["Next actions:"]
+    for index, action in enumerate(actions, start=1):
+        lines.append(f"{index}. {action['label']} ({action['command']})")
+    return "\n".join(lines)
+
+
+def selected_next_action(next_actions, selection):
+    actions = abw_suggestions.normalize_next_actions(next_actions)
+    try:
+        index = int(str(selection or "").strip())
+    except ValueError:
+        return None
+    if index < 1 or index > len(actions):
+        return None
+    return actions[index - 1]
+
+
+def interactive_next_action_command(next_actions, input_func=input, output_func=print):
+    menu = render_action_menu(next_actions)
+    if not menu:
+        return None
+    output_func(menu)
+    selection = input_func("Chọn số để chạy next action, hoặc Enter để bỏ qua: ")
+    if not str(selection or "").strip():
+        return None
+    action = selected_next_action(next_actions, selection)
+    if not action:
+        output_func("Lựa chọn không hợp lệ. Không chạy action nào.")
+        return None
+    return action["command"]
+
+
+def run_cli_next_action_loop(
+    result,
+    *,
+    workspace=".",
+    binding_mode="STRICT",
+    binding_source="cli",
+    memory_scope=None,
+    input_func=input,
+    output_func=print,
+    max_steps=10,
+):
+    current = result
+    for _ in range(max_steps):
+        command = interactive_next_action_command(
+            current.get("next_actions", []) if isinstance(current, dict) else [],
+            input_func=input_func,
+            output_func=output_func,
+        )
+        if not command:
+            return current
+        current = dispatch_request(
+            task=command,
+            workspace=workspace,
+            task_kind="execution",
+            binding_mode=binding_mode,
+            binding_source=binding_source,
+            memory_scope=memory_scope,
+        )
+        output_func(console_safe_text(render_with_visibility_lock(current), sys.stdout))
+    output_func("Đã đạt giới hạn tương tác. Dừng để tránh chạy vòng lặp ngoài ý muốn.")
+    return current
+
+
 def render_with_visibility_lock(result):
     if not isinstance(result, dict):
         return "[UNVERIFIED OUTPUT - DO NOT TRUST]\nreason: non-structured output\n\n" + str(result)
@@ -874,6 +1274,76 @@ def render_with_visibility_lock(result):
         f"reason: {reason}\n\n"
         + answer
     )
+
+
+def console_safe_text(text, stream=None):
+    rendered = str(text or "")
+    encoding = str(getattr(stream or sys.stdout, "encoding", "") or "").lower()
+    if "utf" in encoding:
+        return rendered
+    replacements = {
+        "✔": "[OK]",
+        "⚠️": "[WARN]",
+        "👉": "->",
+    }
+    for source, target in replacements.items():
+        rendered = rendered.replace(source, target)
+    normalized = unicodedata.normalize("NFKD", rendered)
+    ascii_only = "".join(char for char in normalized if not unicodedata.combining(char))
+    return ascii_only.encode("ascii", errors="replace").decode("ascii")
+
+
+def first_pending_draft_path(result):
+    pending = result.get("pending_drafts") or []
+    if pending and isinstance(pending, list):
+        first = pending[0] if isinstance(pending[0], dict) else None
+        if first and first.get("draft"):
+            return first["draft"]
+
+    draft_explanation = result.get("draft_explanation") or {}
+    if draft_explanation.get("draft"):
+        return draft_explanation["draft"]
+
+    review_result = result.get("review_result") or {}
+    if review_result.get("draft"):
+        return review_result["draft"]
+
+    requested = str(result.get("requested_draft") or "").strip()
+    if requested:
+        return requested
+
+    batch_review = result.get("draft_batch_review") or {}
+    items = batch_review.get("items") or []
+    if items and isinstance(items, list):
+        first = items[0] if isinstance(items[0], dict) else None
+        if first and first.get("draft"):
+            return first["draft"]
+
+    return "drafts/<path>"
+
+
+def default_guidance(result):
+    current_state = str(result.get("current_state") or "").strip().lower()
+
+    if result.get("ingest_result") or result.get("ingest_draft"):
+        return "Tôi đã tạo bản nháp từ tài liệu của bạn."
+    if "pending_drafts" in result or result.get("draft_batch_review"):
+        return "Bạn đang xem các bản nháp cần duyệt."
+    if result.get("draft_explanation"):
+        return "Tôi đang tóm tắt bản nháp để bạn duyệt nhanh."
+    if result.get("knowledge") or result.get("deep_query") or current_state.startswith("knowledge_"):
+        return "Tôi đang tìm thông tin cho bạn."
+    if result.get("coverage_report"):
+        return "Tôi đang kiểm tra hệ đang thiếu gì."
+    if result.get("help_result") or (
+        str(result.get("message") or "").startswith("Bạn có thể làm") and result.get("sections")
+    ):
+        return "Tôi đang gợi ý các bước bạn có thể làm tiếp theo."
+    if "review_status" in result:
+        if current_state == "blocked":
+            return "Tôi chưa thể duyệt bản nháp này."
+        return "Tôi đã chuyển bản nháp đã duyệt vào wiki tin cậy."
+    return ""
 
 
 def has_finalized_answer_shape(result):
@@ -993,6 +1463,17 @@ def base_result(
         result["intent"] = "knowledge"
     if extra:
         result.update(extra)
+    result["guidance"] = str(result.get("guidance") or default_guidance(result))
+    result["next_actions"] = abw_suggestions.normalize_next_actions(result.get("next_actions") or [])
+    result["answer"] = attach_guided_ux(
+        result.get("answer", ""),
+        result.get("finalization_block", ""),
+        result.get("guidance", ""),
+        result.get("next_actions", []),
+        current_state=result.get("current_state", ""),
+    )
+    if "validated_answer" in result:
+        result["validated_answer"] = result["answer"]
     result["validation_proof"] = abw_proof.generate_proof(
         result.get("answer", ""),
         result.get("finalization_block", ""),
@@ -1456,6 +1937,7 @@ def dispatch_request(
             workspace=workspace,
         )
         result = enforce_output_acceptance(result, mode=binding_mode)
+        result = attach_state_based_next_actions(result, workspace=workspace)
         if result.get("binding_status") == "rejected" or result.get("current_state") == "blocked":
             log_negative_memory(
                 workspace=workspace,
@@ -1532,6 +2014,7 @@ def dispatch_request(
             raise
     result = apply_acceptance_validation(result, workspace=workspace)
     result = enforce_output_acceptance(result, mode=binding_mode)
+    result = attach_state_based_next_actions(result, workspace=workspace)
     if result.get("binding_status") == "rejected" or result.get("current_state") == "blocked":
         log_negative_memory(
             workspace=workspace,
@@ -1592,6 +2075,11 @@ def main():
     parser.add_argument("--candidate-answer", help="Tentative answer to validate when task_kind=validation")
     parser.add_argument("--binding-mode", default="STRICT", help="STRICT or SOFT")
     parser.add_argument("--binding-source", default="cli", help="mcp, fallback, or another caller label")
+    parser.add_argument(
+        "--interactive-actions",
+        action="store_true",
+        help="After a task result, show indexed next_actions and run one only after explicit selection.",
+    )
 
     args = parser.parse_args()
 
@@ -1621,7 +2109,15 @@ def main():
             binding_source=payload.get("binding_source", args.binding_source),
             memory_scope=payload.get("memory_scope"),
         )
-        print(render_with_visibility_lock(result))
+        print(console_safe_text(render_with_visibility_lock(result), sys.stdout))
+        if args.interactive_actions or bool(payload.get("interactive_actions", False)):
+            result = run_cli_next_action_loop(
+                result,
+                workspace=args.workspace,
+                binding_mode=payload.get("binding_mode", args.binding_mode),
+                binding_source=payload.get("binding_source", args.binding_source),
+                memory_scope=payload.get("memory_scope"),
+            )
         sys.exit(0 if result.get("runner_status") == "completed" else 3)
 
     if not args.request or not args.command:
@@ -1671,6 +2167,7 @@ def main():
         final_output["binding_source"],
     )
     final_output = enforce_output_acceptance(final_output, mode=args.binding_mode)
+    final_output = attach_state_based_next_actions(final_output, workspace=args.workspace)
     if final_output.get("binding_status") == "rejected" or final_output.get("current_state") == "blocked":
         log_negative_memory(
             workspace=args.workspace,
@@ -1680,7 +2177,14 @@ def main():
             fix_hint=derive_fix_hint(final_output),
         )
 
-    print(render_with_visibility_lock(final_output))
+    print(console_safe_text(render_with_visibility_lock(final_output), sys.stdout))
+    if args.interactive_actions:
+        final_output = run_cli_next_action_loop(
+            final_output,
+            workspace=args.workspace,
+            binding_mode=args.binding_mode,
+            binding_source=args.binding_source,
+        )
 
     if finalization_decision == "blocked":
         sys.exit(3)

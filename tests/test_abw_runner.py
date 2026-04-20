@@ -18,6 +18,10 @@ def make_proof(answer, finalization_block, runtime_id="123", nonce=None, binding
     return abw_proof.generate_proof(answer, finalization_block, runtime_id, nonce, binding_source)
 
 
+def action_commands(actions):
+    return [action["command"] if isinstance(action, dict) else action for action in actions]
+
+
 class AbwRunnerBindingTests(unittest.TestCase):
     def test_render_with_visibility_lock_verified_output(self):
         rendered = abw_runner.render_with_visibility_lock(
@@ -822,6 +826,408 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertFalse(result["ingest_draft"]["trusted_wiki_written"])
             self.assertTrue((Path(tmp) / ".brain" / "ingest_queue.json").exists())
             self.assertEqual(list((Path(tmp) / "wiki").rglob("*.md")) if (Path(tmp) / "wiki").exists() else [], [])
+
+    def test_list_drafts_returns_empty_when_no_queue_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="list drafts",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "list_drafts")
+            self.assertEqual(result["pending_drafts"], [])
+            self.assertIn("No pending drafts.", result["answer"])
+
+    def test_approve_valid_draft_succeeds_via_runner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_path = Path(tmp) / "raw" / "sample.md"
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text("# Sample\n", encoding="utf-8")
+            abw_runner.dispatch_request(
+                task="ingest raw/sample.md into wiki",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            result = abw_runner.dispatch_request(
+                task="approve draft drafts/sample_draft.md",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "approve_draft")
+            self.assertEqual(result["review_status"], "approved")
+            self.assertEqual(result["runner_status"], "completed")
+            self.assertTrue((Path(tmp) / "wiki" / "sample.md").exists())
+            self.assertFalse((Path(tmp) / "drafts" / "sample_draft.md").exists())
+
+    def test_approve_invalid_draft_is_rejected_safely(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="approve draft drafts/missing_draft.md",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "approve_draft")
+            self.assertEqual(result["review_status"], "blocked")
+            self.assertEqual(result["runner_status"], "blocked")
+            self.assertEqual(result["current_state"], "blocked")
+            self.assertIn("blocked", result["answer"].lower())
+
+    def test_approve_without_path_falls_back_in_router(self):
+        result = abw_runner.dispatch_request(
+            task="approve draft",
+            task_kind="execution",
+            binding_source="mcp",
+            workspace=".",
+        )
+
+        self.assertNotEqual(result["route"]["lane"], "approve_draft")
+        self.assertEqual(result["route"]["lane"], "legacy_execution")
+
+    def test_explain_valid_draft_returns_review_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_path = Path(tmp) / "raw" / "sample.md"
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text(
+                "# Orders Table\n\n"
+                "This draft explains the orders table.\n\n"
+                "- column order_id identifies the row\n"
+                "- example query helps analyze timeout error\n\n"
+                "SELECT order_id FROM orders WHERE status = 'FAILED';\n",
+                encoding="utf-8",
+            )
+            abw_runner.dispatch_request(
+                task="ingest raw/sample.md into wiki",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            result = abw_runner.dispatch_request(
+                task="explain draft drafts/sample_draft.md",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "explain_draft")
+            self.assertEqual(result["explain_status"], "ok")
+            self.assertEqual(result["runner_status"], "completed")
+            self.assertIn("Draft overview:", result["answer"])
+            self.assertIn(result["draft_explanation"]["confidence"], {"medium", "high"})
+
+    def test_explain_invalid_draft_is_rejected_safely(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="explain draft drafts/missing_draft.md",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "explain_draft")
+            self.assertEqual(result["explain_status"], "blocked")
+            self.assertEqual(result["runner_status"], "blocked")
+            self.assertEqual(result["current_state"], "blocked")
+
+    def test_explain_empty_draft_returns_low_confidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_path = Path(tmp) / "raw" / "empty.md"
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text("", encoding="utf-8")
+            abw_runner.dispatch_request(
+                task="ingest raw/empty.md into wiki",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            result = abw_runner.dispatch_request(
+                task="explain draft drafts/empty_draft.md",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "explain_draft")
+            self.assertEqual(result["draft_explanation"]["confidence"], "low")
+
+    def test_review_drafts_returns_multiple_items(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            for name, content in {
+                "orders.md": "# Orders\n\n- example\nSELECT * FROM orders;\n",
+                "errors.md": "# Errors\n\n- timeout error details\n",
+            }.items():
+                raw_path = workspace / "raw" / name
+                raw_path.parent.mkdir(parents=True, exist_ok=True)
+                raw_path.write_text(content, encoding="utf-8")
+                abw_runner.dispatch_request(
+                    task=f"ingest raw/{name} into wiki",
+                    task_kind="execution",
+                    binding_source="mcp",
+                    workspace=tmp,
+                )
+
+            result = abw_runner.dispatch_request(
+                task="review drafts",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "review_drafts")
+            self.assertEqual(len(result["draft_batch_review"]["items"]), 2)
+            self.assertIn("Draft batch review:", result["answer"])
+
+    def test_review_drafts_handles_empty_drafts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_path = Path(tmp) / "raw" / "empty.md"
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text("", encoding="utf-8")
+            abw_runner.dispatch_request(
+                task="ingest raw/empty.md into wiki",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            result = abw_runner.dispatch_request(
+                task="review drafts",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "review_drafts")
+            self.assertEqual(result["draft_batch_review"]["items"][0]["confidence"], "low")
+            self.assertEqual(result["draft_batch_review"]["items"][0]["suggestion"], "improve")
+
+    def test_review_drafts_limits_to_top_five(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            for index in range(6):
+                raw_path = workspace / "raw" / f"draft-{index}.md"
+                raw_path.parent.mkdir(parents=True, exist_ok=True)
+                raw_path.write_text(f"# Draft {index}\n\n- sample example\n", encoding="utf-8")
+                abw_runner.dispatch_request(
+                    task=f"ingest raw/draft-{index}.md into wiki",
+                    task_kind="execution",
+                    binding_source="mcp",
+                    workspace=tmp,
+                )
+
+            result = abw_runner.dispatch_request(
+                task="review drafts",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "review_drafts")
+            self.assertEqual(len(result["draft_batch_review"]["items"]), 5)
+
+    def test_help_command_returns_sections(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="help",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "help")
+            self.assertEqual(result["message"], "Bạn có thể làm tiếp dựa trên trạng thái hiện tại:")
+            self.assertEqual(len(result["sections"]), 4)
+            self.assertEqual(result["sections"][0]["title"], "Overview")
+            self.assertEqual(result["state_snapshot"]["raw_files"], 0)
+            self.assertEqual(action_commands(result["next_actions"]), ["help", "audit system"])
+            return
+
+        self.assertEqual(result["route"]["lane"], "help")
+        self.assertEqual(result["message"], "Bạn có thể làm:")
+        self.assertEqual(len(result["sections"]), 4)
+        self.assertEqual(result["sections"][0]["title"], "📥 Nạp tài liệu")
+
+    def test_dashboard_lane_returns_structured_ui_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="dashboard",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "dashboard")
+            self.assertEqual(result["header"]["title"], "ABW Dashboard")
+            self.assertIn("health", result)
+            self.assertIn("knowledge", result)
+            self.assertIn("top_gaps", result)
+            self.assertTrue(result["next_actions"])
+            self.assertIn("ABW Dashboard", result["answer"])
+
+    def test_ingest_lane_exposes_state_based_next_actions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_path = Path(tmp) / "raw" / "sample.md"
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text("# Sample\n", encoding="utf-8")
+
+            result = abw_runner.dispatch_request(
+                task="ingest raw/sample.md into wiki",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "ingest")
+            self.assertEqual(action_commands(result["next_actions"]), ["review drafts"])
+            self.assertTrue(result["guidance"])
+
+    def test_list_drafts_lane_uses_state_based_next_actions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_path = Path(tmp) / "raw" / "sample.md"
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text("# Sample\n", encoding="utf-8")
+            abw_runner.dispatch_request(
+                task="ingest raw/sample.md into wiki",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            result = abw_runner.dispatch_request(
+                task="list drafts",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(action_commands(result["next_actions"]), ["review drafts"])
+            self.assertTrue(result["guidance"])
+
+    def test_explain_draft_lane_uses_state_based_next_actions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_path = Path(tmp) / "raw" / "sample.md"
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
+            raw_path.write_text("# Sample\n\n- example\n", encoding="utf-8")
+            abw_runner.dispatch_request(
+                task="ingest raw/sample.md into wiki",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            result = abw_runner.dispatch_request(
+                task="explain draft drafts/sample_draft.md",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(action_commands(result["next_actions"]), ["review drafts"])
+            self.assertTrue(result["guidance"])
+
+    def test_query_lane_uses_fallback_next_actions_when_no_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="What is PostgreSQL selection rationale?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "query")
+            self.assertEqual(action_commands(result["next_actions"]), ["help", "audit system"])
+            self.assertTrue(result["guidance"])
+
+    def test_next_actions_menu_displays_indexed_actions(self):
+        menu = abw_runner.render_action_menu(["help", {"label": "Tự audit", "command": "audit system"}])
+
+        self.assertIn("1. Xem hướng dẫn (help)", menu)
+        self.assertIn("2. Tự audit (audit system)", menu)
+
+    def test_valid_next_action_selection_returns_command(self):
+        command = abw_runner.interactive_next_action_command(
+            ["help", "audit system"],
+            input_func=lambda _prompt: "2",
+            output_func=lambda _text: None,
+        )
+
+        self.assertEqual(command, "audit system")
+
+    def test_invalid_next_action_selection_is_ignored(self):
+        messages = []
+        command = abw_runner.interactive_next_action_command(
+            ["help"],
+            input_func=lambda _prompt: "9",
+            output_func=messages.append,
+        )
+
+        self.assertIsNone(command)
+        self.assertTrue(any("không hợp lệ" in message for message in messages))
+
+    def test_cli_next_action_loop_executes_valid_selection(self):
+        initial = {
+            "next_actions": [{"label": "Xem hướng dẫn", "command": "help"}],
+            "runner_status": "completed",
+        }
+        executed = {
+            "answer": "ok",
+            "binding_status": "runner_enforced",
+            "validation_proof": "proof",
+            "current_state": "checked_only",
+            "runner_status": "completed",
+            "next_actions": [],
+        }
+
+        with patch.object(abw_runner, "dispatch_request", return_value=executed) as mocked:
+            result = abw_runner.run_cli_next_action_loop(
+                initial,
+                workspace=".",
+                binding_mode="STRICT",
+                binding_source="cli",
+                input_func=lambda _prompt: "1",
+                output_func=lambda _text: None,
+                max_steps=1,
+            )
+
+        mocked.assert_called_once()
+        self.assertEqual(mocked.call_args.kwargs["task"], "help")
+        self.assertIs(result, executed)
+
+    def test_help_command_has_guidance_and_vietnamese_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="help",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertTrue(result["guidance"])
+            self.assertTrue(result["next_actions"])
+            self.assertIn("Bạn có thể làm tiếp dựa trên trạng thái hiện tại:", result["answer"])
+            self.assertIn("Situational guidance", result["answer"])
+            return
+
+        result = abw_runner.dispatch_request(
+            task="help",
+            task_kind="execution",
+            binding_source="mcp",
+            workspace=".",
+        )
+
+        self.assertEqual(result["guidance"], "Tôi đang gợi ý các bước bạn có thể làm tiếp theo.")
+        self.assertTrue(result["next_actions"])
+        self.assertIn("Bạn có thể làm:", result["answer"])
+        self.assertIn("📋 Duyệt tri thức", result["answer"])
 
 
 if __name__ == "__main__":

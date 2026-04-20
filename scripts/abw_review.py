@@ -14,21 +14,29 @@ def candidate_path_tokens(task):
     return [token.strip("`'\"()[]{}<>.,;:") for token in re.findall(pattern, str(task or ""))]
 
 
-def extract_draft_path(task, workspace="."):
+def extract_draft_reference(task, workspace="."):
     workspace_root = Path(workspace).resolve()
     for token in candidate_path_tokens(task):
         candidate = Path(token)
         if not candidate.is_absolute():
             candidate = workspace_root / candidate
         try:
-            relative = candidate.resolve().relative_to(workspace_root)
+            relative = candidate.resolve(strict=False).relative_to(workspace_root)
         except ValueError:
             continue
         relative_text = str(relative).replace("\\", "/")
-        if not relative_text.startswith("drafts/"):
-            continue
-        if candidate.exists() and candidate.is_file():
-            return relative_text, candidate
+        if relative_text.startswith("drafts/"):
+            return relative_text
+    return None
+
+
+def extract_draft_path(task, workspace="."):
+    draft_relpath = extract_draft_reference(task, workspace=workspace)
+    if not draft_relpath:
+        return None, None
+    candidate = Path(workspace).resolve() / draft_relpath
+    if candidate.exists() and candidate.is_file():
+        return draft_relpath, candidate
     return None, None
 
 
@@ -67,6 +75,12 @@ def validate_queue_entry(workspace, draft_relpath):
         if item.get("draft") == draft_relpath:
             return queue, item
     return queue, None
+
+
+def list_drafts(workspace):
+    queue = load_json(ingest_queue_path(workspace), {"items": []})
+    pending = [item for item in queue.get("items", []) if item.get("status") == "review_needed"]
+    return {"pending_drafts": pending}
 
 
 def wiki_relpath_from_draft(draft_relpath):
