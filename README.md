@@ -207,7 +207,7 @@ end
 
 subgraph Trusted Zone
     F -->|HMAC Verified| G[Final Output]
-    G --> H[Render (Visibility Lock)]
+    G --> H["Render - Visibility Lock"]
 end
 
 C -.->|NO TRUST| F
@@ -222,7 +222,7 @@ flowchart TD
 A[/abw-update/] --> B[Fetch origin]
 B --> C[Resolve target commit]
 
-C --> D[Create staging (git worktree)]
+C --> D["Create staging - git worktree"]
 D --> E[Integrity Check]
 
 E -->|fail| X[Abort]
@@ -241,7 +241,7 @@ I --> J[System Stable]
 ```mermaid
 flowchart TD
 
-A[Runner Output] --> B[Generate Proof (HMAC)]
+A[Runner Output] --> B["Generate Proof - HMAC"]
 
 B --> C[Output Payload]
 
@@ -398,7 +398,7 @@ result: cụm trống
 
 Result:
 - No trusted knowledge found.
-- Logged as knowledge gap.
+- Logged as `knowledge_gaps`.
 
 ---
 
