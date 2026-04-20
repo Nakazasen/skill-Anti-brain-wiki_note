@@ -771,6 +771,8 @@ class AbwRunnerBindingTests(unittest.TestCase):
         self.assertEqual(shallow["route"]["lane"], "query")
         self.assertEqual(deep["route"]["lane"], "query_deep")
         self.assertEqual(deep["binding_status"], "runner_checked")
+        self.assertEqual(deep["strategy_trace"]["mode"], "bounded_wiki_reasoning_loop")
+        self.assertIn("reasoning_steps", deep)
 
     def test_resume_lane_falls_back_to_query_when_no_safe_step_exists(self):
         with tempfile.TemporaryDirectory() as tmp:

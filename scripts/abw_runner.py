@@ -14,6 +14,7 @@ import abw_accept
 import abw_health
 import abw_knowledge
 import abw_proof
+import abw_query_deep
 import abw_router
 import continuation_execute
 import continuation_gate
@@ -420,6 +421,86 @@ def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, 
         binding_source,
         {"execution_path": lane},
     )
+    if deep:
+        deep_result = abw_query_deep.run(task, workspace)
+        has_sources = bool(deep_result.get("sources"))
+        gap_logged = False
+        if not has_sources:
+            gap_id = log_knowledge_gap(
+                task,
+                workspace=workspace,
+                searched_locations=["wiki/"],
+                reason="Deep query lane did not find enough wiki evidence.",
+            )
+            gap_logged = True
+        else:
+            gap_id = None
+
+        confidence = str(deep_result.get("confidence") or "low").lower()
+        score_map = {"high": 3, "medium": 2, "low": 1}
+        knowledge_tier = "E2_wiki" if has_sources else "E0_unknown"
+        knowledge_score = score_map.get(confidence, 0) if has_sources else 0
+        current_state = "knowledge_answered" if has_sources else "knowledge_gap_logged"
+        body = str(deep_result.get("answer") or "").strip()
+        evidence_summary = (
+            f"query_deep collected {len(deep_result.get('evidence', []))} wiki evidence items "
+            f"across {len(deep_result.get('sources', []))} source files"
+            if has_sources
+            else "query_deep did not find enough wiki evidence"
+        )
+        model_output = f"""{body}
+
+## Finalization
+- current_state: {current_state}
+- evidence: {evidence_summary}
+- gaps_or_limitations: retrieval source=local_wiki; lane=query_deep; confidence={confidence}; contradiction_count={sum(1 for step in deep_result.get("reasoning_steps", []) if step.get("step") == "contradiction_check" and step.get("contradiction_count", 0) > 0)}
+- next_steps: {"add or ingest more grounded wiki material before relying on this answer" if gap_logged else "use the cited wiki sources for follow-up deep questions if needed"}
+- knowledge_evidence_tier: {knowledge_tier}
+- knowledge_source_score: {knowledge_score}
+- source_summary: local_wiki
+- gap_logged: {gap_logged}
+"""
+        gate = run_finalization_gate(model_output, task_kind="knowledge")
+        answer = compose_answer(body, gate["block"])
+        runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+        knowledge = {
+            "answer": body,
+            "tier": knowledge_tier,
+            "score": knowledge_score,
+            "gap_logged": gap_logged,
+            "source_summary": "local_wiki",
+            "source": "wiki",
+            "content": body,
+            "confidence": 0.85 if confidence == "high" else (0.65 if confidence == "medium" else 0.35),
+        }
+        extra = route_extra(
+            route,
+            gap_logged=gap_logged,
+            gap_id=gap_id,
+            knowledge_evidence_tier=knowledge_tier,
+            knowledge_source_score=knowledge_score,
+            refinement_history=[],
+            semantic_fix_applied=False,
+            reasoning_steps=deep_result.get("reasoning_steps", []),
+            deep_query=deep_result,
+            strategy_trace={
+                "lane": lane,
+                "mode": "bounded_wiki_reasoning_loop",
+                "status": deep_result.get("status"),
+                "sources": deep_result.get("sources", []),
+            },
+        )
+        return base_result(
+            task,
+            binding_status,
+            answer,
+            gate,
+            runner_status,
+            knowledge=knowledge,
+            extra=extra,
+            binding_source=binding_source,
+        )
+
     result = enrich_knowledge_result(task, workspace=workspace)
     if result.get("gap_logged"):
         result["gap_id"] = log_knowledge_gap(
