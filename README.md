@@ -1,5 +1,7 @@
 # Hybrid ABW (Anti-Brain-Wiki)
 
+> ⚠️ This README reflects the current production-level architecture.
+
 🌐 **Language**  
 > 🇻🇳 **Tiếng Việt** | 🇬🇧 [English](#english)
 
@@ -133,6 +135,128 @@ flowchart LR
 - Mojibake -> detect
 
 </details>
+
+---
+
+## 🚀 System Update
+
+### Tiếng Việt
+
+Phần này bổ sung trạng thái hệ thống hiện tại mà không thay đổi các phần mô tả cũ ở trên.
+
+- Proof system hiện dùng `HMAC(secret_key, answer + finalization_block + runtime_id + nonce + binding_source)` thay cho `SHA256` công khai.
+- Payload proof hiện bắt buộc có `nonce` và `binding_source`, và proof chỉ hợp lệ khi được runner ký bằng secret nội bộ.
+- Knowledge grounding không còn dựa trên heuristic string matching như `"wiki"`, `"source"`, `"unknown"`.
+- Knowledge chỉ được lấy từ nguồn thật:
+  - local wiki
+  - explicit local file/source
+- Nếu không tìm thấy nguồn thật, hệ thống ghi knowledge gap vào `.brain/knowledge_gaps.json` và hạ về `E0_unknown`.
+- `abw_accept` đã được tích hợp vào canonical execution path của `/abw-ask`.
+- `runner_enforced` chỉ được giữ khi execution thật xảy ra và `evaluation.accepted == True`.
+- Nếu `abw_accept` không pass hoặc không accepted, output bị hạ xuống `runner_checked`.
+- Hệ thống đã có self-update:
+  - `/abw-update`
+  - `/abw-update <commit_hash>`
+  - `/abw-rollback`
+- Self-update dùng `git worktree` để staging, có backup, integrity check, atomic switch thực dụng, và rollback khi lỗi.
+- Runtime integrity hiện kiểm tra critical files, hash baseline của runtime, và có trạng thái `integrity_compromised` nếu phát hiện sai lệch.
+- Với các hardening hiện tại, mức trưởng thành hệ thống đã tiến từ `SOFT_BOUND` lên `PRACTICAL_HARD_BOUND`.
+
+### English
+
+This section adds the current system state without modifying the earlier descriptive sections above.
+
+- The proof system now uses `HMAC(secret_key, answer + finalization_block + runtime_id + nonce + binding_source)` instead of a public `SHA256` hash.
+- Proof payloads now require both `nonce` and `binding_source`, and proofs are only valid when signed by the runner with its internal secret.
+- Knowledge grounding no longer relies on heuristic string matching such as `"wiki"`, `"source"`, or `"unknown"`.
+- Knowledge is only retrieved from real sources:
+  - local wiki
+  - explicit local file/source
+- If no real source is found, the system logs a knowledge gap to `.brain/knowledge_gaps.json` and downgrades to `E0_unknown`.
+- `abw_accept` is now integrated into the canonical `/abw-ask` execution path.
+- `runner_enforced` is only retained when real execution happened and `evaluation.accepted == True`.
+- If `abw_accept` does not pass or is not accepted, the output is downgraded to `runner_checked`.
+- The system now includes self-update commands:
+  - `/abw-update`
+  - `/abw-update <commit_hash>`
+  - `/abw-rollback`
+- Self-update uses `git worktree` staging, backup, integrity checks, a practical atomic switch, and rollback on failure.
+- Runtime integrity now verifies critical files, compares runtime hash baselines, and exposes an `integrity_compromised` state on mismatch.
+- With the current hardening, system maturity has moved from `SOFT_BOUND` to `PRACTICAL_HARD_BOUND`.
+
+---
+
+## 🔧 Advanced Architecture
+
+### Trust Boundary Diagram
+
+```mermaid
+flowchart TD
+
+A[User / CLI Input] --> B[Runner]
+
+subgraph Untrusted Zone
+    B --> C[Candidate Answer]
+end
+
+subgraph Controlled Execution
+    C --> D[Execution / Artifact]
+    D --> E[abw_accept Validation]
+    E --> F[Acceptance Gate]
+end
+
+subgraph Trusted Zone
+    F -->|HMAC Verified| G[Final Output]
+    G --> H[Render (Visibility Lock)]
+end
+
+C -.->|NO TRUST| F
+D -->|Evidence| F
+```
+
+### Self-Update Pipeline
+
+```mermaid
+flowchart TD
+
+A[/abw-update/] --> B[Fetch origin]
+B --> C[Resolve target commit]
+
+C --> D[Create staging (git worktree)]
+D --> E[Integrity Check]
+
+E -->|fail| X[Abort]
+
+E -->|pass| F[Backup current]
+F --> G[Atomic Switch]
+
+G --> H[Update version file]
+H --> I[Reload modules]
+
+I --> J[System Stable]
+```
+
+### Proof Flow
+
+```mermaid
+flowchart TD
+
+A[Runner Output] --> B[Generate Proof (HMAC)]
+
+B --> C[Output Payload]
+
+C --> D[Acceptance Gate]
+
+D --> E{Verify Proof}
+
+E -->|Invalid| X[Reject]
+
+E -->|Valid| F[Check Finalization]
+
+F -->|Fail| X
+
+F -->|Pass| G[Accepted Output]
+```
 
 ---
 
