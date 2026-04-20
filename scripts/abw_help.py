@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import abw_i18n
 import abw_suggestions
 
 
@@ -55,31 +56,31 @@ def format_coverage(value):
     return f"{value:.2f}"
 
 
-def situational_guidance(snapshot, next_actions):
+def situational_guidance(snapshot, next_actions, workspace="."):
     guidance = []
     if snapshot["raw_files"] == 0 and snapshot["wiki_files"] == 0 and snapshot["draft_files"] == 0:
-        guidance.append("Chưa có dữ liệu tri thức. Bắt đầu bằng cách đưa tài liệu vào raw/ rồi chạy ingest.")
+        guidance.append(abw_i18n.t("help.guidance.no_data", workspace))
     if snapshot["pending_drafts"] > 0:
-        guidance.append("Đang có bản nháp cần duyệt trước khi trở thành wiki tin cậy.")
+        guidance.append(abw_i18n.t("help.guidance.pending_drafts", workspace))
     if snapshot["coverage_ratio"] is not None and snapshot["coverage_ratio"] < 0.6:
-        guidance.append("Coverage đang thấp. Nên bổ sung hoặc chuẩn hóa thêm tri thức.")
+        guidance.append(abw_i18n.t("help.guidance.low_coverage", workspace))
     if snapshot["raw_files"] > 0 and snapshot["pending_drafts"] == 0 and snapshot["wiki_files"] == 0:
-        guidance.append("Đã có raw nhưng chưa có wiki tin cậy. Hãy tạo draft ingest trước.")
+        guidance.append(abw_i18n.t("help.guidance.raw_without_wiki", workspace))
     if not guidance and next_actions:
-        guidance.append("Hệ đang có đủ dữ liệu cơ bản. Chọn một bước tiếp theo phù hợp.")
+        guidance.append(abw_i18n.t("help.guidance.ready", workspace))
     return guidance
 
 
-def minimal_commands(snapshot):
+def minimal_commands(snapshot, workspace="."):
     commands = []
     if snapshot["raw_files"] > 0:
         commands.append("ingest raw/<file>")
     else:
-        commands.append("thêm tài liệu vào raw/ rồi chạy ingest raw/<file>")
+        commands.append(abw_i18n.t("help.command.add_raw_and_ingest", workspace))
     if snapshot["pending_drafts"] > 0:
         commands.extend(["review drafts", "approve draft drafts/<file>"])
     if snapshot["wiki_files"] > 0:
-        commands.append("hỏi trực tiếp")
+        commands.append(abw_i18n.t("help.command.ask_direct", workspace))
     commands.extend(["coverage", "audit system"])
 
     deduped = []
@@ -92,11 +93,11 @@ def minimal_commands(snapshot):
     return deduped
 
 
-def build_sections(snapshot, next_actions):
-    guidance = situational_guidance(snapshot, next_actions)
+def build_sections(snapshot, next_actions, workspace="."):
+    guidance = situational_guidance(snapshot, next_actions, workspace=workspace)
     return [
         {
-            "title": "Overview",
+            "title": abw_i18n.t("help.overview", workspace),
             "items": [
                 f"raw_files: {snapshot['raw_files']}",
                 f"draft_files: {snapshot['draft_files']}",
@@ -106,16 +107,16 @@ def build_sections(snapshot, next_actions):
             ],
         },
         {
-            "title": "Next actions",
+            "title": abw_i18n.t("help.next_actions", workspace),
             "items": list(next_actions),
         },
         {
-            "title": "Situational guidance",
+            "title": abw_i18n.t("help.situational_guidance", workspace),
             "items": guidance,
         },
         {
-            "title": "Minimal commands",
-            "items": minimal_commands(snapshot),
+            "title": abw_i18n.t("help.minimal_commands", workspace),
+            "items": minimal_commands(snapshot, workspace=workspace),
         },
     ]
 
@@ -124,9 +125,9 @@ def run(workspace="."):
     workspace = str(workspace or ".")
     snapshot = build_state_snapshot(workspace)
     next_actions = abw_suggestions.suggest_next_actions(workspace)
-    sections = build_sections(snapshot, next_actions)
+    sections = build_sections(snapshot, next_actions, workspace=workspace)
     return {
-        "message": "Bạn có thể làm tiếp dựa trên trạng thái hiện tại:",
+        "message": abw_i18n.t("help.message", workspace),
         "state_snapshot": snapshot,
         "sections": sections,
         "next_actions": next_actions,

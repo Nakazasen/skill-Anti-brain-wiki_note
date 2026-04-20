@@ -8,6 +8,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import abw_suggestions  # noqa: E402
+import abw_i18n  # noqa: E402
 
 
 def commands(actions):
@@ -36,7 +37,11 @@ class AbwSuggestionsTests(unittest.TestCase):
             actions = abw_suggestions.suggest_next_actions(tmp)
 
             self.assertEqual(commands(actions), ["review drafts"])
-            self.assertEqual(actions[0]["label"], "Duyệt các bản nháp")
+            self.assertEqual(actions[0]["label"], "Review drafts")
+
+            abw_i18n.set_language(tmp, "vi")
+            actions = abw_suggestions.suggest_next_actions(tmp)
+            self.assertEqual(actions[0]["label"], "Duyet ban nhap")
 
     def test_low_coverage_suggests_ingest(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -91,8 +96,8 @@ class AbwSuggestionsTests(unittest.TestCase):
         self.assertEqual(
             actions,
             [
-                {"label": "Xem hướng dẫn", "command": "help"},
-                {"label": "Audit hệ thống", "command": "audit system"},
+                {"label": "Show help", "command": "help"},
+                {"label": "Audit system", "command": "audit system"},
             ],
         )
 

@@ -48,7 +48,7 @@ class AbwEntryTests(unittest.TestCase):
         )
 
         self.assertEqual(completed.returncode, 0)
-        self.assertIn("[ABW] binding=runner_enforced | validation_proof=", completed.stdout)
+        self.assertIn("[ABW] trust=enforced | binding=runner_enforced | state=verified | validation_proof=", completed.stdout)
         self.assertIn("hello world", completed.stdout)
 
     def test_direct_return_without_runner_is_rejected(self):
@@ -56,7 +56,7 @@ class AbwEntryTests(unittest.TestCase):
         rendered = abw_runner.render_with_visibility_lock(trusted)
         self.assertEqual(trusted["binding_status"], "rejected")
         self.assertEqual(trusted["reason"], "output not produced by runner")
-        self.assertIn("[UNVERIFIED OUTPUT - DO NOT TRUST]", rendered)
+        self.assertIn("[ABW] trust=blocked | binding=rejected | state=blocked", rendered)
 
     def test_fake_runner_payload_is_rejected(self):
         finalization_block = "## Finalization\n- current_state: verified"
@@ -77,7 +77,7 @@ class AbwEntryTests(unittest.TestCase):
             trusted["reason"],
             {"output not produced by runner", "raw draft answer is not allowed"},
         )
-        self.assertIn("[UNVERIFIED OUTPUT - DO NOT TRUST]", rendered)
+        self.assertIn("[ABW] trust=blocked | binding=rejected | state=blocked", rendered)
 
     def test_real_runner_payload_passes(self):
         result = abw_runner.dispatch_request(
@@ -87,7 +87,7 @@ class AbwEntryTests(unittest.TestCase):
             binding_source="cli",
         )
         rendered = abw_entry.render_final_output(result)
-        self.assertIn("[ABW] binding=runner_enforced | validation_proof=", rendered)
+        self.assertIn("[ABW] trust=enforced | binding=runner_enforced | state=verified | validation_proof=", rendered)
 
     def test_health_cli_path_works(self):
         tmp, workspace, runtime = self.make_layout()
@@ -110,7 +110,7 @@ class AbwEntryTests(unittest.TestCase):
             )
 
             self.assertEqual(completed.returncode, 0)
-            self.assertIn("[ABW] binding=runner_enforced | validation_proof=", completed.stdout)
+            self.assertIn("[ABW] trust=enforced | binding=runner_enforced | state=verified | validation_proof=", completed.stdout)
             self.assertIn("ABW health audit completed.", completed.stdout)
 
     def test_repair_cli_path_works(self):
@@ -138,7 +138,7 @@ class AbwEntryTests(unittest.TestCase):
             )
 
             self.assertEqual(completed.returncode, 0)
-            self.assertIn("[ABW] binding=runner_enforced | validation_proof=", completed.stdout)
+            self.assertIn("[ABW] trust=enforced | binding=runner_enforced | state=verified | validation_proof=", completed.stdout)
             self.assertIn("ABW health repair completed.", completed.stdout)
 
     def test_update_command_routes_to_update_module(self):

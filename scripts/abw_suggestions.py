@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import abw_i18n
+
 
 ACTION_LABELS = {
     "audit system": "Audit hệ thống",
@@ -70,17 +72,17 @@ def raw_file_count(workspace):
     return len([path for path in raw_dir.rglob("*") if path.is_file()])
 
 
-def label_for_command(command):
+def label_for_command(command, workspace="."):
     command = str(command or "").strip()
-    return ACTION_LABELS.get(command, command)
+    return abw_i18n.action_label(command, workspace=workspace)
 
 
-def normalize_next_action(action):
+def normalize_next_action(action, workspace="."):
     if isinstance(action, dict):
         command = str(action.get("command") or "").strip()
         if not command:
             return None
-        label = str(action.get("label") or "").strip() or label_for_command(command)
+        label = str(action.get("label") or "").strip() or label_for_command(command, workspace=workspace)
         return {
             "label": label,
             "command": command,
@@ -90,16 +92,16 @@ def normalize_next_action(action):
     if not command:
         return None
     return {
-        "label": label_for_command(command),
+        "label": label_for_command(command, workspace=workspace),
         "command": command,
     }
 
 
-def normalize_next_actions(actions):
+def normalize_next_actions(actions, workspace="."):
     normalized = []
     seen = set()
     for action in actions or []:
-        item = normalize_next_action(action)
+        item = normalize_next_action(action, workspace=workspace)
         if not item:
             continue
         command = item["command"]
@@ -129,4 +131,4 @@ def suggest_next_actions(workspace):
     if not actions:
         actions.extend(["help", "audit system"])
 
-    return normalize_next_actions(actions)
+    return normalize_next_actions(actions, workspace=workspace)

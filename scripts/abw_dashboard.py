@@ -3,7 +3,9 @@ from pathlib import Path
 
 import abw_audit
 import abw_help
+import abw_i18n
 import abw_suggestions
+import abw_version
 
 
 def load_json(path, default=None):
@@ -51,54 +53,63 @@ def top_gaps_from_coverage(coverage):
     return gaps if isinstance(gaps, list) else []
 
 
-def build_header(health, knowledge):
+def build_header(health, knowledge, version, workspace="."):
     return {
-        "title": "ABW Dashboard",
+        "title": abw_i18n.t("dashboard.title", workspace),
         "summary": (
             f"{health['lanes']} lanes, {health['modules']} modules, "
-            f"{knowledge['wiki_files']} wiki files, {knowledge['pending_drafts']} pending drafts"
+            f"{knowledge['wiki_files']} wiki files, {knowledge['pending_drafts']} pending drafts, "
+            f"deploy={version['deploy_status']}"
         ),
     }
 
 
-def render_dashboard(dashboard):
+def render_dashboard(dashboard, workspace="."):
     lines = [
         dashboard["header"]["title"],
         dashboard["header"]["summary"],
         "",
-        "Health:",
+        f"{abw_i18n.t('dashboard.version', workspace)}:",
+        f"- commit: {dashboard['version']['commit']}",
+        f"- git_commit: {dashboard['version']['git_commit']}",
+        f"- status: {dashboard['version']['status']}",
+        f"- deploy_status: {dashboard['version']['deploy_status']}",
+        f"- source: {dashboard['version']['source']}",
+        "",
+        f"{abw_i18n.t('dashboard.health', workspace)}:",
         f"- modules: {dashboard['health']['modules']}",
         f"- lanes: {dashboard['health']['lanes']}",
         f"- data_layers: {dashboard['health']['data_layers']}",
         f"- bottlenecks: {dashboard['health']['bottleneck_count']}",
         "",
-        "Knowledge:",
+        f"{abw_i18n.t('dashboard.knowledge', workspace)}:",
         f"- raw_files: {dashboard['knowledge']['raw_files']}",
         f"- draft_files: {dashboard['knowledge']['draft_files']}",
         f"- wiki_files: {dashboard['knowledge']['wiki_files']}",
         f"- pending_drafts: {dashboard['knowledge']['pending_drafts']}",
         f"- coverage_ratio: {dashboard['knowledge']['coverage_ratio']}",
         "",
-        "Bottlenecks:",
+        f"{abw_i18n.t('dashboard.bottlenecks', workspace)}:",
     ]
     bottlenecks = dashboard.get("bottleneck", [])
     if bottlenecks:
         for item in bottlenecks:
             lines.append(f"- {item.get('type')}: {item.get('detail')}")
     else:
-        lines.append("- none detected")
+        lines.append(f"- {abw_i18n.t('dashboard.none_detected', workspace)}")
 
     lines.append("")
-    lines.append("Top gaps:")
+    lines.append(f"{abw_i18n.t('dashboard.top_gaps', workspace)}:")
     top_gaps = dashboard.get("top_gaps", [])
     if top_gaps:
         for item in top_gaps:
             lines.append(f"- {item}")
     else:
-        lines.append("- none")
+        lines.append(f"- {abw_i18n.t('dashboard.none', workspace)}")
 
     lines.append("")
-    lines.append("Next actions:")
+    lines.append(f"{abw_i18n.t('dashboard.next_actions', workspace)}:")
+    lines.append("- Guided wizard: wizard")
     for action in dashboard.get("next_actions", []):
         lines.append(f"- {action['label']}: {action['command']}")
     return "\n".join(lines)
@@ -110,17 +121,25 @@ def run_dashboard(workspace="."):
     help_result = abw_help.run(workspace)
     coverage = coverage_report(workspace)
     next_actions = abw_suggestions.suggest_next_actions(workspace)
+    version = abw_version.resolve_version(workspace)
     health = health_from_audit(audit_result)
     knowledge = knowledge_from_help(help_result, coverage)
     dashboard = {
-        "header": build_header(health, knowledge),
+        "header": build_header(health, knowledge, version, workspace=workspace),
+        "version": version,
+        "deploy": {
+            "status": version["deploy_status"],
+            "state": version["deploy_state"],
+            "source": version["source"],
+        },
         "health": health,
         "knowledge": knowledge,
         "bottleneck": audit_result.get("analysis", {}).get("bottlenecks", []),
         "top_gaps": top_gaps_from_coverage(coverage),
+        "wizard": {"command": "wizard", "label": "Guided wizard"},
         "next_actions": next_actions,
         "audit": audit_result,
         "help": help_result,
     }
-    dashboard["rendered"] = render_dashboard(dashboard)
+    dashboard["rendered"] = render_dashboard(dashboard, workspace=workspace)
     return dashboard

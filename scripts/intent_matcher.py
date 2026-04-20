@@ -50,6 +50,33 @@ INTENT_PATTERNS = [
         ],
     },
     {
+        "intent": "wizard",
+        "lane": "wizard",
+        "reason": "guided wizard intent detected",
+        "fallback_allowed": True,
+        "patterns": [
+            "wizard",
+            "guided workflow",
+            "guide me",
+            "start wizard",
+            "huong dan tung buoc",
+        ],
+    },
+    {
+        "intent": "system_trend",
+        "lane": "system_trend",
+        "reason": "system trend intent detected",
+        "fallback_allowed": True,
+        "patterns": [
+            "system trend",
+            "trend system",
+            "monitor trend",
+            "abw trend",
+            "xu huong he",
+            "theo doi he",
+        ],
+    },
+    {
         "intent": "list_drafts",
         "lane": "list_drafts",
         "reason": "draft review listing intent detected",

@@ -22,6 +22,20 @@ class IntentMatcherTests(unittest.TestCase):
         self.assertEqual(matched["intent"], "dashboard")
         self.assertEqual(matched["lane"], "dashboard")
 
+    def test_matches_wizard(self):
+        matched = intent_matcher.match_intent("guided workflow")
+
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched["intent"], "wizard")
+        self.assertEqual(matched["lane"], "wizard")
+
+    def test_matches_system_trend(self):
+        matched = intent_matcher.match_intent("system trend")
+
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched["intent"], "system_trend")
+        self.assertEqual(matched["lane"], "system_trend")
+
     def test_matches_vietnamese_help(self):
         matched = intent_matcher.match_intent("trợ giúp")
 

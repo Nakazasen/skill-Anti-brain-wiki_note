@@ -34,9 +34,9 @@ class AbwRunnerBindingTests(unittest.TestCase):
             }
         )
 
-        self.assertIn("[UNVERIFIED OUTPUT - DO NOT TRUST]", rendered)
+        self.assertIn("[ABW] trust=checked | binding=runner_checked | state=verified", rendered)
 
-    def test_render_with_visibility_lock_missing_validation_proof_is_unverified(self):
+    def test_render_with_visibility_lock_missing_validation_proof_is_checked(self):
         rendered = abw_runner.render_with_visibility_lock(
             {
                 "answer": "Some answer.\n\n## Finalization\n- current_state: verified",
@@ -45,14 +45,14 @@ class AbwRunnerBindingTests(unittest.TestCase):
             }
         )
 
-        self.assertIn("[UNVERIFIED OUTPUT - DO NOT TRUST]", rendered)
-        self.assertIn("binding=runner_checked, proof=None", rendered)
+        self.assertIn("[ABW] trust=checked | binding=runner_checked | state=verified", rendered)
+        self.assertNotIn("UNVERIFIED OUTPUT", rendered)
 
-    def test_render_with_visibility_lock_non_structured_output_is_unverified(self):
+    def test_render_with_visibility_lock_non_structured_output_is_blocked(self):
         rendered = abw_runner.render_with_visibility_lock("plain string output")
 
-        self.assertIn("[UNVERIFIED OUTPUT - DO NOT TRUST]", rendered)
-        self.assertIn("reason: non-structured output", rendered)
+        self.assertIn("[ABW] trust=blocked | reason=non-structured output", rendered)
+        self.assertNotIn("UNVERIFIED OUTPUT", rendered)
 
     def test_render_with_visibility_lock_is_pure_view_for_verified_payload(self):
         rendered = abw_runner.render_with_visibility_lock(
@@ -65,8 +65,60 @@ class AbwRunnerBindingTests(unittest.TestCase):
             }
         )
 
-        self.assertIn("[ABW] binding=runner_enforced | validation_proof=proof | state=verified", rendered)
+        self.assertIn("[ABW] trust=enforced | binding=runner_enforced | state=verified | validation_proof=proof", rendered)
         self.assertIn("Verified answer without finalization.", rendered)
+
+    def test_resolve_trust_label_maps_help_to_informational(self):
+        self.assertEqual(
+            abw_runner.resolve_trust_label(
+                {
+                    "binding_status": "runner_checked",
+                    "current_state": "checked_only",
+                    "runner_status": "completed",
+                    "route": {"lane": "help"},
+                }
+            ),
+            "informational",
+        )
+
+    def test_resolve_trust_label_maps_explain_to_checked(self):
+        self.assertEqual(
+            abw_runner.resolve_trust_label(
+                {
+                    "binding_status": "runner_checked",
+                    "current_state": "checked_only",
+                    "runner_status": "completed",
+                    "route": {"lane": "explain_draft"},
+                }
+            ),
+            "checked",
+        )
+
+    def test_resolve_trust_label_maps_query_to_enforced(self):
+        self.assertEqual(
+            abw_runner.resolve_trust_label(
+                {
+                    "binding_status": "runner_checked",
+                    "current_state": "knowledge_answered",
+                    "runner_status": "completed",
+                    "route": {"lane": "query"},
+                }
+            ),
+            "enforced",
+        )
+
+    def test_resolve_trust_label_maps_invalid_approve_to_blocked(self):
+        self.assertEqual(
+            abw_runner.resolve_trust_label(
+                {
+                    "binding_status": "runner_checked",
+                    "current_state": "blocked",
+                    "runner_status": "blocked",
+                    "route": {"lane": "approve_draft"},
+                }
+            ),
+            "blocked",
+        )
 
     def test_cli_json_input_validation_returns_validation_proof(self):
         payload = {
@@ -95,7 +147,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
 
         self.assertEqual(completed.returncode, 0)
         self.assertIn("binding=runner_checked", completed.stdout)
-        self.assertIn("[UNVERIFIED OUTPUT - DO NOT TRUST]", completed.stdout)
+        self.assertIn("[ABW] trust=checked | binding=runner_checked", completed.stdout)
         self.assertIn("Draft explanation.", completed.stdout)
         self.assertIn("## Finalization", completed.stdout)
 
@@ -1044,7 +1096,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
             )
 
             self.assertEqual(result["route"]["lane"], "help")
-            self.assertEqual(result["message"], "Bạn có thể làm tiếp dựa trên trạng thái hiện tại:")
+            self.assertEqual(result["message"], "You can continue from the current state:")
             self.assertEqual(len(result["sections"]), 4)
             self.assertEqual(result["sections"][0]["title"], "Overview")
             self.assertEqual(result["state_snapshot"]["raw_files"], 0)
@@ -1072,6 +1124,58 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertIn("top_gaps", result)
             self.assertTrue(result["next_actions"])
             self.assertIn("ABW Dashboard", result["answer"])
+
+    def test_wizard_lane_returns_options_without_execution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="wizard",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "wizard")
+            self.assertEqual(result["wizard_status"], "menu")
+            self.assertEqual(result["wizard_state"]["step"], "choose_action")
+            self.assertFalse(result["should_execute"])
+            self.assertIn("ABW Wizard", result["answer"])
+            self.assertIn("wizard_options", result)
+
+    def test_wizard_selection_returns_command_without_running_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            abw_runner.dispatch_request(
+                task="wizard",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+            result = abw_runner.dispatch_request(
+                task="wizard 1",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "wizard")
+            self.assertEqual(result["wizard_status"], "selection_mapped")
+            self.assertEqual(result["selected_command"], "ingest raw/<file>")
+            self.assertFalse(result["should_execute"])
+            self.assertIn("command was not executed", result["answer"])
+
+    def test_system_trend_lane_captures_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="system trend",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "system_trend")
+            self.assertEqual(result["snapshot_count"], 1)
+            self.assertEqual(result["monitor_status"], "insufficient_history")
+            self.assertTrue((Path(tmp) / ".brain" / "system_snapshots.jsonl").exists())
+            self.assertIn("ABW System Trend", result["answer"])
 
     def test_ingest_lane_exposes_state_based_next_actions(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1150,7 +1254,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
     def test_next_actions_menu_displays_indexed_actions(self):
         menu = abw_runner.render_action_menu(["help", {"label": "Tự audit", "command": "audit system"}])
 
-        self.assertIn("1. Xem hướng dẫn (help)", menu)
+        self.assertIn("1. Show help (help)", menu)
         self.assertIn("2. Tự audit (audit system)", menu)
 
     def test_valid_next_action_selection_returns_command(self):
@@ -1202,7 +1306,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
         self.assertEqual(mocked.call_args.kwargs["task"], "help")
         self.assertIs(result, executed)
 
-    def test_help_command_has_guidance_and_vietnamese_text(self):
+    def test_help_command_has_guidance_and_english_text(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = abw_runner.dispatch_request(
                 task="help",
@@ -1213,7 +1317,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
 
             self.assertTrue(result["guidance"])
             self.assertTrue(result["next_actions"])
-            self.assertIn("Bạn có thể làm tiếp dựa trên trạng thái hiện tại:", result["answer"])
+            self.assertIn("You can continue from the current state:", result["answer"])
             self.assertIn("Situational guidance", result["answer"])
             return
 
@@ -1228,6 +1332,30 @@ class AbwRunnerBindingTests(unittest.TestCase):
         self.assertTrue(result["next_actions"])
         self.assertIn("Bạn có thể làm:", result["answer"])
         self.assertIn("📋 Duyệt tri thức", result["answer"])
+
+    def test_set_language_vi_updates_help_and_trust_banner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            set_result = abw_runner.dispatch_request(
+                task="set language vi",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(set_result["language"], "vi")
+            self.assertEqual(set_result["runner_status"], "completed")
+
+            help_result = abw_runner.dispatch_request(
+                task="help",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+            rendered = abw_runner.render_with_visibility_lock(help_result, workspace=tmp)
+
+            self.assertIn("Ban co the tiep tuc dua tren trang thai hien tai:", help_result["answer"])
+            self.assertIn("[ABW] muc_tin_cay=thong tin", rendered)
+            self.assertEqual(help_result["next_actions"][0]["command"], "help")
 
 
 if __name__ == "__main__":

@@ -51,6 +51,18 @@ class AbwRouterTests(unittest.TestCase):
         self.assertEqual(route["lane"], "dashboard")
         self.assertEqual(route["intent"], "dashboard")
 
+    def test_router_selects_wizard_intent(self):
+        route = abw_router.route_request("wizard", workspace=".")
+
+        self.assertEqual(route["lane"], "wizard")
+        self.assertEqual(route["intent"], "wizard")
+
+    def test_router_selects_system_trend_intent(self):
+        route = abw_router.route_request("system trend", workspace=".")
+
+        self.assertEqual(route["lane"], "system_trend")
+        self.assertEqual(route["intent"], "system_trend")
+
     def test_router_matches_vietnamese_help_without_exact_ascii(self):
         route = abw_router.route_request("trợ giúp", workspace=".")
 

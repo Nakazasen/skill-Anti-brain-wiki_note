@@ -16,14 +16,17 @@ import abw_coverage
 import abw_dashboard
 import abw_health
 import abw_help
+import abw_i18n
 import abw_ingest
 import abw_knowledge
+import abw_monitor
 import abw_proof
 import abw_query_deep
 import abw_review
 import abw_review_explain
 import abw_router
 import abw_suggestions
+import abw_wizard
 import continuation_execute
 import continuation_gate
 import finalization_check
@@ -49,6 +52,7 @@ KNOWLEDGE_KEYWORDS = ("what is", "explain", "why", "la gi", "giai thich")
 MEMORY_SCOPE = os.environ.get("ABW_MEMORY_SCOPE", "workspace")
 VALID_BINDING_MODES = {"STRICT", "SOFT"}
 VALID_TASK_KINDS = {"execution", "validation"}
+LANGUAGE_COMMAND_PREFIX = "set language "
 
 
 def now_iso():
@@ -416,6 +420,14 @@ def route_extra(route, **extra):
     return payload
 
 
+def parse_language_command(task):
+    normalized = " ".join(str(task or "").strip().lower().split())
+    if not normalized.startswith(LANGUAGE_COMMAND_PREFIX):
+        return None
+    language = normalized[len(LANGUAGE_COMMAND_PREFIX) :].strip()
+    return language or None
+
+
 def load_json(path, default):
     path = Path(path)
     if not path.exists():
@@ -750,6 +762,42 @@ def help_lane_result(task, workspace=".", route=None, binding_source="mcp"):
     )
 
 
+def language_lane_result(task, workspace=".", route=None, binding_source="mcp"):
+    requested = parse_language_command(task)
+    language = abw_i18n.set_language(workspace, requested)
+    if language is None:
+        body = abw_i18n.t("language.unsupported", workspace)
+        current_state = "blocked"
+        evidence = f"unsupported language request={requested}"
+        next_steps = "Use set language en or set language vi."
+    else:
+        body = abw_i18n.t(f"language.set.{language}", workspace)
+        current_state = "checked_only"
+        evidence = f"ui_config language={language}"
+        next_steps = "Continue using the same commands; only UI labels changed."
+
+    model_output = f"""{body}
+
+## Finalization
+- current_state: {current_state}
+- evidence: {evidence}
+- gaps_or_limitations: language preference affects UI labels only; commands are unchanged
+- next_steps: {next_steps}
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if current_state == "blocked" or gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(route or {"lane": "set_language", "intent": "set_language"}, language=language),
+        binding_source=binding_source,
+    )
+
+
 def dashboard_lane_result(task, workspace=".", route=None, binding_source="mcp"):
     dashboard = abw_dashboard.run_dashboard(workspace)
     body = dashboard["rendered"]
@@ -781,6 +829,81 @@ def dashboard_lane_result(task, workspace=".", route=None, binding_source="mcp")
             bottleneck=dashboard["bottleneck"],
             top_gaps=dashboard["top_gaps"],
             next_actions=dashboard["next_actions"],
+        ),
+        binding_source=binding_source,
+    )
+
+
+def wizard_lane_result(task, workspace=".", route=None, binding_source="mcp"):
+    wizard_result = abw_wizard.run(task, workspace)
+    body = wizard_result["rendered"]
+    status = wizard_result.get("status")
+    selected_command = wizard_result.get("selected_command")
+    current_state = "blocked" if status == "blocked" else "checked_only"
+    evidence = (
+        f"wizard step={wizard_result.get('state', {}).get('step')}; "
+        f"status={status}; selected_command={selected_command or 'none'}"
+    )
+    next_steps = (
+        f"send this command via /abw-ask when ready: {selected_command}"
+        if selected_command
+        else "reply with wizard <number> to choose an option"
+    )
+    model_output = f"""{body}
+
+## Finalization
+- current_state: {current_state}
+- evidence: {evidence}
+- gaps_or_limitations: wizard maps user choices to existing commands only; it does not execute selected commands
+- next_steps: {next_steps}
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if current_state == "blocked" or gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(
+            route,
+            wizard=wizard_result,
+            wizard_status=status,
+            wizard_state=wizard_result.get("state"),
+            wizard_options=wizard_result.get("options", []),
+            selected_command=selected_command,
+            should_execute=False,
+        ),
+        binding_source=binding_source,
+    )
+
+
+def system_trend_lane_result(task, workspace=".", route=None, binding_source="mcp"):
+    trend = abw_monitor.run_trend(workspace)
+    body = trend["rendered"]
+    model_output = f"""{body}
+
+## Finalization
+- current_state: checked_only
+- evidence: monitor read and wrote .brain/system_snapshots.jsonl; snapshot_count={trend['snapshot_count']}; trend_status={trend['status']}
+- gaps_or_limitations: trend is batch/local only and depends on previously captured snapshots
+- next_steps: run system trend again after meaningful ABW usage to compare evolution
+"""
+    gate = run_finalization_gate(model_output, task_kind="")
+    answer = compose_answer(body, gate["block"])
+    runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
+    return base_result(
+        task,
+        "runner_checked",
+        answer,
+        gate,
+        runner_status,
+        extra=route_extra(
+            route,
+            trend=trend,
+            monitor_status=trend["status"],
+            snapshot_count=trend["snapshot_count"],
         ),
         binding_source=binding_source,
     )
@@ -1027,6 +1150,8 @@ def execute_lane(task, workspace=".", route=None, binding_source="mcp"):
         "help": lambda: help_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
         "list_drafts": lambda: list_drafts_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, params=params),
         "review_drafts": lambda: review_drafts_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, params=params),
+        "system_trend": lambda: system_trend_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
+        "wizard": lambda: wizard_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
         "query": lambda: query_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, deep=False),
         "query_deep": lambda: query_lane_result(task, workspace=workspace, route=route, binding_source=binding_source, deep=True),
         "resume": lambda: resume_lane_result(task, workspace=workspace, route=route, binding_source=binding_source),
@@ -1186,18 +1311,18 @@ def attach_state_based_next_actions(result, workspace="."):
     return updated
 
 
-def render_action_menu(next_actions):
-    actions = abw_suggestions.normalize_next_actions(next_actions)
+def render_action_menu(next_actions, workspace="."):
+    actions = abw_suggestions.normalize_next_actions(next_actions, workspace=workspace)
     if not actions:
         return ""
-    lines = ["Next actions:"]
+    lines = [f"{abw_i18n.t('help.next_actions', workspace)}:"]
     for index, action in enumerate(actions, start=1):
         lines.append(f"{index}. {action['label']} ({action['command']})")
     return "\n".join(lines)
 
 
-def selected_next_action(next_actions, selection):
-    actions = abw_suggestions.normalize_next_actions(next_actions)
+def selected_next_action(next_actions, selection, workspace="."):
+    actions = abw_suggestions.normalize_next_actions(next_actions, workspace=workspace)
     try:
         index = int(str(selection or "").strip())
     except ValueError:
@@ -1207,15 +1332,15 @@ def selected_next_action(next_actions, selection):
     return actions[index - 1]
 
 
-def interactive_next_action_command(next_actions, input_func=input, output_func=print):
-    menu = render_action_menu(next_actions)
+def interactive_next_action_command(next_actions, input_func=input, output_func=print, workspace="."):
+    menu = render_action_menu(next_actions, workspace=workspace)
     if not menu:
         return None
     output_func(menu)
     selection = input_func("Chọn số để chạy next action, hoặc Enter để bỏ qua: ")
     if not str(selection or "").strip():
         return None
-    action = selected_next_action(next_actions, selection)
+    action = selected_next_action(next_actions, selection, workspace=workspace)
     if not action:
         output_func("Lựa chọn không hợp lệ. Không chạy action nào.")
         return None
@@ -1239,6 +1364,7 @@ def run_cli_next_action_loop(
             current.get("next_actions", []) if isinstance(current, dict) else [],
             input_func=input_func,
             output_func=output_func,
+            workspace=workspace,
         )
         if not command:
             return current
@@ -1250,30 +1376,61 @@ def run_cli_next_action_loop(
             binding_source=binding_source,
             memory_scope=memory_scope,
         )
-        output_func(console_safe_text(render_with_visibility_lock(current), sys.stdout))
+        output_func(console_safe_text(render_with_visibility_lock(current, workspace=workspace), sys.stdout))
     output_func("Đã đạt giới hạn tương tác. Dừng để tránh chạy vòng lặp ngoài ý muốn.")
     return current
 
 
-def render_with_visibility_lock(result):
+def resolve_trust_label(result):
     if not isinstance(result, dict):
-        return "[UNVERIFIED OUTPUT - DO NOT TRUST]\nreason: non-structured output\n\n" + str(result)
+        return "blocked"
+
+    binding = str(result.get("binding_status") or "").strip()
+    current_state = str(result.get("current_state") or "").strip().lower()
+    runner_status = str(result.get("runner_status") or "").strip().lower()
+    route = result.get("route") if isinstance(result.get("route"), dict) else {}
+    lane = str(route.get("lane") or result.get("lane") or "").strip().lower()
+
+    if binding == "rejected" or current_state == "blocked" or runner_status == "blocked":
+        return "blocked"
+
+    if lane in {"help", "dashboard", "system_trend", "coverage", "list_drafts", "bootstrap", "wizard"}:
+        return "informational"
+
+    if binding == "runner_enforced" or lane in {"query", "query_deep"}:
+        return "enforced"
+
+    if binding == "runner_checked":
+        return "checked"
+
+    return "informational"
+
+
+def render_with_visibility_lock(result, workspace=None):
+    i18n_workspace = workspace or (result.get("workspace") if isinstance(result, dict) else ".") or "."
+    if not isinstance(result, dict):
+        trust_field = abw_i18n.t("trust.field", i18n_workspace)
+        blocked_label = abw_i18n.trust_label("blocked", i18n_workspace)
+        reason = abw_i18n.t("trust.reason_non_structured", i18n_workspace)
+        return f"[ABW] {trust_field}={blocked_label} | reason={reason}\n\n" + str(result)
 
     binding = result.get("binding_status")
     proof = result.get("validation_proof")
     state = result.get("current_state")
     answer = str(result.get("answer") or "")
     reason = str(result.get("reason") or f"binding={binding}, proof={proof}")
+    trust_label = resolve_trust_label(result)
+    trust_field = abw_i18n.t("trust.field", i18n_workspace)
+    display_trust_label = abw_i18n.trust_label(trust_label, i18n_workspace)
 
-    if binding == "runner_enforced" and proof:
-        banner = f"[ABW] binding={binding} | validation_proof={proof} | state={state}"
-        return banner + "\n\n" + answer
+    banner = f"[ABW] {trust_field}={display_trust_label} | binding={binding} | state={state}"
+    if proof:
+        banner += f" | validation_proof={proof}"
 
-    return (
-        "[UNVERIFIED OUTPUT - DO NOT TRUST]\n"
-        f"reason: {reason}\n\n"
-        + answer
-    )
+    if trust_label == "blocked" and reason:
+        banner += f" | reason={reason}"
+
+    return banner + "\n\n" + answer
 
 
 def console_safe_text(text, stream=None):
@@ -1924,6 +2081,26 @@ def dispatch_request(
         )
         return enforce_output_acceptance(result, mode=binding_mode)
 
+    if parse_language_command(task) is not None:
+        language_route = {
+            "intent": "set_language",
+            "lane": "set_language",
+            "reason": "language preference command detected",
+            "fallback_allowed": False,
+            "params": {"language": parse_language_command(task)},
+            "source": "runner",
+        }
+        abw_router.log_route_decision(workspace, task, language_route, event="selected")
+        result = language_lane_result(
+            task,
+            workspace=workspace,
+            route=language_route,
+            binding_source=binding_source,
+        )
+        result = enforce_output_acceptance(result, mode=binding_mode)
+        result = attach_state_based_next_actions(result, workspace=workspace)
+        return result
+
     memory_item = check_negative_memory(task, workspace=workspace, memory_scope=memory_scope)
     resolved_route = resolve_route(task, workspace=workspace, route=route)
     abw_router.log_route_decision(workspace, task, resolved_route, event="selected")
@@ -2109,7 +2286,7 @@ def main():
             binding_source=payload.get("binding_source", args.binding_source),
             memory_scope=payload.get("memory_scope"),
         )
-        print(console_safe_text(render_with_visibility_lock(result), sys.stdout))
+        print(console_safe_text(render_with_visibility_lock(result, workspace=args.workspace), sys.stdout))
         if args.interactive_actions or bool(payload.get("interactive_actions", False)):
             result = run_cli_next_action_loop(
                 result,
@@ -2177,7 +2354,7 @@ def main():
             fix_hint=derive_fix_hint(final_output),
         )
 
-    print(console_safe_text(render_with_visibility_lock(final_output), sys.stdout))
+    print(console_safe_text(render_with_visibility_lock(final_output, workspace=args.workspace), sys.stdout))
     if args.interactive_actions:
         final_output = run_cli_next_action_loop(
             final_output,

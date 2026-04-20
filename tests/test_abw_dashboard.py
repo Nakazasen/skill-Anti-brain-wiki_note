@@ -3,11 +3,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import abw_dashboard  # noqa: E402
+import abw_version  # noqa: E402
 
 
 def write(path, content):
@@ -50,10 +52,24 @@ class AbwDashboardTests(unittest.TestCase):
                     }
                 ),
             )
+            write(
+                workspace / ".abw_version.json",
+                json.dumps(
+                    {
+                        "commit": "file123",
+                        "status": "stable",
+                        "updated_at": "2026-04-21T00:00:00Z",
+                    }
+                ),
+            )
 
-            result = abw_dashboard.run_dashboard(tmp)
+            with patch.object(abw_version, "get_git_commit", return_value="file123"):
+                result = abw_dashboard.run_dashboard(tmp)
 
             self.assertEqual(result["header"]["title"], "ABW Dashboard")
+            self.assertEqual(result["version"]["commit"], "file123")
+            self.assertEqual(result["version"]["deploy_status"], "ok")
+            self.assertEqual(result["deploy"]["status"], "ok")
             self.assertEqual(result["knowledge"]["raw_files"], 1)
             self.assertEqual(result["knowledge"]["draft_files"], 1)
             self.assertEqual(result["knowledge"]["wiki_files"], 1)
@@ -62,7 +78,11 @@ class AbwDashboardTests(unittest.TestCase):
             self.assertEqual(result["top_gaps"], ["printer firmware", "network timeout"])
             self.assertEqual(result["next_actions"][0]["command"], "review drafts")
             self.assertIn("ABW Dashboard", result["rendered"])
+            self.assertIn("Version:", result["rendered"])
+            self.assertIn("deploy_status: ok", result["rendered"])
             self.assertIn("Next actions:", result["rendered"])
+            self.assertIn("Guided wizard: wizard", result["rendered"])
+            self.assertEqual(result["wizard"]["command"], "wizard")
 
     def test_dashboard_with_missing_files(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -73,6 +93,8 @@ class AbwDashboardTests(unittest.TestCase):
             self.assertEqual(result["knowledge"]["raw_files"], 0)
             self.assertEqual(result["knowledge"]["draft_files"], 0)
             self.assertEqual(result["knowledge"]["wiki_files"], 0)
+            self.assertIn("version", result)
+            self.assertIn(result["version"]["deploy_status"], {"unknown", "out_of_sync"})
             self.assertEqual([action["command"] for action in result["next_actions"]], ["help", "audit system"])
             self.assertEqual(result["top_gaps"], [])
 

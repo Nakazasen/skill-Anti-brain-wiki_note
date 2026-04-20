@@ -22,8 +22,8 @@ def final_output(result):
     return result
 
 
-def render_final_output(result):
-    return abw_runner.render_with_visibility_lock(final_output(result))
+def render_final_output(result, workspace="."):
+    return abw_runner.render_with_visibility_lock(final_output(result), workspace=workspace)
 
 
 def execute_command(
@@ -129,7 +129,7 @@ def main(argv=None):
         candidate_answer=payload["candidate_answer"],
     )
     trusted_result = final_output(result)
-    print(abw_runner.render_with_visibility_lock(trusted_result))
+    print(abw_runner.render_with_visibility_lock(trusted_result, workspace=payload["workspace"]))
     return 0 if trusted_result.get("binding_status") != "rejected" and trusted_result.get("runner_status") != "blocked" else 3
 
 
