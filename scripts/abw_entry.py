@@ -17,6 +17,11 @@ SUPPORTED_COMMANDS = {"/abw-ask", "/abw-health", "/abw-repair", "/abw-update", "
 
 
 def final_output(result):
+    if isinstance(result, dict) and result.get("evaluation") is None:
+        result = abw_runner.apply_acceptance_validation(
+            result,
+            workspace=result.get("workspace") or ".",
+        )
     result = abw_output.enforce_runner_output(result)
     result = abw_runner.enforce_output_acceptance(result, mode="STRICT")
     return result
@@ -37,7 +42,12 @@ def execute_command(
 ):
     runtime_state = abw_update.initialize_runtime(workspace)
     if command not in SUPPORTED_COMMANDS:
-        return {"binding_status": "rejected", "current_state": "blocked", "reason": "unsupported command"}
+        return {
+            "binding_status": "rejected",
+            "current_state": "blocked",
+            "reason": "unsupported command",
+            "workspace": workspace,
+        }
 
     if (
         runtime_state["integrity"]["state"] == "integrity_compromised"
@@ -48,10 +58,11 @@ def execute_command(
             "current_state": "integrity_compromised",
             "reason": "runtime integrity mismatch detected",
             "integrity": runtime_state["integrity"],
+            "workspace": workspace,
         }
 
     if command == "/abw-ask":
-        return abw_runner.dispatch_request(
+        result = abw_runner.dispatch_request(
             task=task,
             workspace=workspace,
             task_kind=task_kind,
@@ -59,28 +70,43 @@ def execute_command(
             binding_mode="STRICT",
             binding_source="cli",
         )
+        if isinstance(result, dict):
+            result.setdefault("workspace", workspace)
+        return result
 
     if command == "/abw-health":
-        return abw_health.run_health(
+        result = abw_health.run_health(
             workspace=workspace,
             runtime_root=runtime_root,
             binding_status="runner_enforced",
             mode="audit",
         )
+        if isinstance(result, dict):
+            result.setdefault("workspace", workspace)
+        return result
 
     if command == "/abw-update":
         target_ref = str(task or "").strip() or None
-        return abw_update.perform_update(workspace=workspace, target_ref=target_ref)
+        result = abw_update.perform_update(workspace=workspace, target_ref=target_ref)
+        if isinstance(result, dict):
+            result.setdefault("workspace", workspace)
+        return result
 
     if command == "/abw-rollback":
-        return abw_update.perform_rollback(workspace=workspace)
+        result = abw_update.perform_rollback(workspace=workspace)
+        if isinstance(result, dict):
+            result.setdefault("workspace", workspace)
+        return result
 
-    return abw_health.run_health(
+    result = abw_health.run_health(
         workspace=workspace,
         runtime_root=runtime_root,
         binding_status="runner_enforced",
         mode="repair",
     )
+    if isinstance(result, dict):
+        result.setdefault("workspace", workspace)
+    return result
 
 
 def parse_args(argv=None):

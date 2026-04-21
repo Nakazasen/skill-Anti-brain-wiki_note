@@ -94,7 +94,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
             "checked",
         )
 
-    def test_resolve_trust_label_maps_query_to_enforced(self):
+    def test_resolve_trust_label_maps_query_to_checked(self):
         self.assertEqual(
             abw_runner.resolve_trust_label(
                 {
@@ -104,7 +104,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
                     "route": {"lane": "query"},
                 }
             ),
-            "enforced",
+            "checked",
         )
 
     def test_resolve_trust_label_maps_invalid_approve_to_blocked(self):
@@ -813,22 +813,45 @@ class AbwRunnerBindingTests(unittest.TestCase):
                 self.assertEqual(rows[0]["pattern"], "skip_validation")
 
     def test_query_and_query_deep_routes_are_visible_in_result(self):
-        shallow = abw_runner.dispatch_request(
-            task="What is PostgreSQL selection rationale?",
-            task_kind="execution",
-            binding_source="mcp",
-        )
-        deep = abw_runner.dispatch_request(
-            task="Compare PostgreSQL versus MongoDB tradeoffs for this architecture",
-            task_kind="execution",
-            binding_source="mcp",
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            shallow = abw_runner.dispatch_request(
+                task="What is PostgreSQL selection rationale?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+            deep = abw_runner.dispatch_request(
+                task="Compare PostgreSQL versus MongoDB tradeoffs for this architecture",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
 
-        self.assertEqual(shallow["route"]["lane"], "query")
-        self.assertEqual(deep["route"]["lane"], "query_deep")
-        self.assertEqual(deep["binding_status"], "runner_checked")
-        self.assertEqual(deep["strategy_trace"]["mode"], "bounded_wiki_reasoning_loop")
-        self.assertIn("reasoning_steps", deep)
+            self.assertEqual(shallow["route"]["lane"], "query")
+            self.assertEqual(deep["route"]["lane"], "query_deep")
+            self.assertEqual(deep["binding_status"], "runner_checked")
+            self.assertEqual(deep["strategy_trace"]["mode"], "bounded_wiki_reasoning_loop")
+            self.assertIn("reasoning_steps", deep)
+            self.assertIn("evaluation", shallow)
+            self.assertIn("artifact_path", shallow)
+            self.assertTrue((Path(tmp) / ".brain" / "used_nonces.json").exists())
+
+    def test_replayed_runner_payload_is_rejected_for_reused_nonce(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="print hello world",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            replayed = dict(result)
+            replayed.pop("_nonce_validated", None)
+            rejected = abw_runner.enforce_output_acceptance(replayed, mode="STRICT")
+
+            self.assertEqual(rejected["binding_status"], "rejected")
+            self.assertEqual(rejected["current_state"], "blocked")
+            self.assertEqual(rejected["reason"], "nonce already used")
 
     def test_resume_lane_falls_back_to_query_when_no_safe_step_exists(self):
         with tempfile.TemporaryDirectory() as tmp:

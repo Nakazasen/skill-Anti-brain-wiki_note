@@ -1397,7 +1397,7 @@ def resolve_trust_label(result):
     if lane in {"help", "dashboard", "system_trend", "coverage", "list_drafts", "bootstrap", "wizard"}:
         return "informational"
 
-    if binding == "runner_enforced" or lane in {"query", "query_deep"}:
+    if binding == "runner_enforced":
         return "enforced"
 
     if binding == "runner_checked":
@@ -1583,6 +1583,14 @@ def enforce_output_acceptance(result, mode="STRICT"):
             return rejected_non_runner_output(task=result.get("task", ""))
         if not has_echo_locked_runner_output(result):
             return rejected_non_runner_output(task=result.get("task", ""))
+        workspace = result.get("workspace") or "."
+        if result.get("evaluation") is not None and not result.get("_nonce_validated"):
+            if abw_proof.nonce_is_used(nonce, runtime_id=runtime_id, workspace=workspace):
+                return rejected_output("nonce already used", task=result.get("task", ""))
+            if not abw_proof.mark_nonce_used(nonce, runtime_id=runtime_id, workspace=workspace):
+                return rejected_output("nonce already used", task=result.get("task", ""))
+            result = dict(result)
+            result["_nonce_validated"] = True
         if result.get("binding_status") == "runner_checked" and result.get("current_state") == "verified":
             result = dict(result)
             result["current_state"] = "checked_only"
@@ -1688,37 +1696,70 @@ def write_execution_artifact(workspace, result):
     path = Path(workspace) / relpath
     path.parent.mkdir(parents=True, exist_ok=True)
     command_result = result.get("command_result") or {}
-    status = "passed" if int(command_result.get("exit_code", 1)) == 0 else "failed"
-    content = "\n".join(
-        [
-            f"runtime_id: {runtime_id}",
-            f"status: {status}",
-            f"command: {result.get('command') or ''}",
-            f"exit_code: {command_result.get('exit_code')}",
-            "stdout:",
-            str(command_result.get("stdout") or "").rstrip(),
-            "stderr:",
-            str(command_result.get("stderr") or "").rstrip(),
-            "",
-        ]
-    )
-    path.write_text(content, encoding="utf-8")
+    if result.get("command") and isinstance(command_result, dict):
+        status = "passed" if int(command_result.get("exit_code", 1)) == 0 else "failed"
+    else:
+        current_state = str(result.get("current_state") or "").strip().lower()
+        runner_status = str(result.get("runner_status") or "").strip().lower()
+        binding_status = str(result.get("binding_status") or "").strip().lower()
+        status = (
+            "failed"
+            if current_state == "blocked" or runner_status == "blocked" or binding_status == "rejected"
+            else "passed"
+        )
+    content = [
+        f"runtime_id: {runtime_id}",
+        f"status: {status}",
+        f"binding_status: {result.get('binding_status') or ''}",
+        f"current_state: {result.get('current_state') or ''}",
+        f"runner_status: {result.get('runner_status') or ''}",
+        f"task: {result.get('task') or ''}",
+    ]
+    if result.get("command") and isinstance(command_result, dict):
+        content.extend(
+            [
+                f"command: {result.get('command') or ''}",
+                f"exit_code: {command_result.get('exit_code')}",
+                "stdout:",
+                str(command_result.get("stdout") or "").rstrip(),
+                "stderr:",
+                str(command_result.get("stderr") or "").rstrip(),
+            ]
+        )
+    else:
+        content.extend(
+            [
+                "answer:",
+                str(result.get("answer") or "").rstrip(),
+            ]
+        )
+    path.write_text("\n".join(content) + "\n", encoding="utf-8")
     return relpath
 
 
 def build_acceptance_request(result, artifact_path):
     runtime_id = str(result.get("runtime_id") or "")
     command_result = result.get("command_result") or {}
-    exit_code = int(command_result.get("exit_code", 1))
-    passed = exit_code == 0
+    has_command_result = bool(result.get("command") and isinstance(command_result, dict))
+    if has_command_result:
+        exit_code = int(command_result.get("exit_code", 1))
+        passed = exit_code == 0
+    else:
+        exit_code = None
+        current_state = str(result.get("current_state") or "").strip().lower()
+        runner_status = str(result.get("runner_status") or "").strip().lower()
+        binding_status = str(result.get("binding_status") or "").strip().lower()
+        passed = not (
+            current_state == "blocked" or runner_status == "blocked" or binding_status == "rejected"
+        )
     status = "passed" if passed else "failed"
-    return {
+    request = {
         "step_id": f"step-{runtime_id}",
         "scope": result.get("task") or "ABW execution",
         "artifact": {
             "id": "runner-artifact",
             "path": artifact_path,
-            "type": "execution_log",
+            "type": "runner_log",
         },
         "candidate_files": [artifact_path],
         "rubric": [
@@ -1748,6 +1789,37 @@ def build_acceptance_request(result, artifact_path):
         ],
         "checks": [
             {
+                "id": "runtime-artifact",
+                "type": "file_exists",
+                "subject": artifact_path,
+                "status": "passed",
+                "expected": "pass",
+                "required": True,
+                "description": "Runner artifact exists with runtime marker.",
+                "evidence": {
+                    "type": "execution_log",
+                    "ref": artifact_path,
+                    "ref_type": "file",
+                    "ref_check": "contains: passed" if passed else "contains: failed",
+                    "source": "trusted",
+                    "context_id": f"step-{runtime_id}",
+                    "runtime_id": runtime_id,
+                    "status": status,
+                    "machine_checkable": True,
+                    "strength": "required_machine",
+                    "claim_id": "check:runtime-artifact",
+                    "proves": "The runner artifact exists and carries the runtime marker.",
+                    "mechanism": "artifact_presence",
+                    "result": status,
+                    "details": "Runner wrote a machine-checkable log.",
+                },
+            },
+        ],
+    }
+    if has_command_result:
+        request["checks"].insert(
+            0,
+            {
                 "id": "command-executed",
                 "type": "command_exit_code",
                 "subject": result.get("command") or "command",
@@ -1773,40 +1845,12 @@ def build_acceptance_request(result, artifact_path):
                     "details": "Command replay must match expected exit code.",
                 },
             },
-            {
-                "id": "runtime-artifact",
-                "type": "file_exists",
-                "subject": artifact_path,
-                "status": "passed",
-                "expected": "pass",
-                "required": True,
-                "description": "Execution artifact exists with runtime marker.",
-                "evidence": {
-                    "type": "execution_log",
-                    "ref": artifact_path,
-                    "ref_type": "file",
-                    "ref_check": "contains: passed" if passed else "contains: failed",
-                    "source": "trusted",
-                    "context_id": f"step-{runtime_id}",
-                    "runtime_id": runtime_id,
-                    "status": status,
-                    "machine_checkable": True,
-                    "strength": "required_machine",
-                    "claim_id": "check:runtime-artifact",
-                    "proves": "The execution artifact exists and carries the runtime marker.",
-                    "mechanism": "artifact_presence",
-                    "result": status,
-                    "details": "Runner wrote a machine-checkable execution log.",
-                },
-            },
-        ],
-    }
+        )
+    return request
 
 
 def apply_acceptance_validation(result, workspace="."):
     if not isinstance(result, dict):
-        return result
-    if not result.get("command") or not isinstance(result.get("command_result"), dict):
         return result
 
     runtime_id = str(result.get("runtime_id") or new_runtime_id())
@@ -1826,6 +1870,7 @@ def apply_acceptance_validation(result, workspace="."):
     updated["evaluation"] = eval_result
     updated["acceptance_request"] = request_relpath
     updated["artifact_path"] = artifact_path
+    updated["workspace"] = str(workspace)
     if eval_result.get("accepted") is not True:
         updated["binding_status"] = "runner_checked"
     return updated
@@ -2079,6 +2124,7 @@ def dispatch_request(
             ),
             binding_source=binding_source,
         )
+        result = apply_acceptance_validation(result, workspace=workspace)
         return enforce_output_acceptance(result, mode=binding_mode)
 
     if parse_language_command(task) is not None:
@@ -2097,6 +2143,7 @@ def dispatch_request(
             route=language_route,
             binding_source=binding_source,
         )
+        result = apply_acceptance_validation(result, workspace=workspace)
         result = enforce_output_acceptance(result, mode=binding_mode)
         result = attach_state_based_next_actions(result, workspace=workspace)
         return result
@@ -2113,6 +2160,7 @@ def dispatch_request(
             binding_mode=binding_mode,
             workspace=workspace,
         )
+        result = apply_acceptance_validation(result, workspace=workspace)
         result = enforce_output_acceptance(result, mode=binding_mode)
         result = attach_state_based_next_actions(result, workspace=workspace)
         if result.get("binding_status") == "rejected" or result.get("current_state") == "blocked":

@@ -1,4 +1,5 @@
 import hmac
+import json
 import os
 from hashlib import sha256
 from pathlib import Path
@@ -33,6 +34,63 @@ def load_secret_key():
 
 def new_nonce():
     return token_hex(16)
+
+
+def used_nonces_path(workspace="."):
+    return Path(workspace) / ".brain" / "used_nonces.json"
+
+
+def load_used_nonces(workspace="."):
+    path = used_nonces_path(workspace)
+    if not path.exists():
+        return {"nonces": []}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except json.JSONDecodeError:
+        return {"nonces": []}
+    nonces = payload.get("nonces")
+    if not isinstance(nonces, list):
+        nonces = []
+
+    normalized = []
+    for item in nonces:
+        if isinstance(item, dict):
+            nonce = str(item.get("nonce") or "").strip()
+            runtime_id = str(item.get("runtime_id") or "").strip()
+        else:
+            nonce = str(item).strip()
+            runtime_id = ""
+        if nonce:
+            normalized.append({"nonce": nonce, "runtime_id": runtime_id})
+    return {"nonces": normalized}
+
+
+def nonce_is_used(nonce, runtime_id="", workspace="."):
+    payload = load_used_nonces(workspace)
+    needle = {"nonce": str(nonce or ""), "runtime_id": str(runtime_id or "")}
+    return needle in payload.get("nonces", [])
+
+
+def mark_nonce_used(nonce, runtime_id="", workspace="."):
+    nonce = str(nonce or "").strip()
+    runtime_id = str(runtime_id or "").strip()
+    if not nonce:
+        return False
+
+    path = used_nonces_path(workspace)
+    payload = load_used_nonces(workspace)
+    entry = {"nonce": nonce, "runtime_id": runtime_id}
+    nonces = payload.get("nonces", [])
+    if entry in nonces:
+        return False
+
+    nonces.append(entry)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"nonces": nonces}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return True
 
 
 def proof_payload(answer, finalization_block, runtime_id, nonce, binding_source):
