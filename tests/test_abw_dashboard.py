@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -83,6 +84,26 @@ class AbwDashboardTests(unittest.TestCase):
             self.assertIn("Next actions:", result["rendered"])
             self.assertIn("Guided wizard: wizard", result["rendered"])
             self.assertEqual(result["wizard"]["command"], "wizard")
+
+    def test_dashboard_agent_mode_renders_markdown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            write(workspace / "wiki" / "source.md", "# Wiki\n")
+
+            with patch.dict(os.environ, {"ABW_AGENT_MODE": "1"}):
+                result = abw_dashboard.run_dashboard(tmp)
+
+            self.assertIn("### ABW Dashboard", result["rendered"])
+            self.assertIn("### Summary", result["rendered"])
+            self.assertIn("### Answer", result["rendered"])
+            self.assertIn("### Next Actions", result["rendered"])
+            self.assertIn("- Raw files:", result["rendered"])
+            self.assertIn("- Wiki files:", result["rendered"])
+            self.assertIn("- wizard", result["rendered"])
+            self.assertNotIn("Version:", result["rendered"])
+            self.assertNotIn("deploy_status:", result["rendered"])
+            self.assertNotIn("modules:", result["rendered"])
+            self.assertNotIn("lanes:", result["rendered"])
 
     def test_dashboard_with_missing_files(self):
         with tempfile.TemporaryDirectory() as tmp:

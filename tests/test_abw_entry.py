@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,12 @@ import abw_entry  # noqa: E402
 import abw_proof  # noqa: E402
 import abw_runner  # noqa: E402
 import abw_update  # noqa: E402
+
+
+def dev_entry_env():
+    env = os.environ.copy()
+    env["ABW_DEV_ENTRY"] = "1"
+    return env
 
 
 def make_proof(answer, finalization_block, runtime_id="123", nonce=None, binding_source="mcp"):
@@ -42,21 +49,136 @@ class AbwEntryTests(unittest.TestCase):
         completed = subprocess.run(
             [sys.executable, str(REPO_ROOT / "scripts" / "abw_entry.py"), "/abw-ask", "--task", "print hello world"],
             text=True,
+            encoding="utf-8",
+            capture_output=True,
+            check=False,
+            cwd=str(REPO_ROOT),
+            env=dev_entry_env(),
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertIn("ABW", completed.stdout)
+        self.assertIn("hello world", completed.stdout)
+        self.assertIn("Actions", completed.stdout)
+        self.assertNotIn("binding_status", completed.stdout)
+        self.assertNotIn("validation_proof", completed.stdout)
+
+    def test_ask_help_cli_uses_clean_output(self):
+        completed = subprocess.run(
+            [sys.executable, str(REPO_ROOT / "scripts" / "abw_entry.py"), "/abw-ask", "--task", "help"],
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            check=False,
+            cwd=str(REPO_ROOT),
+            env=dev_entry_env(),
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertIn("ABW Help", completed.stdout)
+        self.assertIn("- Raw files:", completed.stdout)
+        self.assertIn("- ingest raw/<file>", completed.stdout)
+        self.assertNotIn("{", completed.stdout)
+        self.assertNotIn("binding_status", completed.stdout)
+        self.assertNotIn("validation_proof", completed.stdout)
+
+    def test_ask_debug_dev_entry_returns_full_json(self):
+        completed = subprocess.run(
+            [sys.executable, str(REPO_ROOT / "scripts" / "abw_entry.py"), "/abw-ask", "--task", "help", "--debug"],
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            check=False,
+            cwd=str(REPO_ROOT),
+            env=dev_entry_env(),
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        payload = json.loads(completed.stdout)
+        self.assertIn(payload["binding_status"], {"runner_checked", "runner_enforced"})
+        self.assertTrue(payload["validation_proof"])
+
+    def test_ask_debug_dev_entry_with_raw_json_env_returns_full_json(self):
+        env = dev_entry_env()
+        env["ABW_RAW_JSON"] = "1"
+        completed = subprocess.run(
+            [sys.executable, str(REPO_ROOT / "scripts" / "abw_entry.py"), "/abw-ask", "--task", "help", "--debug"],
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            check=False,
+            cwd=str(REPO_ROOT),
+            env=env,
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        payload = json.loads(completed.stdout)
+        self.assertIn(payload["binding_status"], {"runner_checked", "runner_enforced"})
+        self.assertTrue(payload["validation_proof"])
+
+    def test_agent_mode_blocks_direct_entry_level_bypass(self):
+        env = dev_entry_env()
+        env["ABW_AGENT_MODE"] = "1"
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts" / "abw_entry.py"),
+                "/abw-ask",
+                "--task",
+                "help",
+                "--level",
+                "expert",
+            ],
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            check=False,
+            cwd=str(REPO_ROOT),
+            env=env,
+        )
+
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("Forbidden: Agent must use ai_runner.py", completed.stderr)
+        self.assertNotIn("validation_proof", completed.stdout)
+
+    def test_task_text_debug_does_not_enable_json(self):
+        completed = subprocess.run(
+            [sys.executable, str(REPO_ROOT / "scripts" / "abw_entry.py"), "/abw-ask", "--task", "help --debug"],
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            check=False,
+            cwd=str(REPO_ROOT),
+            env=dev_entry_env(),
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertIn("ABW Help", completed.stdout)
+        self.assertNotIn("binding_status", completed.stdout)
+        self.assertNotIn("validation_proof", completed.stdout)
+
+    def test_direct_entry_without_cli_or_dev_is_blocked(self):
+        completed = subprocess.run(
+            [sys.executable, str(REPO_ROOT / "scripts" / "abw_entry.py"), "/abw-ask", "--task", "help"],
+            text=True,
+            encoding="utf-8",
             capture_output=True,
             check=False,
             cwd=str(REPO_ROOT),
         )
 
-        self.assertEqual(completed.returncode, 0)
-        self.assertIn("[ABW] trust=enforced | binding=runner_enforced | state=verified | validation_proof=", completed.stdout)
-        self.assertIn("hello world", completed.stdout)
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("Do not run abw_entry directly. Use 'abw' CLI.", completed.stderr)
 
     def test_direct_return_without_runner_is_rejected(self):
         trusted = abw_entry.final_output("plain raw answer")
         rendered = abw_runner.render_with_visibility_lock(trusted)
         self.assertEqual(trusted["binding_status"], "rejected")
         self.assertEqual(trusted["reason"], "output not produced by runner")
-        self.assertIn("[ABW] trust=blocked | binding=rejected | state=blocked", rendered)
+        self.assertIn("### ABW", rendered)
+        self.assertIn("state: blocked", rendered)
+        self.assertIn("output not produced by runner", rendered)
+        self.assertNotIn("binding=rejected", rendered)
 
     def test_fake_runner_payload_is_rejected(self):
         finalization_block = "## Finalization\n- current_state: verified"
@@ -77,7 +199,10 @@ class AbwEntryTests(unittest.TestCase):
             trusted["reason"],
             {"output not produced by runner", "raw draft answer is not allowed"},
         )
-        self.assertIn("[ABW] trust=blocked | binding=rejected | state=blocked", rendered)
+        self.assertIn("### ABW", rendered)
+        self.assertIn("state: blocked", rendered)
+        self.assertIn("output not produced by runner", rendered)
+        self.assertNotIn("binding=rejected", rendered)
 
     def test_real_runner_payload_passes(self):
         result = abw_runner.dispatch_request(
@@ -87,7 +212,28 @@ class AbwEntryTests(unittest.TestCase):
             binding_source="cli",
         )
         rendered = abw_entry.render_final_output(result)
-        self.assertIn("[ABW] trust=enforced | binding=runner_enforced | state=verified | validation_proof=", rendered)
+        self.assertIn("ABW", rendered)
+        self.assertIn("hello world", rendered)
+        self.assertNotIn("validation_proof", rendered)
+        self.assertNotIn("finalization_block", rendered)
+
+    def test_render_final_output_uses_agent_safe_dashboard_view(self):
+        result = abw_runner.dispatch_request(
+            task="dashboard",
+            workspace=".",
+            task_kind="execution",
+            binding_source="cli",
+        )
+        rendered = abw_entry.render_final_output(result)
+        self.assertIn("ABW Dashboard", rendered)
+        self.assertIn("Raw files:", rendered)
+        self.assertIn("Wiki files:", rendered)
+        self.assertNotIn("validation_proof", rendered)
+        self.assertNotIn("Finalization", rendered)
+        self.assertNotIn("commit:", rendered)
+        self.assertNotIn("binding=", rendered)
+        self.assertNotIn("Modules:", rendered)
+        self.assertNotIn("Lanes:", rendered)
 
     def test_health_cli_path_works(self):
         tmp, workspace, runtime = self.make_layout()
@@ -104,14 +250,18 @@ class AbwEntryTests(unittest.TestCase):
                     str(runtime),
                 ],
                 text=True,
+                encoding="utf-8",
                 capture_output=True,
                 check=False,
                 cwd=str(REPO_ROOT),
+                env=dev_entry_env(),
             )
 
             self.assertEqual(completed.returncode, 0)
-            self.assertIn("[ABW] trust=enforced | binding=runner_enforced | state=verified | validation_proof=", completed.stdout)
+            self.assertIn("ABW", completed.stdout)
             self.assertIn("ABW health audit completed.", completed.stdout)
+            self.assertNotIn("binding_status", completed.stdout)
+            self.assertNotIn("validation_proof", completed.stdout)
 
     def test_repair_cli_path_works(self):
         tmp, workspace, runtime = self.make_layout()
@@ -132,14 +282,18 @@ class AbwEntryTests(unittest.TestCase):
                     str(runtime),
                 ],
                 text=True,
+                encoding="utf-8",
                 capture_output=True,
                 check=False,
                 cwd=str(REPO_ROOT),
+                env=dev_entry_env(),
             )
 
             self.assertEqual(completed.returncode, 0)
-            self.assertIn("[ABW] trust=enforced | binding=runner_enforced | state=verified | validation_proof=", completed.stdout)
+            self.assertIn("ABW", completed.stdout)
             self.assertIn("ABW health repair completed.", completed.stdout)
+            self.assertNotIn("binding_status", completed.stdout)
+            self.assertNotIn("validation_proof", completed.stdout)
 
     def test_update_command_routes_to_update_module(self):
         fake = abw_update.build_result(
@@ -180,3 +334,45 @@ class AbwEntryTests(unittest.TestCase):
         rollback_mock.assert_called_once_with(workspace=".")
         self.assertEqual(result["task"], "/abw-rollback")
         self.assertEqual(result["binding_status"], "runner_enforced")
+
+    def test_alias_command_rewrites_through_ask_path(self):
+        fake = {
+            "binding_status": "runner_enforced",
+            "current_state": "verified",
+            "runner_status": "completed",
+            "answer": "dashboard",
+        }
+        with patch("abw_entry.abw_runner.dispatch_request", return_value=fake) as dispatch_mock:
+            result = abw_entry.execute_command("/abw-dashboard", workspace=".")
+
+        dispatch_mock.assert_called_once()
+        self.assertEqual(dispatch_mock.call_args.kwargs["task"], "show dashboard")
+        self.assertEqual(result["answer"], "dashboard")
+
+    def test_alias_task_rewrites_without_changing_ask_behavior(self):
+        fake = {
+            "binding_status": "runner_enforced",
+            "current_state": "verified",
+            "runner_status": "completed",
+            "answer": "query",
+        }
+        with patch("abw_entry.abw_runner.dispatch_request", return_value=fake) as dispatch_mock:
+            result = abw_entry.execute_command("/abw-ask", task='/abw-query "abc"', workspace=".")
+
+        dispatch_mock.assert_called_once()
+        self.assertEqual(dispatch_mock.call_args.kwargs["task"], 'ask "abc"')
+        self.assertEqual(result["answer"], "query")
+
+    def test_unknown_abw_alias_falls_back_to_ask_safely(self):
+        fake = {
+            "binding_status": "runner_enforced",
+            "current_state": "verified",
+            "runner_status": "completed",
+            "answer": "fallback",
+        }
+        with patch("abw_entry.abw_runner.dispatch_request", return_value=fake) as dispatch_mock:
+            result = abw_entry.execute_command("/abw-unknown", task="arg", workspace=".")
+
+        dispatch_mock.assert_called_once()
+        self.assertEqual(dispatch_mock.call_args.kwargs["task"], "/abw-unknown arg")
+        self.assertEqual(result["answer"], "fallback")

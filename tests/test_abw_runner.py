@@ -11,6 +11,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import abw_runner  # noqa: E402
 import abw_proof  # noqa: E402
+import abw_wizard  # noqa: E402
 
 
 def make_proof(answer, finalization_block, runtime_id="123", nonce=None, binding_source="mcp"):
@@ -34,7 +35,11 @@ class AbwRunnerBindingTests(unittest.TestCase):
             }
         )
 
-        self.assertIn("[ABW] trust=checked | binding=runner_checked | state=verified", rendered)
+        self.assertIn("### ABW", rendered)
+        self.assertIn("Verified answer.", rendered)
+        self.assertNotIn("binding=runner_checked", rendered)
+        self.assertNotIn("validation_proof", rendered)
+        self.assertNotIn("Finalization", rendered)
 
     def test_render_with_visibility_lock_missing_validation_proof_is_checked(self):
         rendered = abw_runner.render_with_visibility_lock(
@@ -45,13 +50,17 @@ class AbwRunnerBindingTests(unittest.TestCase):
             }
         )
 
-        self.assertIn("[ABW] trust=checked | binding=runner_checked | state=verified", rendered)
+        self.assertIn("### ABW", rendered)
+        self.assertIn("Some answer.", rendered)
+        self.assertNotIn("binding=runner_checked", rendered)
         self.assertNotIn("UNVERIFIED OUTPUT", rendered)
 
     def test_render_with_visibility_lock_non_structured_output_is_blocked(self):
         rendered = abw_runner.render_with_visibility_lock("plain string output")
 
-        self.assertIn("[ABW] trust=blocked | reason=non-structured output", rendered)
+        self.assertIn("### ABW", rendered)
+        self.assertIn("state: blocked", rendered)
+        self.assertIn("plain string output", rendered)
         self.assertNotIn("UNVERIFIED OUTPUT", rendered)
 
     def test_render_with_visibility_lock_is_pure_view_for_verified_payload(self):
@@ -65,8 +74,9 @@ class AbwRunnerBindingTests(unittest.TestCase):
             }
         )
 
-        self.assertIn("[ABW] trust=enforced | binding=runner_enforced | state=verified | validation_proof=proof", rendered)
         self.assertIn("Verified answer without finalization.", rendered)
+        self.assertNotIn("binding=runner_enforced", rendered)
+        self.assertNotIn("validation_proof", rendered)
 
     def test_resolve_trust_label_maps_help_to_informational(self):
         self.assertEqual(
@@ -120,7 +130,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
             "blocked",
         )
 
-    def test_cli_json_input_validation_returns_validation_proof(self):
+    def test_direct_runner_cli_is_blocked(self):
         payload = {
             "task": "explain ABW",
             "task_kind": "validation",
@@ -145,11 +155,8 @@ class AbwRunnerBindingTests(unittest.TestCase):
             cwd=str(REPO_ROOT),
         )
 
-        self.assertEqual(completed.returncode, 0)
-        self.assertIn("binding=runner_checked", completed.stdout)
-        self.assertIn("[ABW] trust=checked | binding=runner_checked", completed.stdout)
-        self.assertIn("Draft explanation.", completed.stdout)
-        self.assertIn("## Finalization", completed.stdout)
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("Do not run abw_runner directly. Use 'abw' CLI.", completed.stderr)
 
     def test_draft_answer_without_runner_validation_is_rejected(self):
         result = abw_runner.enforce_output_acceptance(
@@ -1120,15 +1127,19 @@ class AbwRunnerBindingTests(unittest.TestCase):
 
             self.assertEqual(result["route"]["lane"], "help")
             self.assertEqual(result["message"], "You can continue from the current state:")
-            self.assertEqual(len(result["sections"]), 4)
+            self.assertEqual(len(result["sections"]), 5)
             self.assertEqual(result["sections"][0]["title"], "Overview")
+            self.assertIn(
+                'Dashboard: natural: "show dashboard"; command: /abw-dashboard',
+                result["sections"][4]["items"],
+            )
             self.assertEqual(result["state_snapshot"]["raw_files"], 0)
             self.assertEqual(action_commands(result["next_actions"]), ["help", "audit system"])
             return
 
         self.assertEqual(result["route"]["lane"], "help")
         self.assertEqual(result["message"], "Bạn có thể làm:")
-        self.assertEqual(len(result["sections"]), 4)
+        self.assertEqual(len(result["sections"]), 5)
         self.assertEqual(result["sections"][0]["title"], "📥 Nạp tài liệu")
 
     def test_dashboard_lane_returns_structured_ui_data(self):
@@ -1164,7 +1175,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertIn("ABW Wizard", result["answer"])
             self.assertIn("wizard_options", result)
 
-    def test_wizard_selection_returns_command_without_running_it(self):
+    def test_wizard_selection_runs_guided_flow_without_auto_approval(self):
         with tempfile.TemporaryDirectory() as tmp:
             abw_runner.dispatch_request(
                 task="wizard",
@@ -1180,10 +1191,11 @@ class AbwRunnerBindingTests(unittest.TestCase):
             )
 
             self.assertEqual(result["route"]["lane"], "wizard")
-            self.assertEqual(result["wizard_status"], "selection_mapped")
-            self.assertEqual(result["selected_command"], "ingest raw/<file>")
+            self.assertEqual(result["wizard_status"], "flow_completed")
+            self.assertEqual(result["wizard"]["flow"], abw_wizard.INGEST_FLOW)
             self.assertFalse(result["should_execute"])
-            self.assertIn("command was not executed", result["answer"])
+            self.assertTrue(any(item["step"] == "USER_APPROVE" for item in result["wizard"]["history"]))
+            self.assertIn("ABW Wizard Auto-Flow", result["answer"])
 
     def test_system_trend_lane_captures_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1377,7 +1389,9 @@ class AbwRunnerBindingTests(unittest.TestCase):
             rendered = abw_runner.render_with_visibility_lock(help_result, workspace=tmp)
 
             self.assertIn("Ban co the tiep tuc dua tren trang thai hien tai:", help_result["answer"])
-            self.assertIn("[ABW] muc_tin_cay=thong tin", rendered)
+            self.assertIn("### ABW Help", rendered)
+            self.assertNotIn("muc_tin_cay", rendered)
+            self.assertNotIn("validation_proof", rendered)
             self.assertEqual(help_result["next_actions"][0]["command"], "help")
 
 

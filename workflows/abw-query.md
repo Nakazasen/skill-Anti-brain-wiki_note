@@ -4,23 +4,20 @@ description: ABW wiki-first query path
 
 ## BINDING STRATEGY
 
-- First attempt: call MCP tool `abw_runner`.
-- Any answer is only a DRAFT until `abw_runner` validates or executes it.
-- If MCP cannot be used, you MUST invoke `py scripts/abw_runner.py --json-input` and validate the tentative answer through that runner call.
+- First attempt: call the single AI entrypoint `py scripts/ai_runner.py`.
+- Any answer is only a DRAFT until `scripts/ai_runner.py` validates, executes, and renders it.
+- If MCP cannot be used, you MUST invoke `py scripts/ai_runner.py` with JSON stdin.
 - Do not emit a raw knowledge answer.
 - Raw model answers are invalid.
 - If execution mode is not used, validation mode is mandatory.
-- After `abw_runner` returns, you MUST pass the payload through `py scripts/abw_output.py`.
-- Return the runner output itself rather than rewriting it.
-- Final knowledge output must expose `binding_status`, `knowledge_evidence_tier`, and `knowledge_source_score`.
+- Return the rendered AI entrypoint output itself rather than rewriting it.
+- Normal UI MUST NOT expose `binding_status`, `validation_proof`, or raw JSON payload fields.
 
 ## VISIBILITY LOCK
 
 Before returning:
-- You MUST expose `binding_status`.
-- You MUST expose `validation_proof`.
-- If either is missing or invalid, you MUST mark the output as `UNVERIFIED`.
-- If the outer binding shim rejects the payload, return only the rejected runner shape.
+- You MUST return only the rendered text from `py scripts/ai_runner.py`.
+- If any command prints JSON with `binding_status` or `validation_proof`, that command is invalid for normal UI and must be replaced with `py scripts/ai_runner.py`.
 
 # WORKFLOW: /abw-query
 

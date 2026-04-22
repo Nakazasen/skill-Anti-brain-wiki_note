@@ -4,29 +4,25 @@ description: ABW Dispatcher + Executor - Route and execute immediately
 
 ## BINDING STRATEGY
 
-- `/abw-ask` MUST execute through the CLI runner only.
-- You MUST invoke `py scripts/abw_runner.py --json-input` and pass the task payload through stdin.
-- Every answer is only a DRAFT until the CLI runner executes or validates it.
-- If execution mode is not used, validation mode is mandatory and MUST include `candidate_answer`.
-- You MUST return the runner output only.
-- Do not rewrite, summarize, or restate anything after the runner returns.
-- After the runner returns, you MUST pass the payload through the outer binding shim `py scripts/abw_output.py`.
-- The final output boundary MUST return the shim result only.
-- Returning a raw model answer is invalid.
-- Final output must expose `binding_status`.
+- `/abw-ask` MUST execute through the single AI entrypoint only.
+- You MUST invoke `py scripts/ai_runner.py` and pass the task payload through stdin.
+- The AI entrypoint owns routing, finalization, validation, and user-facing rendering.
+- Do not import `abw_entry` directly.
+- Do not call `execute_command` manually.
+- Do not call `final_output` manually.
+- Do not use `json.dumps` on runner or entry results.
+- Do not return raw payloads.
+- Do not rewrite, summarize, or restate anything after the AI entrypoint returns.
+- The final output boundary MUST return the exact text from `py scripts/ai_runner.py`.
+- Final output must be user-facing agent UI, not internal engine output.
+- Final output MUST NOT expose `binding_status`, `validation_proof`, `runtime_id`, `nonce`, `evaluation`, `route`, `finalization_block`, commit hashes, evidence, or finalization details unless the user explicitly asks for debug output.
 
 ## MANDATORY CLI EXECUTION
 
 You MUST execute:
 
 ```text
-py scripts/abw_runner.py --json-input
-```
-
-Then you MUST validate the returned payload through:
-
-```text
-py scripts/abw_output.py
+py scripts/ai_runner.py
 ```
 
 You MUST send a structured JSON payload with:
@@ -42,18 +38,10 @@ You MUST send a structured JSON payload with:
 ## VISIBILITY LOCK
 
 Before returning:
-- You MUST expose `binding_status`.
-- You MUST expose `validation_proof`.
-- If either is missing or invalid, you MUST mark the output as `UNVERIFIED`.
-- If the outer binding shim rejects the payload, you MUST return only:
-
-```json
-{
-  "binding_status": "rejected",
-  "current_state": "blocked",
-  "reason": "output not produced by runner"
-}
-```
+- You MUST return only the rendered text from `py scripts/ai_runner.py`.
+- In Antigravity/Gemini, rendered text must be clean markdown for humans.
+- Internal trust/proof fields are for validation only and must remain hidden from normal UI.
+- If any command prints JSON with `binding_status` or `validation_proof`, that command is invalid for normal UI and must be replaced with `py scripts/ai_runner.py`.
 
 # WORKFLOW: /abw-ask — ABW Dispatcher + Executor
 
@@ -263,27 +251,34 @@ Không được vi phạm dưới bất kỳ hình thức nào:
 
 ### 📦 Output Format (BẮT BUỘC)
 
-Khác với Router cũ, bạn không được phép chỉ in log rồi dừng. 
-Bạn phải gom toàn bộ payload định tuyến (`route`) và kết quả chạy của workflow đích (`execution`) vào 1 khối JSON duy nhất:
+Không được in JSON payload nội bộ trong giao diện Antigravity/Gemini.
+Không được tự tạo output từ `route`, `execution`, `binding_status`, hoặc `validation_proof`.
 
-```json
-{
-  "route": {
-    "intent": "...",
-    "route_to": "...",
-    "forced": true,
-    "reason": "..."
-  },
-  "execution": {
-    "result": "..."
-  }
-}
+Luôn trả đúng text đã render từ:
+
+```text
+py scripts/ai_runner.py
+```
+
+Output hợp lệ là markdown ngắn, ví dụ:
+
+```text
+### ABW Dashboard
+
+### Answer
+- Raw files: 1
+- Draft files: 0
+- Wiki files: 9
+- Coverage: 1.0
+
+### Next Actions
+- ingest raw/<file>
 ```
 
 ### Hành động sau khi xác định được Route
 
-**BẮT BUỘC** đọc và thực thi toàn bộ logic của `route_to`. 
-Không viện cớ đã in JSON log là xong. Mọi sửa đổi file, tạo code, đánh giá, next step đều phải được diễn ra, và sau đó ghi chú lại tóm tắt kết quả vào chuỗi `"result"` của JSON bên trên.
+**BẮT BUỘC** để `scripts/ai_runner.py` thực thi toàn bộ logic và render.
+Nếu cần debug raw payload, user phải yêu cầu debug rõ ràng; normal UI không được dump JSON.
 
 ---
 

@@ -28,8 +28,13 @@ class AbwHelpTests(unittest.TestCase):
                 "Next actions",
                 "Situational guidance",
                 "Minimal commands",
+                "Explicit commands",
             ])
             self.assertTrue(result["sections"][2]["items"])
+            self.assertIn(
+                'Dashboard: natural: "show dashboard"; command: /abw-dashboard',
+                result["sections"][4]["items"],
+            )
 
     def test_help_with_drafts_suggests_review(self):
         with tempfile.TemporaryDirectory() as tmp:
