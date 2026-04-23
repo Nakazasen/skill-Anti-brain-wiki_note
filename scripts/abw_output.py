@@ -426,7 +426,14 @@ def render_help(result):
     lines = box_header("ABW Help")
     for section in result.get("sections") or []:
         title = str(section.get("title") or "").strip()
-        items = [str(item).strip() for item in section.get("items") or [] if str(item).strip()]
+        items = []
+        for item in section.get("items") or []:
+            if isinstance(item, dict) and item.get("label") and item.get("command"):
+                text = f"{item['label']}: {item['command']}"
+            else:
+                text = str(item).strip()
+            if text:
+                items.append(text)
         append_section(lines, title, items, limit=7 if title == "Commands" else None)
     return limit_lines(lines, max_lines=24)
 

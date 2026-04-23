@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -505,7 +506,8 @@ def run(task="", workspace="."):
     if selection is not None:
         flow = flow_for_selection(selection)
         if flow and state.get("step") == "choose_action":
-            input_func = input if sys.stdin.isatty() else (lambda _prompt: "")
+            allow_interactive = os.environ.get("ABW_WIZARD_INTERACTIVE") == "1" and sys.stdin.isatty()
+            input_func = input if allow_interactive else (lambda _prompt: "")
             return run_flow(flow, workspace=workspace, input_func=input_func, output_func=lambda _text: None)
         return apply_selection(workspace, state, selection)
 

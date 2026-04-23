@@ -145,7 +145,7 @@ def render_agent(dashboard, workspace="."):
 def run_dashboard(workspace="."):
     workspace = str(workspace or ".")
     audit_result = abw_audit.run_audit(workspace)
-    help_result = abw_help.run(workspace)
+    help_result = abw_help.run(workspace, mode="legacy_runtime")
     coverage = coverage_report(workspace)
     next_actions = abw_suggestions.suggest_next_actions(workspace)
     version = abw_version.resolve_version(workspace)

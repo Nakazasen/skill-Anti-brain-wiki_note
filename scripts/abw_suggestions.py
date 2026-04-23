@@ -1,12 +1,16 @@
 import json
 from pathlib import Path
 
+import abw_i18n
+
 
 ACTION_LABELS = {
-    'ask "..."': "Ask something",
-    "doctor": "Check system",
+    "audit system": "Audit system",
+    "coverage": "Check knowledge coverage",
     "help": "Show help",
-    "ingest raw/<file>": "Add file",
+    "improve knowledge base": "Improve knowledge base",
+    "ingest more knowledge": "Ingest more knowledge",
+    "ingest raw/<file>": "Ingest raw file",
     "review drafts": "Review drafts",
 }
 
@@ -69,7 +73,8 @@ def raw_file_count(workspace):
 
 
 def label_for_command(command, workspace="."):
-    return ACTION_LABELS.get(str(command or "").strip(), str(command or "").strip())
+    command = str(command or "").strip()
+    return abw_i18n.action_label(command, workspace=workspace)
 
 
 def normalize_next_action(action, workspace="."):
@@ -118,12 +123,12 @@ def suggest_next_actions(workspace):
     if pending_drafts > 0:
         actions.append("review drafts")
     if current_coverage is not None and current_coverage < 0.6:
-        actions.append("ingest raw/<file>")
+        actions.append("ingest more knowledge")
     if current_fail_rate is not None and current_fail_rate > 0.3:
-        actions.append("doctor")
+        actions.append("improve knowledge base")
     if raw_count > 0 and pending_drafts == 0:
         actions.append("ingest raw/<file>")
     if not actions:
-        actions.extend(['ask "..."', "help"])
+        actions.extend(["help", "audit system"])
 
     return normalize_next_actions(actions, workspace=workspace)
