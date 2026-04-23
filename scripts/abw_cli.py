@@ -7,6 +7,12 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
+
+from abw.overview import build_overview
+from abw.save import save_candidate
+
 USER_LEVELS = ("beginner", "intermediate", "expert")
 
 DEPRECATED_ALIASES = {
@@ -81,6 +87,10 @@ def parse_args(argv=None):
     ingest.add_argument("path")
 
     add_common(sub.add_parser("review"))
+    add_common(sub.add_parser("overview"))
+    save = add_common(sub.add_parser("save"))
+    save.add_argument("text", nargs="?")
+    save.add_argument("--stdin", action="store_true")
     add_common(sub.add_parser("doctor"))
     add_common(sub.add_parser("upgrade"))
     add_common(sub.add_parser("rollback"))
@@ -124,6 +134,9 @@ def main(argv=None) -> int:
         return run_entry("help", args.debug, level=level, advanced_help=getattr(args, "advanced", False))
 
     if args.command == "ask":
+        if str(args.text).strip().lower() == "overview":
+            print(build_overview(".")["content"], end="")
+            return 0
         return run_entry(args.text, args.debug, level=level)
 
     if args.command == "ingest":
@@ -131,6 +144,23 @@ def main(argv=None) -> int:
 
     if args.command == "review":
         return run_entry("review drafts", args.debug, level=level)
+
+    if args.command == "overview":
+        print(build_overview(".")["content"], end="")
+        return 0
+
+    if args.command == "save":
+        text = args.text
+        if getattr(args, "stdin", False):
+            text = sys.stdin.read()
+        try:
+            saved = save_candidate(text, ".")
+        except ValueError as exc:
+            print(str(exc))
+            return 2
+        print(f"Saved candidate note: {saved['relative_path']}")
+        print(f"Suggested next step: {saved['next_step']}")
+        return 0
 
     if args.command == "doctor":
         return run_entry_command("/abw-health", debug=args.debug, level=level)

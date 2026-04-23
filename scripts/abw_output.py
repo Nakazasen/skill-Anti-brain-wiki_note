@@ -427,8 +427,8 @@ def render_help(result):
     for section in result.get("sections") or []:
         title = str(section.get("title") or "").strip()
         items = [str(item).strip() for item in section.get("items") or [] if str(item).strip()]
-        append_section(lines, title, items, limit=5 if title == "Commands" else None)
-    return limit_lines(lines, max_lines=20)
+        append_section(lines, title, items, limit=7 if title == "Commands" else None)
+    return limit_lines(lines, max_lines=24)
 
 
 def render_query(result):

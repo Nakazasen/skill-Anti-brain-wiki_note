@@ -53,6 +53,45 @@ class AbwCliTests(unittest.TestCase):
             self.assertEqual(run_mock.call_args.args[0][2], command)
             self.assertEqual(run_mock.call_args.args[0][4], task)
 
+    def test_ask_overview_uses_local_overview_facade(self):
+        stdout = io.StringIO()
+        with patch("abw_cli.build_overview", return_value={"content": "# ABW Overview\n"}), patch(
+            "sys.stdout",
+            stdout,
+        ), patch("abw_cli.subprocess.run") as run_mock:
+            exit_code = abw_cli.main(["ask", "overview"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stdout.getvalue(), "# ABW Overview\n")
+        run_mock.assert_not_called()
+
+    def test_overview_command_prints_generated_overview(self):
+        stdout = io.StringIO()
+        with patch("abw_cli.build_overview", return_value={"content": "# ABW Overview\n- Draft count: 0\n"}), patch(
+            "sys.stdout",
+            stdout,
+        ):
+            exit_code = abw_cli.main(["overview"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("ABW Overview", stdout.getvalue())
+
+    def test_save_command_reports_saved_candidate_note(self):
+        stdout = io.StringIO()
+        with patch(
+            "abw_cli.save_candidate",
+            return_value={
+                "relative_path": "raw/captured_notes/2026-04-23_0930_note.md",
+                "next_step": "abw ingest raw/captured_notes/2026-04-23_0930_note.md",
+            },
+        ), patch("sys.stdout", stdout):
+            exit_code = abw_cli.main(["save", "lesson learned"])
+
+        self.assertEqual(exit_code, 0)
+        output = stdout.getvalue()
+        self.assertIn("Saved candidate note:", output)
+        self.assertIn("Suggested next step:", output)
+
     def test_doctor_uses_health_entry_command(self):
         with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
             abw_cli.main(["doctor"])

@@ -60,6 +60,44 @@ class AbwIngestTests(unittest.TestCase):
             wiki_root = workspace / "wiki"
             self.assertFalse(wiki_root.exists() and any(wiki_root.rglob("*.md")))
 
+    def test_ingest_with_conflict_creates_conflict_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw_file = workspace / "raw" / "feature-flags.md"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_text("Feature X is disabled in version 2.\n", encoding="utf-8")
+            wiki_file = workspace / "wiki" / "feature-flags.md"
+            wiki_file.parent.mkdir(parents=True, exist_ok=True)
+            wiki_file.write_text("Feature X is enabled in version 1.\n", encoding="utf-8")
+
+            result = abw_ingest.run("ingest raw/feature-flags.md", str(workspace))
+
+            self.assertEqual(result["conflict_count"], 1)
+            self.assertEqual(len(result["conflict_reports"]), 1)
+            report_path = workspace / result["conflict_reports"][0]
+            self.assertTrue(report_path.exists())
+            report = report_path.read_text(encoding="utf-8")
+            self.assertIn("Potential Contradiction", report)
+            self.assertIn("review_required", report)
+            self.assertIn("wiki/feature-flags.md", report)
+
+    def test_ingest_without_conflict_still_works(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw_file = workspace / "raw" / "printer-notes.md"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_text("The printer drum handles image transfer.\n", encoding="utf-8")
+            wiki_file = workspace / "wiki" / "device-summary.md"
+            wiki_file.parent.mkdir(parents=True, exist_ok=True)
+            wiki_file.write_text("The scanner lamp needs calibration.\n", encoding="utf-8")
+
+            result = abw_ingest.run("ingest raw/printer-notes.md", str(workspace))
+
+            self.assertEqual(result["status"], "draft_created")
+            self.assertEqual(result["conflict_count"], 0)
+            self.assertEqual(result["conflict_reports"], [])
+            self.assertFalse((workspace / "drafts" / "conflicts").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

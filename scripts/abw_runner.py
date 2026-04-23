@@ -926,12 +926,19 @@ def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
         f"Ingest lane created a draft knowledge artifact for '{task}'. "
         "The draft is review-needed and has not been promoted into trusted wiki."
     )
+    if ingest_result.get("conflict_reports"):
+        reports = "\n".join(f"- {report}" for report in ingest_result["conflict_reports"])
+        body += (
+            "\nPotential contradiction detected.\n"
+            f"Review report created:\n{reports}\n"
+            "Use:\nabw review"
+        )
     model_output = f"""{body}
 
 ## Finalization
 - current_state: checked_only
 - evidence: ingest created draft_file={ingest_result['draft_file']} from raw_file={ingest_result['raw_file']}
-- gaps_or_limitations: ingest lane creates processed manifest + draft + queue item only; trusted wiki is unchanged until explicit review
+- gaps_or_limitations: ingest lane creates processed manifest + draft + queue item only; trusted wiki is unchanged until explicit review; contradiction detection is heuristic and may produce false positives
 - next_steps: review the draft file and ingest queue item before any manual promotion into wiki
 """
     gate = run_finalization_gate(model_output, task_kind="")
@@ -954,6 +961,8 @@ def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
                 "trusted_wiki_written": False,
             },
             ingest_queue=".brain/ingest_queue.json",
+            conflict_reports=ingest_result.get("conflict_reports", []),
+            conflict_count=ingest_result.get("conflict_count", 0),
         ),
         binding_source=binding_source,
     )

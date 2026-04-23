@@ -153,7 +153,7 @@ class AbwOutputTests(unittest.TestCase):
         self.assertNotIn("validation_proof", rendered)
         self.assertNotIn("runtime_id", rendered)
         self.assertNotIn("evaluation", rendered)
-        self.assertLessEqual(len(rendered.splitlines()), 20)
+        self.assertLessEqual(len(rendered.splitlines()), 24)
 
     def test_render_cli_routes_query_and_strips_finalization(self):
         rendered = abw_output.render_cli(

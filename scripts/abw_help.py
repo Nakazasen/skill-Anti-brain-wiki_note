@@ -9,6 +9,8 @@ PUBLIC_COMMANDS = [
     ('abw ask "..."', "Ask ABW to route a normal task."),
     ("abw ingest raw/<file>", "Create a draft from a raw source."),
     ("abw review", "Review pending drafts."),
+    ("abw overview", "Generate a short workspace overview."),
+    ('abw save "..."', "Save a candidate note under raw/captured_notes."),
     ("abw doctor", "Check system health."),
     ("abw help", "Show this help."),
 ]
@@ -75,6 +77,8 @@ def quick_start_items():
         'Use `abw ask "..."` for most tasks.',
         "Add documents with `abw ingest raw/<file>`.",
         "Promote draft knowledge through `abw review`.",
+        "Generate a workspace summary with `abw overview`.",
+        'Capture a candidate note with `abw save "..."`.',
         "Run `abw doctor` when the system looks wrong.",
     ]
 
@@ -117,6 +121,12 @@ def build_sections(snapshot, next_actions, advanced=False):
                 "items": command_items(POWER_USER_COMMANDS),
             }
         )
+        sections.append(
+            {
+                "title": "Advanced notes",
+                "items": ["Ingest flags possible contradictions automatically and writes review reports under drafts/conflicts/."],
+            }
+        )
     if next_actions:
         sections.append(
             {
@@ -133,9 +143,9 @@ def run(workspace=".", advanced=None):
     next_actions = abw_suggestions.suggest_next_actions(workspace)
     advanced = advanced_mode_enabled(advanced)
     sections = build_sections(snapshot, next_actions, advanced=advanced)
-    message = "ABW v2 keeps the public surface small: ask, ingest, review, doctor, help."
+    message = "ABW v2 keeps the public surface small: ask, ingest, review, overview, save, doctor, help."
     if advanced:
-        message += " Advanced mode adds maintainer commands."
+        message += " Advanced mode adds maintainer commands and notes that ingest flags possible contradictions automatically."
     return {
         "message": message,
         "state_snapshot": snapshot,

@@ -12,7 +12,10 @@ class V2SurfaceDocsTests(unittest.TestCase):
         self.assertIn(r'.\abw.bat ask "what you want to do"', readme)
         self.assertIn(r'.\abw.bat ingest raw\<file>', readme)
         self.assertIn(r'.\abw.bat review', readme)
+        self.assertIn(r'.\abw.bat overview', readme)
+        self.assertIn(r'.\abw.bat save "..."', readme)
         self.assertIn(r'.\abw.bat doctor', readme)
+        self.assertIn("Ingest now checks for possible contradictions", readme)
         self.assertNotIn("42 public workflow commands", readme)
 
     def test_workflow_readme_no_longer_claims_full_equal_public_surface(self):

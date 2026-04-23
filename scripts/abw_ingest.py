@@ -1,8 +1,15 @@
 import hashlib
 import json
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
+
+from abw.conflicts import detect_conflicts, write_conflict_reports
 
 
 MAX_SUMMARY_CHARS = 500
@@ -205,6 +212,8 @@ def run(task: str, workspace: str) -> dict:
     summary = summarize_text(content)
     concepts = extract_key_concepts(content)
     possible_queries = build_possible_queries(concepts, relative_raw_path)
+    conflicts = detect_conflicts(relative_raw_path, content, workspace)
+    conflict_reports = write_conflict_reports(conflicts, workspace) if conflicts else []
 
     append_manifest_entry(workspace, source_id, relative_raw_path)
     draft_file = write_draft(
@@ -222,6 +231,8 @@ def run(task: str, workspace: str) -> dict:
         "raw_file": relative_raw_path,
         "draft_file": draft_file,
         "queue_status": "review_needed",
+        "conflict_count": len(conflict_reports),
+        "conflict_reports": conflict_reports,
     }
     append_jsonl(
         ingest_runs_path(workspace),

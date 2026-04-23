@@ -24,6 +24,8 @@ class AbwHelpTests(unittest.TestCase):
             'abw ask "..."',
             "abw ingest raw/<file>",
             "abw review",
+            "abw overview",
+            'abw save "..."',
             "abw doctor",
             "abw help",
         ])
@@ -35,6 +37,8 @@ class AbwHelpTests(unittest.TestCase):
         ])
         rendered_items = "\n".join("\n".join(section["items"]) for section in result["sections"])
         self.assertIn("abw ask", rendered_items)
+        self.assertIn("abw overview", rendered_items)
+        self.assertIn('abw save "..."', rendered_items)
         self.assertIn("abw doctor", rendered_items)
         self.assertNotIn("abw upgrade", rendered_items)
         self.assertNotIn("audit system", rendered_items)

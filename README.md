@@ -34,6 +34,22 @@ Check system health:
 .\abw.bat doctor
 ```
 
+## New in Phase 1
+
+Overview:
+
+```powershell
+.\abw.bat overview
+```
+
+Save ideas quickly:
+
+```powershell
+.\abw.bat save "..."
+```
+
+Ingest now checks for possible contradictions and creates review reports instead of silently overwriting trusted knowledge.
+
 Show product help:
 
 ```powershell

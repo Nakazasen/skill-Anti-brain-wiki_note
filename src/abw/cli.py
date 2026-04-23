@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from pathlib import Path
 
-from . import entry, ingest as ingest_module, output, review
+from . import entry, ingest as ingest_module, output, overview as overview_module, review, save as save_module
 from .legacy import load
 from .workspace import init_workspace, resolve_workspace
 
@@ -49,6 +50,10 @@ def parse_args(argv=None):
     ingest_parser.add_argument("path")
 
     add_common(sub.add_parser("review"))
+    add_common(sub.add_parser("overview"))
+    save_parser = add_common(sub.add_parser("save"))
+    save_parser.add_argument("text", nargs="?")
+    save_parser.add_argument("--stdin", action="store_true")
     add_common(sub.add_parser("doctor"))
     add_common(sub.add_parser("upgrade"))
     add_common(sub.add_parser("rollback"))
@@ -157,6 +162,9 @@ def main(argv=None) -> int:
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "ask":
+            if str(args.text).strip().lower() == "overview":
+                print(overview_module.build_overview(workspace)["content"], end="")
+                return 0
             result = entry.ask(args.text, workspace=str(workspace))
             return _render_and_exit(result, debug=debug, level=level)
 
@@ -167,6 +175,23 @@ def main(argv=None) -> int:
         if args.command == "review":
             result = review.review_drafts(workspace=str(workspace))
             return _render_and_exit(result, debug=debug, level=level)
+
+        if args.command == "overview":
+            print(overview_module.build_overview(workspace)["content"], end="")
+            return 0
+
+        if args.command == "save":
+            text = args.text
+            if getattr(args, "stdin", False):
+                text = sys.stdin.read()
+            try:
+                saved = save_module.save_candidate(text, workspace)
+            except ValueError as exc:
+                print(str(exc))
+                return 2
+            print(f"Saved candidate note: {saved['relative_path']}")
+            print(f"Suggested next step: {saved['next_step']}")
+            return 0
 
         if args.command == "doctor":
             return _render_and_exit(_doctor_result(str(workspace)), debug=debug, level=level)
