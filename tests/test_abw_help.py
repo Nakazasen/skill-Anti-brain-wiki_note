@@ -15,26 +15,50 @@ def commands(actions):
 
 
 class AbwHelpTests(unittest.TestCase):
-    def test_empty_system_returns_state_based_help(self):
+    def test_default_help_shows_only_v2_public_surface(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = abw_help.run(tmp)
 
-            self.assertEqual(result["state_snapshot"]["raw_files"], 0)
-            self.assertEqual(result["state_snapshot"]["draft_files"], 0)
-            self.assertEqual(result["state_snapshot"]["wiki_files"], 0)
-            self.assertEqual(commands(result["next_actions"]), ["help", "audit system"])
-            self.assertEqual([section["title"] for section in result["sections"]], [
-                "Overview",
-                "Next actions",
-                "Situational guidance",
-                "Minimal commands",
-                "Explicit commands",
-            ])
-            self.assertTrue(result["sections"][2]["items"])
-            self.assertIn(
-                'Dashboard: natural: "show dashboard"; command: /abw-dashboard',
-                result["sections"][4]["items"],
-            )
+        self.assertFalse(result["advanced"])
+        self.assertEqual(result["public_commands"], [
+            'abw ask "..."',
+            "abw ingest raw/<file>",
+            "abw review",
+            "abw doctor",
+            "abw help",
+        ])
+        self.assertEqual([section["title"] for section in result["sections"]], [
+            "Quick start",
+            "Commands",
+            "Workspace",
+            "Suggested next steps",
+        ])
+        rendered_items = "\n".join("\n".join(section["items"]) for section in result["sections"])
+        self.assertIn("abw ask", rendered_items)
+        self.assertIn("abw doctor", rendered_items)
+        self.assertNotIn("abw upgrade", rendered_items)
+        self.assertNotIn("audit system", rendered_items)
+        self.assertNotIn("coverage", rendered_items)
+
+    def test_advanced_help_adds_power_user_commands_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_help.run(tmp, advanced=True)
+
+        self.assertTrue(result["advanced"])
+        self.assertEqual(result["advanced_commands"], [
+            "abw upgrade",
+            "abw rollback",
+            "abw repair",
+            "abw research",
+            "abw help --advanced",
+        ])
+        advanced_section = next(section for section in result["sections"] if section["title"] == "Advanced commands")
+        text = "\n".join(advanced_section["items"])
+        self.assertIn("abw upgrade", text)
+        self.assertIn("abw rollback", text)
+        self.assertIn("abw repair", text)
+        self.assertNotIn("abw-pack", text)
+        self.assertNotIn("abw-sync", text)
 
     def test_help_with_drafts_suggests_review(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -58,27 +82,8 @@ class AbwHelpTests(unittest.TestCase):
 
             result = abw_help.run(tmp)
 
-            self.assertEqual(result["state_snapshot"]["draft_files"], 1)
             self.assertEqual(result["state_snapshot"]["pending_drafts"], 1)
             self.assertIn("review drafts", commands(result["next_actions"]))
-            self.assertIn("review drafts", commands(result["sections"][1]["items"]))
-
-    def test_help_with_low_coverage_suggests_ingest(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            workspace = Path(tmp)
-            (workspace / ".brain").mkdir(parents=True, exist_ok=True)
-            (workspace / ".brain" / "coverage_report.json").write_text(
-                json.dumps({"coverage_ratio": 0.4}),
-                encoding="utf-8",
-            )
-
-            result = abw_help.run(tmp)
-
-            self.assertEqual(result["state_snapshot"]["coverage_ratio"], 0.4)
-            self.assertIn("ingest more knowledge", commands(result["next_actions"]))
-            self.assertTrue(
-                any("Coverage" in item or "coverage" in item for item in result["sections"][2]["items"])
-            )
 
 
 if __name__ == "__main__":

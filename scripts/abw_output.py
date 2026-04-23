@@ -216,12 +216,12 @@ def agent_title(result):
 def _agent_answer_lines(result):
     intent = result_intent(result)
     if intent == "help":
-        return [
-            f"Raw files: {_state_value(result, 'raw_files')}",
-            f"Draft files: {_state_value(result, 'draft_files')}",
-            f"Wiki files: {_state_value(result, 'wiki_files')}",
-            f"Pending drafts: {_state_value(result, 'pending_drafts')}",
-        ]
+        lines = []
+        for section in result.get("sections") or []:
+            title = str(section.get("title") or "").strip().lower()
+            if title in {"quick start", "commands", "advanced commands"}:
+                lines.extend(str(item).strip() for item in section.get("items") or [] if str(item).strip())
+        return lines[:6] or ["Use `abw ask \"...\"` for most tasks."]
 
     if intent == "coverage":
         report = result.get("coverage_report") if isinstance(result.get("coverage_report"), dict) else {}
@@ -423,32 +423,12 @@ def _action_command(action):
 
 
 def render_help(result):
-    next_actions = [
-        _action_command(action)
-        for action in (result.get("next_actions") or [])
-        if _action_command(action)
-    ] or ["ingest raw/<file>"]
-
     lines = box_header("ABW Help")
-    append_section(
-        lines,
-        "What you can do",
-        [
-            '.\\abw.bat ask "dashboard"',
-            '.\\abw.bat ask "your question"',
-            ".\\abw.bat ingest raw/<file>",
-        ],
-    )
-    append_section(
-        lines,
-        "Current workspace",
-        [
-            f"Raw files: {_state_value(result, 'raw_files')} | Draft files: {_state_value(result, 'draft_files')}",
-            f"Wiki files: {_state_value(result, 'wiki_files')} | Pending drafts: {_state_value(result, 'pending_drafts')}",
-        ],
-    )
-    append_section(lines, "Next step", next_actions, limit=3)
-    return limit_lines(lines)
+    for section in result.get("sections") or []:
+        title = str(section.get("title") or "").strip()
+        items = [str(item).strip() for item in section.get("items") or [] if str(item).strip()]
+        append_section(lines, title, items, limit=5 if title == "Commands" else None)
+    return limit_lines(lines, max_lines=20)
 
 
 def render_query(result):

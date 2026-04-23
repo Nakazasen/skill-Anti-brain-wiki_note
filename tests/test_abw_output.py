@@ -131,24 +131,29 @@ class AbwOutputTests(unittest.TestCase):
                     "pending_drafts": 4,
                 },
                 "next_actions": [{"label": "Help", "command": "help"}],
+                "sections": [
+                    {"title": "Quick start", "items": ['Use `abw ask "..."` for most tasks.']},
+                    {"title": "Commands", "items": ["abw ask \"...\" - Ask ABW to route a normal task.", "abw doctor - Check system health."]},
+                    {"title": "Workspace", "items": ["Raw files: 1", "Draft files: 2", "Wiki files: 3", "Pending drafts: 4"]},
+                    {"title": "Suggested next steps", "items": ["help"]},
+                ],
             }
         )
         self.assertIn("ABW Help", rendered)
         self.assertIn(ASCII_HEADER_RULE, rendered)
-        self.assertIn("What you can do", rendered)
-        self.assertIn('.\\abw.bat ask "dashboard"', rendered)
-        self.assertIn('.\\abw.bat ask "your question"', rendered)
-        self.assertIn(".\\abw.bat ingest raw/<file>", rendered)
-        self.assertIn("Current workspace", rendered)
-        self.assertIn("Raw files: 1 | Draft files: 2", rendered)
-        self.assertIn("Wiki files: 3 | Pending drafts: 4", rendered)
-        self.assertIn("Next step", rendered)
+        self.assertIn("Quick start", rendered)
+        self.assertIn("Commands", rendered)
+        self.assertIn('abw ask "..."', rendered)
+        self.assertIn("abw doctor", rendered)
+        self.assertIn("Workspace", rendered)
+        self.assertIn("Raw files: 1", rendered)
+        self.assertIn("Pending drafts: 4", rendered)
         self.assertIn("- help", rendered)
         self.assertNotIn("binding_status", rendered)
         self.assertNotIn("validation_proof", rendered)
         self.assertNotIn("runtime_id", rendered)
         self.assertNotIn("evaluation", rendered)
-        self.assertLessEqual(len(rendered.splitlines()), 15)
+        self.assertLessEqual(len(rendered.splitlines()), 20)
 
     def test_render_cli_routes_query_and_strips_finalization(self):
         rendered = abw_output.render_cli(
@@ -296,6 +301,24 @@ class AbwOutputTests(unittest.TestCase):
         self.assertNotIn("runner_checked", rendered)
         self.assertNotIn("Modules:", rendered)
         self.assertNotIn("Lanes:", rendered)
+
+    def test_agent_help_view_stays_on_v2_public_surface(self):
+        rendered = abw_output.render_agent(
+            {
+                "route": {"lane": "help"},
+                "sections": [
+                    {"title": "Quick start", "items": ['Use `abw ask "..."` for most tasks.']},
+                    {"title": "Commands", "items": ["abw ask \"...\" - Ask ABW to route a normal task.", "abw review - Review pending drafts."]},
+                    {"title": "Advanced commands", "items": ["abw upgrade - Upgrade the local ABW runtime."]},
+                ],
+                "next_actions": [{"label": "Help", "command": "help"}],
+            }
+        )
+        self.assertIn('abw ask "..."', rendered)
+        self.assertIn("abw review", rendered)
+        self.assertIn("abw upgrade", rendered)
+        self.assertNotIn("validation_proof", rendered)
+        self.assertNotIn("runtime_id", rendered)
 
     def test_user_level_env_override(self):
         with unittest.mock.patch.dict(os.environ, {"ABW_USER_LEVEL": "expert"}):

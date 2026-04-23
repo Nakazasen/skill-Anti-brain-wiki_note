@@ -1,6 +1,22 @@
 # Hybrid ABW Workflow Surface
 
-This directory defines the public workflow command surface for Hybrid ABW.
+This directory contains workflow files, compatibility docs, and internal guidance for Hybrid ABW.
+
+It is not a guarantee that every file here is an equal public runtime command.
+The v2 product surface is intentionally smaller and is defined by the CLI/help facade:
+
+- `abw ask "..."`
+- `abw ingest <path>`
+- `abw review`
+- `abw doctor`
+- `abw help`
+
+Advanced maintainer commands remain available but hidden from normal UX:
+
+- `abw upgrade`
+- `abw rollback`
+- `abw repair`
+- `abw help --advanced`
 
 ## Core Entry Points
 

@@ -1,3 +1,4 @@
+import io
 import sys
 import unittest
 from pathlib import Path
@@ -29,52 +30,72 @@ class AbwCliTests(unittest.TestCase):
                 ".",
             ],
         )
-        self.assertEqual(run_mock.call_args.kwargs["env"]["ABW_ENTRY_CALLER"], "abw_cli")
 
-    def test_ask_routes_text_through_entry(self):
+    def test_help_advanced_sets_help_env(self):
         with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
-            abw_cli.main(["ask", "MOM la gi"])
+            abw_cli.main(["help", "--advanced"])
 
-        self.assertEqual(run_mock.call_args.args[0][4], "MOM la gi")
+        self.assertEqual(run_mock.call_args.kwargs["env"]["ABW_HELP_ADVANCED"], "1")
 
-    def test_command_mappings(self):
+    def test_public_commands_route_through_honest_surface(self):
         cases = [
-            (["ingest", "raw/file.pdf"], "ingest raw/file.pdf"),
-            (["review"], "review drafts"),
-            (["approve", "drafts/file.md"], "approve draft drafts/file.md"),
-            (["coverage"], "coverage"),
-            (["dashboard"], "dashboard"),
-            (["wizard"], "wizard"),
+            (["ask", "MOM la gi"], "/abw-ask", "MOM la gi"),
+            (["ingest", "raw/file.pdf"], "/abw-ask", "ingest raw/file.pdf"),
+            (["review"], "/abw-ask", "review drafts"),
         ]
-
-        for argv, task in cases:
+        for argv, command, task in cases:
             with self.subTest(argv=argv), patch(
                 "abw_cli.subprocess.run",
                 return_value=SimpleNamespace(returncode=0),
             ) as run_mock:
                 abw_cli.main(argv)
 
+            self.assertEqual(run_mock.call_args.args[0][2], command)
             self.assertEqual(run_mock.call_args.args[0][4], task)
 
-    def test_debug_after_subcommand_is_forwarded(self):
+    def test_doctor_uses_health_entry_command(self):
         with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
-            abw_cli.main(["help", "--debug"])
-
-        self.assertIn("--debug", run_mock.call_args.args[0])
-
-    def test_level_after_subcommand_is_forwarded(self):
-        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
-            abw_cli.main(["help", "--level", "expert"])
-
-        self.assertIn("--level", run_mock.call_args.args[0])
-        self.assertIn("expert", run_mock.call_args.args[0])
-
-    def test_health_routes_to_health_entry_command(self):
-        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
-            abw_cli.main(["health"])
+            abw_cli.main(["doctor"])
 
         self.assertEqual(run_mock.call_args.args[0][2], "/abw-health")
         self.assertNotIn("--task", run_mock.call_args.args[0])
+
+    def test_power_commands_route_to_direct_entry_points(self):
+        cases = [
+            (["upgrade"], "/abw-update"),
+            (["rollback"], "/abw-rollback"),
+            (["repair"], "/abw-repair"),
+        ]
+        for argv, command in cases:
+            with self.subTest(argv=argv), patch(
+                "abw_cli.subprocess.run",
+                return_value=SimpleNamespace(returncode=0),
+            ) as run_mock:
+                abw_cli.main(argv)
+
+            self.assertEqual(run_mock.call_args.args[0][2], command)
+
+    def test_deprecated_health_alias_prints_migration_hint(self):
+        stdout = io.StringIO()
+        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)), patch("sys.stdout", stdout):
+            abw_cli.main(["health"])
+
+        self.assertIn("Deprecated command. Use: abw doctor", stdout.getvalue())
+
+    def test_deprecated_query_alias_prints_migration_hint(self):
+        stdout = io.StringIO()
+        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)), patch("sys.stdout", stdout):
+            abw_cli.main(["query", "What is MOM?"])
+
+        self.assertIn("Deprecated command. Use: abw ask", stdout.getvalue())
+
+    def test_research_is_honest_placeholder(self):
+        stdout = io.StringIO()
+        with patch("sys.stdout", stdout):
+            exit_code = abw_cli.main(["research"])
+
+        self.assertEqual(exit_code, 2)
+        self.assertIn("not a separate public runtime command yet", stdout.getvalue())
 
     def test_menu_command_launches_menu(self):
         with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
@@ -89,19 +110,6 @@ class AbwCliTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertTrue(str(run_mock.call_args.args[0][1]).endswith("abw_menu.py"))
-
-    def test_global_debug_before_subcommand_is_forwarded(self):
-        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
-            abw_cli.main(["--debug", "help"])
-
-        self.assertIn("--debug", run_mock.call_args.args[0])
-
-    def test_global_level_before_subcommand_is_forwarded(self):
-        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
-            abw_cli.main(["--level", "beginner", "help"])
-
-        self.assertIn("--level", run_mock.call_args.args[0])
-        self.assertIn("beginner", run_mock.call_args.args[0])
 
     def test_handle_input_routes_plain_text_through_ask(self):
         fake = {

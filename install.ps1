@@ -245,22 +245,21 @@ function Write-GeminiRegistration {
         [string]$ModeReason
     )
 
-    $abwCommands = New-Object System.Collections.Generic.List[string]
-    $extendedCommands = New-Object System.Collections.Generic.List[string]
+    $publicCommands = @("/abw-ask", "/help")
+    $powerCommands = @("/abw-health", "/abw-update", "/abw-rollback", "/abw-repair")
+    $legacyAliases = @("/abw-ingest", "/abw-review", "/abw-query", "/abw-query-deep")
+    $devSurface = $env:ABW_INSTALL_DEV_SURFACE -eq "1"
+    $allCommands = New-Object System.Collections.Generic.List[string]
 
     foreach ($workflowPath in $Catalog.WorkflowPaths) {
         $command = Convert-WorkflowPathToCommand -RelativePath $workflowPath
         if (-not $command) {
             continue
         }
-
-        if ($command.StartsWith("/abw-")) {
-            $abwCommands.Add($command)
-        }
-        else {
-            $extendedCommands.Add($command)
-        }
+        $allCommands.Add($command)
     }
+
+    $registeredPublic = if ($devSurface) { $allCommands.ToArray() } else { $publicCommands + $powerCommands }
 
     $abwInstructions = @"
 # Hybrid ABW - Antigravity IDE Command Surface
@@ -270,11 +269,15 @@ When the user types one of the registered commands below, treat it as a Hybrid A
 Do not silently fall back to a stale local clone when the verified remote snapshot is newer.
 Hybrid ABW commands are authoritative. In particular, /help MUST load ~/.gemini/antigravity/global_workflows/help.md and should not be answered from memory or a short summary.
 
-## Registered ABW Commands
-$(Join-Commands -Commands $abwCommands.ToArray())
+## Public Commands
+$(Join-Commands -Commands $registeredPublic)
 
-## Registered Extended Commands
-$(Join-Commands -Commands $extendedCommands.ToArray())
+## Legacy Compatibility Aliases
+$(Join-Commands -Commands $legacyAliases)
+
+## Hidden By Default
+- Internal workflows remain installed on disk but are not part of the default public surface.
+- Set `ABW_INSTALL_DEV_SURFACE=1` before install if you intentionally want the full workflow list exposed for development.
 
 ## Runtime Notes
 - Installer source mode: $SourceMode

@@ -1,17 +1,13 @@
 import json
 from pathlib import Path
 
-import abw_i18n
-
 
 ACTION_LABELS = {
-    "audit system": "Audit hệ thống",
-    "coverage": "Kiểm tra coverage tri thức",
-    "help": "Xem hướng dẫn",
-    "improve knowledge base": "Cải thiện kho tri thức",
-    "ingest more knowledge": "Nạp thêm tri thức",
-    "ingest raw/<file>": "Nạp tài liệu raw",
-    "review drafts": "Duyệt các bản nháp",
+    'ask "..."': "Ask something",
+    "doctor": "Check system",
+    "help": "Show help",
+    "ingest raw/<file>": "Add file",
+    "review drafts": "Review drafts",
 }
 
 
@@ -73,8 +69,7 @@ def raw_file_count(workspace):
 
 
 def label_for_command(command, workspace="."):
-    command = str(command or "").strip()
-    return abw_i18n.action_label(command, workspace=workspace)
+    return ACTION_LABELS.get(str(command or "").strip(), str(command or "").strip())
 
 
 def normalize_next_action(action, workspace="."):
@@ -123,12 +118,12 @@ def suggest_next_actions(workspace):
     if pending_drafts > 0:
         actions.append("review drafts")
     if current_coverage is not None and current_coverage < 0.6:
-        actions.append("ingest more knowledge")
+        actions.append("ingest raw/<file>")
     if current_fail_rate is not None and current_fail_rate > 0.3:
-        actions.append("improve knowledge base")
+        actions.append("doctor")
     if raw_count > 0 and pending_drafts == 0:
         actions.append("ingest raw/<file>")
     if not actions:
-        actions.extend(["help", "audit system"])
+        actions.extend(['ask "..."', "help"])
 
     return normalize_next_actions(actions, workspace=workspace)

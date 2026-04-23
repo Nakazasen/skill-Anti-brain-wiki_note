@@ -33,18 +33,6 @@ class AbwMenuTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(run_mock.call_args.args[0][2:], ["review"])
 
-    def test_system_flow_routes_to_coverage_dashboard_health(self):
-        cases = [("1", "coverage"), ("2", "dashboard"), ("3", "health")]
-        for choice, command in cases:
-            with self.subTest(choice=choice), patch(
-                "abw_menu.subprocess.run",
-                return_value=SimpleNamespace(returncode=0),
-            ) as run_mock:
-                result = abw_menu.system_flow(input_func=lambda _prompt, value=choice: value, output_func=lambda _text: None)
-
-            self.assertEqual(result, 0)
-            self.assertEqual(run_mock.call_args.args[0][2:], [command])
-
     def test_main_menu_routes_dashboard(self):
         inputs = iter(["1", "0"])
         with patch("abw_menu.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
@@ -56,6 +44,26 @@ class AbwMenuTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         self.assertEqual(run_mock.call_args_list[0].args[0][2:], ["ask", "dashboard"])
+
+    def test_main_menu_does_not_show_internal_commands(self):
+        inputs = iter(["0"])
+        output = []
+
+        result = abw_menu.menu_main(
+            input_func=lambda _prompt: next(inputs),
+            output_func=output.append,
+            clear=False,
+        )
+
+        joined = "\n".join(output)
+        self.assertEqual(result, 0)
+        self.assertIn("View system", joined)
+        self.assertIn("Ask something", joined)
+        self.assertIn("Add file", joined)
+        self.assertIn("Review drafts", joined)
+        self.assertNotIn("coverage", joined.lower())
+        self.assertNotIn("health", joined.lower())
+        self.assertNotIn("upgrade", joined.lower())
 
     def test_invalid_menu_choice_does_not_crash(self):
         inputs = iter(["x", "0"])

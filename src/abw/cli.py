@@ -5,16 +5,30 @@ import os
 from pathlib import Path
 
 from . import entry, ingest as ingest_module, output, review
+from .legacy import load
 from .workspace import init_workspace, resolve_workspace
 
 
 USER_LEVELS = ("beginner", "intermediate", "expert")
+_legacy_entry = load("abw_entry")
+
+DEPRECATED_ALIASES = {
+    "health": "doctor",
+    "update": "upgrade",
+    "query": "ask",
+    "query-deep": "ask",
+    "query_deep": "ask",
+}
 
 
 def add_common(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument("--debug", action="store_true", default=argparse.SUPPRESS)
     parser.add_argument("--level", choices=USER_LEVELS, default=argparse.SUPPRESS)
     return parser
+
+
+def add_hidden_parser(subparsers, name):
+    return add_common(subparsers.add_parser(name, help=argparse.SUPPRESS))
 
 
 def parse_args(argv=None):
@@ -25,7 +39,8 @@ def parse_args(argv=None):
 
     sub = parser.add_subparsers(dest="command")
 
-    add_common(sub.add_parser("help"))
+    help_parser = add_common(sub.add_parser("help"))
+    help_parser.add_argument("--advanced", action="store_true")
 
     ask = add_common(sub.add_parser("ask"))
     ask.add_argument("text")
@@ -33,15 +48,28 @@ def parse_args(argv=None):
     ingest_parser = add_common(sub.add_parser("ingest"))
     ingest_parser.add_argument("path")
 
-    add_common(sub.add_parser("dashboard"))
-    add_common(sub.add_parser("init"))
     add_common(sub.add_parser("review"))
+    add_common(sub.add_parser("doctor"))
+    add_common(sub.add_parser("upgrade"))
+    add_common(sub.add_parser("rollback"))
+    add_common(sub.add_parser("repair"))
+    add_common(sub.add_parser("research"))
+    add_common(sub.add_parser("init"))
+    sub.add_parser("menu")
 
-    approve = add_common(sub.add_parser("approve"))
+    approve = add_hidden_parser(sub, "approve")
     approve.add_argument("path")
+    add_hidden_parser(sub, "dashboard")
+    add_hidden_parser(sub, "coverage")
+    add_hidden_parser(sub, "health")
+    add_hidden_parser(sub, "update")
 
-    add_common(sub.add_parser("coverage"))
-    add_common(sub.add_parser("health"))
+    query = add_hidden_parser(sub, "query")
+    query.add_argument("text")
+    query_deep = add_hidden_parser(sub, "query-deep")
+    query_deep.add_argument("text")
+    query_deep_alt = add_hidden_parser(sub, "query_deep")
+    query_deep_alt.add_argument("text")
 
     return parser.parse_args(argv)
 
@@ -63,14 +91,34 @@ def _print_menu() -> int:
     print("ABW")
     print("---")
     print()
-    print('Use: abw ask "what you want to do"')
-    print()
-    print("Common commands:")
-    print('  abw ask "dashboard"')
-    print('  abw ask "help"')
-    print("  abw ingest raw/<file>")
-    print("  abw init")
+    print("1. View system")
+    print("2. Ask something")
+    print("3. Add file")
+    print("4. Review drafts")
+    print("0. Exit")
     return 0
+
+
+def _print_deprecation(command: str) -> None:
+    replacement = DEPRECATED_ALIASES.get(command)
+    if replacement:
+        print(f"Deprecated command. Use: abw {replacement}")
+
+
+def _doctor_result(workspace: str):
+    return _legacy_entry.execute_command("/abw-health", workspace=workspace)
+
+
+def _upgrade_result(workspace: str):
+    return _legacy_entry.execute_command("/abw-update", workspace=workspace)
+
+
+def _rollback_result(workspace: str):
+    return _legacy_entry.execute_command("/abw-rollback", workspace=workspace)
+
+
+def _repair_result(workspace: str):
+    return _legacy_entry.execute_command("/abw-repair", workspace=workspace)
 
 
 def main(argv=None) -> int:
@@ -84,7 +132,7 @@ def main(argv=None) -> int:
         debug = getattr(args, "debug", False)
         level = getattr(args, "level", None)
 
-        if args.command is None:
+        if args.command is None or args.command == "menu":
             return _print_menu()
 
         if args.command == "init":
@@ -94,7 +142,18 @@ def main(argv=None) -> int:
             return 0
 
         if args.command == "help":
-            result = entry.ask("help", workspace=str(workspace))
+            previous = os.environ.get("ABW_HELP_ADVANCED")
+            if getattr(args, "advanced", False):
+                os.environ["ABW_HELP_ADVANCED"] = "1"
+            else:
+                os.environ.pop("ABW_HELP_ADVANCED", None)
+            try:
+                result = entry.ask("help", workspace=str(workspace))
+            finally:
+                if previous is None:
+                    os.environ.pop("ABW_HELP_ADVANCED", None)
+                else:
+                    os.environ["ABW_HELP_ADVANCED"] = previous
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "ask":
@@ -105,16 +164,32 @@ def main(argv=None) -> int:
             result = ingest_module.ingest(args.path, workspace=str(workspace))
             return _render_and_exit(result, debug=debug, level=level)
 
-        if args.command == "dashboard":
-            result = entry.dashboard(workspace=str(workspace))
-            return _render_and_exit(result, debug=debug, level=level)
-
         if args.command == "review":
             result = review.review_drafts(workspace=str(workspace))
             return _render_and_exit(result, debug=debug, level=level)
 
+        if args.command == "doctor":
+            return _render_and_exit(_doctor_result(str(workspace)), debug=debug, level=level)
+
+        if args.command == "upgrade":
+            return _render_and_exit(_upgrade_result(str(workspace)), debug=debug, level=level)
+
+        if args.command == "rollback":
+            return _render_and_exit(_rollback_result(str(workspace)), debug=debug, level=level)
+
+        if args.command == "repair":
+            return _render_and_exit(_repair_result(str(workspace)), debug=debug, level=level)
+
+        if args.command == "research":
+            print('Research mode is not a separate public runtime command yet. Use: abw ask "..."')
+            return 2
+
         if args.command == "approve":
             result = review.approve_draft(args.path, workspace=str(workspace))
+            return _render_and_exit(result, debug=debug, level=level)
+
+        if args.command == "dashboard":
+            result = entry.dashboard(workspace=str(workspace))
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "coverage":
@@ -122,7 +197,21 @@ def main(argv=None) -> int:
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "health":
-            result = entry.ask("health", workspace=str(workspace))
+            _print_deprecation("health")
+            return _render_and_exit(_doctor_result(str(workspace)), debug=debug, level=level)
+
+        if args.command == "update":
+            _print_deprecation("update")
+            return _render_and_exit(_upgrade_result(str(workspace)), debug=debug, level=level)
+
+        if args.command == "query":
+            _print_deprecation("query")
+            result = entry.ask(args.text, workspace=str(workspace))
+            return _render_and_exit(result, debug=debug, level=level)
+
+        if args.command in {"query-deep", "query_deep"}:
+            _print_deprecation("query-deep")
+            result = entry.ask(args.text, workspace=str(workspace))
             return _render_and_exit(result, debug=debug, level=level)
 
         print("Unknown command")

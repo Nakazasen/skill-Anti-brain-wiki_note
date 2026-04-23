@@ -300,22 +300,25 @@ join_commands() {
 }
 
 write_gemini_registration() {
-  local abw_commands=()
-  local extended_commands=()
+  local public_commands=("/abw-ask" "/help")
+  local power_commands=("/abw-health" "/abw-update" "/abw-rollback" "/abw-repair")
+  local legacy_aliases=("/abw-ingest" "/abw-review" "/abw-query" "/abw-query-deep")
+  local all_commands=()
+  local registered_public=()
+  local dev_surface="${ABW_INSTALL_DEV_SURFACE:-0}"
   local workflow_path command tmp_file
 
   for workflow_path in "${WORKFLOW_PATHS[@]}"; do
     if command="$(workflow_path_to_command "$workflow_path" 2>/dev/null)"; then
-      if [[ "$command" == /abw-* ]]; then
-        abw_commands+=("$command")
-      else
-        extended_commands+=("$command")
-      fi
+      all_commands+=("$command")
     fi
   done
 
-  mapfile -t abw_commands < <(printf '%s\n' "${abw_commands[@]}" | sort -u)
-  mapfile -t extended_commands < <(printf '%s\n' "${extended_commands[@]}" | sort -u)
+  if [ "$dev_surface" = "1" ]; then
+    mapfile -t registered_public < <(printf '%s\n' "${all_commands[@]}" | sort -u)
+  else
+    mapfile -t registered_public < <(printf '%s\n' "${public_commands[@]}" "${power_commands[@]}" | sort -u)
+  fi
 
   read -r -d '' ABW_INSTRUCTIONS <<EOF || true
 # Hybrid ABW - Antigravity IDE Command Surface
@@ -325,11 +328,15 @@ When the user types one of the registered commands below, treat it as a Hybrid A
 Do not silently fall back to a stale local clone when the verified remote snapshot is newer.
 Hybrid ABW commands are authoritative. In particular, \`/help\` MUST load \`~/.gemini/antigravity/global_workflows/help.md\` and should not be answered from memory or a short summary.
 
-## Registered ABW Commands
-$(join_commands "${abw_commands[@]}")
+## Public Commands
+$(join_commands "${registered_public[@]}")
 
-## Registered Extended Commands
-$(join_commands "${extended_commands[@]}")
+## Legacy Compatibility Aliases
+$(join_commands "${legacy_aliases[@]}")
+
+## Hidden By Default
+- Internal workflows remain installed on disk but are not part of the default public surface.
+- Set \`ABW_INSTALL_DEV_SURFACE=1\` before install if you intentionally want the full workflow list exposed for development.
 
 ## Runtime Notes
 - Installer source mode: $INSTALL_MODE
