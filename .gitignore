@@ -37,6 +37,7 @@
 .brain/ingest_queue.json
 .brain/ingest_runs.jsonl
 .brain/review_log.jsonl
+.brain/used_nonces.json
 
 # Bootstrap reasoning state (do not commit greenfield assumptions/plans)
 .brain/bootstrap/*.json
