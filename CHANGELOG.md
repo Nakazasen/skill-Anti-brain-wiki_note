@@ -5,6 +5,49 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-04-23
+
+### Added
+- Executive Overview (`abw overview`)
+- Save Candidate Memory (`abw save "..."`)
+- Contradiction Detection during ingest with safe warning/report flow under `drafts/conflicts/`
+
+### Changed
+- Public ABW command surface simplified to:
+  - `ask`
+  - `ingest`
+  - `review`
+  - `doctor`
+  - `help`
+- Added power-user commands:
+  - `upgrade`
+  - `rollback`
+  - `repair`
+  - `research` (placeholder)
+- README rewritten with a user-first Quick Start
+- Help, menu, and output views redesigned toward product UX
+
+### Fixed
+- Full `py -m unittest` suite restored to green after Phase 1
+- Legacy runtime compatibility paths preserved for runner, dashboard, help, and suggestions
+- Wizard non-interactive safety path improved for automated execution and tests
+- CLI rendering consistency improved for subprocess entry paths
+
+### Security / Trust
+- Proof, nonce, and acceptance core unchanged
+- No trust model regressions introduced in this release
+
+### Internal Notes
+- `0.2.0` marks the transition from an engineering-heavy command surface to a more product-facing ABW surface
+- Historical anchors for this release:
+  - `522323b` v2 surface cleanup
+  - `2cc41c6` Phase 1 features
+  - `83b3a24` full-suite restoration
+
+## [0.1.0]
+
+Initial package, CLI, and multi-project workspace milestone before the v2 product surface cleanup.
+
 ## [Unreleased]
 
 ### Fixed
@@ -36,3 +79,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **TTC Deliberation Engine:** Initial implementation of Tier 2 Reasoning (/abw-query-deep).
 - **Hybrid ABW Core Architecture:** Established the 3-Tier reasoning structure (Fast/Deep/Bootstrap).
 - **Grounding Queue System:** Implemented semi-automated ingest/verification path.
+
+---
+
+## Release Discipline
+
+- Patch releases (`0.2.1`) are for bug fixes and compatibility-only changes.
+- Minor releases (`0.3.0`) are for new safe features that preserve the public model.
+- Major releases (`1.0.0`) are for intentional breaking command or runtime contract changes.
+
+Examples:
+- `0.2.1` contradiction heuristics fixes
+- `0.3.0` guided research and richer overview
+- `1.0.0` stable public API and mature command/runtime contracts
