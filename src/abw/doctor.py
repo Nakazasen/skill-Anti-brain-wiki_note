@@ -52,6 +52,12 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
 
     version = build_version_report(root)
     engine_checks.append(_status("OK", f"package version {version['package_version']}"))
+    engine_checks.append(
+        _status(
+            "OK" if version.get("runtime_source") != "unknown" else "WARN",
+            f"runtime source {version.get('runtime_source', 'unknown')} ({version.get('runtime_source_path', 'unknown')})",
+        )
+    )
 
     legacy_folder = root / "abw"
     if legacy_folder.exists() and legacy_folder.is_dir():
@@ -70,6 +76,16 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
     else:
         engine_checks.append(_status("WARN", "release match could not be verified from git tag"))
         next_steps.append("run `abw version` and verify the package source")
+    mirror_status = version.get("mirror_status", "not_checked")
+    if mirror_status == "matched":
+        engine_checks.append(_status("OK", "runtime mirror status matched"))
+    elif mirror_status == "mismatch":
+        mismatch_list = ", ".join(version.get("mirror_mismatches", [])) or "unknown files"
+        engine_checks.append(_status("WARN", f"runtime mirror mismatch: {mismatch_list}"))
+        next_steps.append("sync scripts/* and src/abw/_legacy/* critical runtime modules")
+    else:
+        engine_checks.append(_status("WARN", "runtime mirror status not checked"))
+        next_steps.append("run ABW from repository source to verify runtime mirror status")
 
     overall = "OK"
     checks = workspace_checks + engine_checks

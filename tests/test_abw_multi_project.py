@@ -45,8 +45,13 @@ class AbwMultiProjectTests(unittest.TestCase):
             self.assertIn("install_mode", report)
             self.assertIn("workspace_schema", report)
             self.assertIn("release_match_state", report)
+            self.assertIn("runtime_source", report)
+            self.assertIn("runtime_source_path", report)
+            self.assertIn("mirror_status", report)
             self.assertIn("ABW Version", rendered)
             self.assertIn("release_match:", rendered)
+            self.assertIn("runtime_source:", rendered)
+            self.assertIn("mirror_status:", rendered)
             self.assertNotIn("validation_proof", rendered)
 
     def test_release_match_state_is_explicit(self):
@@ -67,6 +72,7 @@ class AbwMultiProjectTests(unittest.TestCase):
             self.assertIn("ABW Doctor", rendered)
             self.assertIn("Workspace checks:", rendered)
             self.assertIn("Engine checks:", rendered)
+            self.assertIn("runtime mirror status", rendered)
             self.assertNotIn("validation_proof", rendered)
 
     def test_doctor_detects_legacy_local_abw_folder(self):
@@ -78,6 +84,44 @@ class AbwMultiProjectTests(unittest.TestCase):
 
             messages = [item["message"] for item in report["checks"]]
             self.assertIn("local legacy ABW engine detected at ./abw", messages)
+
+    def test_doctor_runtime_mirror_clean_is_ok(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ensure_workspace(tmp)
+            with patch("abw.doctor.build_version_report") as mock_version:
+                mock_version.return_value = {
+                    "package_version": "0.2.2",
+                    "install_mode": "editable/dev",
+                    "release_match_state": "matched",
+                    "runtime_source": "packaged_legacy",
+                    "runtime_source_path": "d:/x/src/abw/_legacy",
+                    "mirror_status": "matched",
+                    "mirror_mismatches": [],
+                }
+                report = build_doctor_report(tmp)
+            self.assertIn(
+                "runtime mirror status matched",
+                [item["message"] for item in report["engine_checks"]],
+            )
+
+    def test_doctor_runtime_mirror_mismatch_is_warn(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ensure_workspace(tmp)
+            with patch("abw.doctor.build_version_report") as mock_version:
+                mock_version.return_value = {
+                    "package_version": "0.2.2",
+                    "install_mode": "editable/dev",
+                    "release_match_state": "matched",
+                    "runtime_source": "packaged_legacy",
+                    "runtime_source_path": "d:/x/src/abw/_legacy",
+                    "mirror_status": "mismatch",
+                    "mirror_mismatches": ["abw_help.py"],
+                }
+                report = build_doctor_report(tmp)
+            self.assertIn(
+                "runtime mirror mismatch: abw_help.py",
+                [item["message"] for item in report["engine_checks"]],
+            )
 
     def test_migrate_preserves_existing_data(self):
         with tempfile.TemporaryDirectory() as tmp:

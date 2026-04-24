@@ -7,6 +7,8 @@ from importlib import metadata
 from pathlib import Path
 
 from . import __version__
+from .legacy import runtime_source_details
+from .runtime_manifest import CRITICAL_RUNTIME_MODULES
 from .workspace import read_workspace_config, resolve_workspace
 
 
@@ -123,6 +125,8 @@ def build_version_report(workspace: str | Path = ".") -> dict:
     current_git_tag = git_tag()
     current_git_commit = git_commit()
     current_release_match_state = release_match_state(current_package_version, current_git_tag)
+    runtime = runtime_source_details()
+    mirror = runtime_mirror_status()
     workspace_schema = None
     if config_status == "ok" and isinstance(config, dict):
         workspace_schema = config.get("workspace_schema") or config.get("workspace_version")
@@ -142,6 +146,10 @@ def build_version_report(workspace: str | Path = ".") -> dict:
         "install_mode": install["install_mode"],
         "source_path": install["source_path"],
         "python": f"{sys.version_info.major}.{sys.version_info.minor}",
+        "runtime_source": runtime["runtime_source"],
+        "runtime_source_path": runtime["runtime_source_path"],
+        "mirror_status": mirror["status"],
+        "mirror_mismatches": mirror["mismatches"],
         "note": note,
     }
 
@@ -157,8 +165,31 @@ def render_version_report(report: dict) -> str:
         f"- install_mode: {report['install_mode']}",
         f"- workspace_schema: {report['workspace_schema']}",
         f"- python: {report['python']}",
+        f"- runtime_source: {report['runtime_source']}",
+        f"- runtime_source_path: {report['runtime_source_path']}",
+        f"- mirror_status: {report['mirror_status']}",
     ]
     if report.get("source_path"):
         lines.append(f"- source_path: {report['source_path']}")
+    if report.get("mirror_mismatches"):
+        lines.append(f"- mirror_mismatches: {', '.join(report['mirror_mismatches'])}")
     lines.append(f"- note: {report['note']}")
     return "\n".join(lines)
+
+
+def runtime_mirror_status() -> dict:
+    repo_root = package_root()
+    scripts_dir = repo_root / "scripts"
+    legacy_dir = Path(__file__).resolve().parent / "_legacy"
+    if not scripts_dir.exists() or not legacy_dir.exists():
+        return {"status": "not_checked", "mismatches": []}
+    mismatches = []
+    for name in CRITICAL_RUNTIME_MODULES:
+        scripts_file = scripts_dir / name
+        legacy_file = legacy_dir / name
+        if not scripts_file.exists() or not legacy_file.exists():
+            mismatches.append(name)
+            continue
+        if scripts_file.read_bytes() != legacy_file.read_bytes():
+            mismatches.append(name)
+    return {"status": "matched" if not mismatches else "mismatch", "mismatches": mismatches}
