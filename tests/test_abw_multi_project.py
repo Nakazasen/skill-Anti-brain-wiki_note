@@ -55,6 +55,28 @@ class AbwMultiProjectTests(unittest.TestCase):
             self.assertIn("mirror_status:", rendered)
             self.assertNotIn("validation_proof", rendered)
 
+    def test_version_report_adds_self_check_hint_when_stale_install_suspected(self):
+        report = {
+            "package_version": "0.2.5",
+            "git_tag": "unknown",
+            "git_commit": "unknown",
+            "release_match_state": "mismatched",
+            "workspace": "D:/w",
+            "install_mode": "pip package",
+            "workspace_schema": "unknown",
+            "python": "3.13",
+            "runtime_source": "packaged_legacy",
+            "runtime_source_path": "site-packages/abw/_legacy",
+            "mirror_status": "mismatch",
+            "mirror_mismatches": ["abw_entry.py"],
+            "note": "Package version does not match the current tagged source.",
+            "stale_install_suspected": True,
+            "self_check_hint": "Run `abw self-check` to diagnose stale install/runtime path issues.",
+        }
+        rendered = render_version_report(report)
+        self.assertIn("abw self-check", rendered)
+        self.assertIn("py -m pip install -U .", rendered)
+
     def test_release_match_state_is_explicit(self):
         self.assertEqual(release_match_state("0.2.2", "v0.2.2"), "matched")
         self.assertEqual(release_match_state("0.2.2", "v0.2.1"), "mismatched")
@@ -117,12 +139,30 @@ class AbwMultiProjectTests(unittest.TestCase):
                     "runtime_source_path": "d:/x/src/abw/_legacy",
                     "mirror_status": "mismatch",
                     "mirror_mismatches": ["abw_help.py"],
+                    "stale_install_suspected": False,
                 }
                 report = build_doctor_report(tmp)
             self.assertIn(
                 "runtime mirror mismatch: abw_help.py",
                 [item["message"] for item in report["engine_checks"]],
             )
+
+    def test_doctor_suggests_self_check_when_stale_install_suspected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ensure_workspace(tmp)
+            with patch("abw.doctor.build_version_report") as mock_version:
+                mock_version.return_value = {
+                    "package_version": "0.2.5",
+                    "install_mode": "pip package",
+                    "release_match_state": "mismatched",
+                    "runtime_source": "packaged_legacy",
+                    "runtime_source_path": "site-packages/abw/_legacy",
+                    "mirror_status": "mismatch",
+                    "mirror_mismatches": ["abw_entry.py"],
+                    "stale_install_suspected": True,
+                }
+                report = build_doctor_report(tmp)
+            self.assertIn("run `abw self-check`", report["next_steps"])
 
     def test_migrate_preserves_existing_data(self):
         with tempfile.TemporaryDirectory() as tmp:

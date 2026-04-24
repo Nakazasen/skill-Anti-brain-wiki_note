@@ -38,7 +38,7 @@ class AbwCliTests(unittest.TestCase):
         cases = [
             (["ask", "MOM la gi"], "/abw-ask", "MOM la gi"),
             (["ingest", "raw/file.pdf"], "/abw-ask", "ingest raw/file.pdf"),
-            (["review"], "/abw-ask", "review drafts"),
+            (["review"], "/abw-review", ""),
         ]
         for argv, command, task in cases:
             with self.subTest(argv=argv), patch(
@@ -48,7 +48,8 @@ class AbwCliTests(unittest.TestCase):
                 abw_cli.main(argv)
 
             self.assertEqual(run_mock.call_args.args[0][2], command)
-            self.assertEqual(run_mock.call_args.args[0][4], task)
+            if task:
+                self.assertEqual(run_mock.call_args.args[0][4], task)
 
     def test_ask_overview_uses_local_overview_facade(self):
         stdout = io.StringIO()
@@ -108,38 +109,25 @@ class AbwCliTests(unittest.TestCase):
         self.assertIn("Workspace schema: 1", output)
 
     def test_doctor_prints_direct_report(self):
-        stdout = io.StringIO()
-        with patch("abw_cli.build_doctor_report", return_value={"ok": True}), patch(
-            "abw_cli.render_doctor_report",
-            return_value="ABW Doctor\n- OK: workspace initialized",
-        ), patch("sys.stdout", stdout), patch("abw_cli.subprocess.run") as run_mock:
+        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
             exit_code = abw_cli.main(["doctor"])
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("ABW Doctor", stdout.getvalue())
-        run_mock.assert_not_called()
+        self.assertEqual(run_mock.call_args.args[0][2], "/abw-doctor")
 
     def test_version_prints_direct_report(self):
-        stdout = io.StringIO()
-        with patch("abw_cli.build_version_report", return_value={"package_version": "0.2.2"}), patch(
-            "abw_cli.render_version_report",
-            return_value="ABW Version\n- package_version: 0.2.2",
-        ), patch("sys.stdout", stdout):
+        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
             exit_code = abw_cli.main(["version"])
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("ABW Version", stdout.getvalue())
+        self.assertEqual(run_mock.call_args.args[0][2], "/abw-version")
 
     def test_migrate_prints_direct_report(self):
-        stdout = io.StringIO()
-        with patch("abw_cli.build_migration_report", return_value={"status": "migrated"}), patch(
-            "abw_cli.render_migration_report",
-            return_value="ABW Migrate\n- result: migrated",
-        ), patch("sys.stdout", stdout):
+        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
             exit_code = abw_cli.main(["migrate"])
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("ABW Migrate", stdout.getvalue())
+        self.assertEqual(run_mock.call_args.args[0][2], "/abw-migrate")
 
     def test_upgrade_prints_guidance_report(self):
         stdout = io.StringIO()
@@ -169,13 +157,14 @@ class AbwCliTests(unittest.TestCase):
 
     def test_deprecated_health_alias_prints_migration_hint(self):
         stdout = io.StringIO()
-        with patch("abw_cli.build_doctor_report", return_value={"ok": True}), patch(
-            "abw_cli.render_doctor_report",
-            return_value="ABW Doctor",
-        ), patch("sys.stdout", stdout):
+        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock, patch(
+            "sys.stdout",
+            stdout,
+        ):
             abw_cli.main(["health"])
 
         self.assertIn("Deprecated command. Use: abw doctor", stdout.getvalue())
+        self.assertEqual(run_mock.call_args.args[0][2], "/abw-health")
 
     def test_deprecated_query_alias_prints_migration_hint(self):
         stdout = io.StringIO()

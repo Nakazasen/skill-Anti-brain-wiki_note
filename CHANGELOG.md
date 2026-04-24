@@ -5,6 +5,23 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-04-24
+
+### Added
+- Command behavior parity test suite for canonical CLI/slash pairs: doctor, version, ask, review, migrate.
+- `abw self-check` diagnostic command to troubleshoot stale install/runtime path confusion.
+
+### Changed
+- Canonical CLI commands now route through canonical slash command handlers to keep behavior and output aligned.
+- Installer guidance and README update flow now explicitly include `py -m pip install -U .` and git+repo update path.
+
+### Fixed
+- Resolved behavior drift between CLI and slash command outputs (exit behavior, key fields, workspace handling, and hints).
+- Added stale-install hint in doctor/version flows: run `abw self-check`.
+
+### Security / Trust
+- No changes to proof, nonce, acceptance, finalization, rollback, router fallback, or trusted wiki promotion semantics.
+
 ## [0.2.4] - 2026-04-24
 
 ### Added

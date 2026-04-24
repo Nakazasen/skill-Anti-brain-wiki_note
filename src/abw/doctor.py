@@ -87,6 +87,10 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
     else:
         engine_checks.append(_status("WARN", "runtime mirror status not checked"))
         next_steps.append("run ABW from repository source to verify runtime mirror status")
+    if version.get("stale_install_suspected"):
+        engine_checks.append(_status("WARN", "stale install may be active"))
+        next_steps.append("run `abw self-check`")
+        next_steps.append("run `py -m pip install -U .` or `py -m pip install -U git+<repo-url>`")
 
     overall = "OK"
     checks = workspace_checks + engine_checks

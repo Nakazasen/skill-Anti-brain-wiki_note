@@ -136,7 +136,7 @@ def build_version_report(workspace: str | Path = ".") -> dict:
         note = "Package version does not match the current tagged source."
     else:
         note = "Release match could not be verified because the current source is not exactly tagged."
-    return {
+    report = {
         "package_version": current_package_version,
         "git_tag": current_git_tag or "unknown",
         "git_commit": current_git_commit or "unknown",
@@ -152,6 +152,27 @@ def build_version_report(workspace: str | Path = ".") -> dict:
         "mirror_mismatches": mirror["mismatches"],
         "note": note,
     }
+    report["stale_install_suspected"] = stale_install_suspected(report)
+    report["self_check_hint"] = self_check_hint()
+    return report
+
+
+def stale_install_suspected(report: dict) -> bool:
+    release_match = str(report.get("release_match_state") or "unknown").strip().lower()
+    mirror_status = str(report.get("mirror_status") or "not_checked").strip().lower()
+    runtime_source = str(report.get("runtime_source") or "unknown").strip().lower()
+    install_mode = str(report.get("install_mode") or "unknown").strip().lower()
+    if release_match == "mismatched":
+        return True
+    if mirror_status == "mismatch":
+        return True
+    if install_mode == "pip package" and runtime_source == "packaged_legacy" and release_match != "matched":
+        return True
+    return False
+
+
+def self_check_hint() -> str:
+    return "Run `abw self-check` to diagnose stale install/runtime path issues."
 
 
 def render_version_report(report: dict) -> str:
@@ -174,6 +195,9 @@ def render_version_report(report: dict) -> str:
     if report.get("mirror_mismatches"):
         lines.append(f"- mirror_mismatches: {', '.join(report['mirror_mismatches'])}")
     lines.append(f"- note: {report['note']}")
+    if report.get("stale_install_suspected"):
+        lines.append(f"- NEXT: {report.get('self_check_hint') or self_check_hint()}")
+        lines.append("- NEXT: run `py -m pip install -U .` or `py -m pip install -U git+<repo-url>`")
     return "\n".join(lines)
 
 

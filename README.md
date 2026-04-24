@@ -115,6 +115,7 @@ These are maintainer-facing commands. They stay out of normal help and menu outp
 .\abw.bat upgrade
 .\abw.bat rollback
 .\abw.bat repair
+.\abw.bat self-check
 ```
 
 `research` is reserved but not implemented as a separate runtime command yet.
@@ -147,11 +148,25 @@ abw upgrade
 abw doctor
 ```
 
+After update run:
+
+```powershell
+py -m pip install -U .
+```
+
+or
+
+```powershell
+py -m pip install -U git+https://github.com/Nakazasen/skill-Anti-brain-wiki_note.git
+```
+
 Each project is isolated by default. The current working directory is the workspace unless `ABW_WORKSPACE` is set.
 
 Migration guidance for legacy projects:
 
 - [ABW Migration Playbook](docs/ABW_MIGRATION_PLAYBOOK.md)
+- [Command Surface Standard](docs/COMMAND_SURFACE.md)
+- [Command Surface Migration](docs/COMMAND_MIGRATION.md)
 
 ## Developer Notes
 
@@ -163,4 +178,5 @@ High-level runtime flow:
 CLI facade -> package workspace/report helpers or abw_entry.py -> abw_runner.py -> abw_output.py
 ```
 
-The runner, proof generation, and trust logic are kept intact for routed work. `v0.2.4` keeps `scripts/` as canonical runtime in editable/dev installs, preserves `src/abw/_legacy/` as packaged fallback with mirror drift guards, and adds migration adoption diagnostics for dirty repos.
+The runner, proof generation, and trust logic are kept intact for routed work. `v0.2.5` keeps `scripts/` as canonical runtime in editable/dev installs, preserves `src/abw/_legacy/` as packaged fallback with mirror drift guards, and adds migration adoption diagnostics for dirty repos.
+

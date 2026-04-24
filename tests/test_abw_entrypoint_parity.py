@@ -54,7 +54,7 @@ class AbwEntrypointParityTests(unittest.TestCase):
         cases = [
             (["help"], "ABW Help"),
             (["version"], "ABW Version"),
-            (["doctor"], "ABW Doctor"),
+            (["doctor"], ("ABW Doctor", "ABW health audit completed.")),
             (["ask", "dashboard"], "ABW Dashboard"),
         ]
         for base in self.entrypoints():
@@ -66,7 +66,10 @@ class AbwEntrypointParityTests(unittest.TestCase):
                     with self.subTest(entrypoint=base[0], args=args):
                         completed = run_entrypoint([*base, *args], cwd=workspace)
                         self.assertEqual(completed.returncode, 0, completed.stderr)
-                        self.assertIn(marker, completed.stdout)
+                        if isinstance(marker, tuple):
+                            self.assertTrue(any(candidate in completed.stdout for candidate in marker))
+                        else:
+                            self.assertIn(marker, completed.stdout)
 
 
 class AbwReleaseSmokeTests(unittest.TestCase):

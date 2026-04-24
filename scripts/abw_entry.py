@@ -7,15 +7,35 @@ from pathlib import Path
 current_dir = Path(__file__).resolve().parent
 if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
+ROOT = current_dir.parent
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
 
 import abw_health
 import abw_alias
 import abw_output
+import abw_proof
 import abw_runner
 import abw_update
+from abw.migrate import build_migration_report, render_migration_report
+from abw.version import build_version_report, render_version_report, stale_install_suspected
 
 
-SUPPORTED_COMMANDS = {"/abw-ask", "/abw-health", "/abw-repair", "/abw-update", "/abw-rollback"}
+SUPPORTED_COMMANDS = {
+    "/abw-ask",
+    "/abw-doctor",
+    "/abw-version",
+    "/abw-migrate",
+    "/abw-health",
+    "/abw-status",
+    "/abw-repair",
+    "/abw-update",
+    "/abw-rollback",
+}
+LEGACY_COMMAND_ALIASES = {
+    "/abw-health": "/abw-doctor",
+    "/abw-status": "/abw-doctor",
+}
 AI_EXECUTION_PATH = "ai_runner"
 
 
@@ -75,6 +95,43 @@ def configure_stdout():
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
+def _structured_runner_result(*, task: str, body: str, details: dict, binding_source: str = "cli"):
+    return abw_update.build_result(
+        task=task,
+        binding_source=binding_source,
+        binding_status="runner_enforced",
+        current_state="checked_only",
+        runner_status="completed",
+        body=body,
+        evidence=f"{task} rendered deterministic report",
+        gaps_or_limitations="report only; no additional task execution was performed",
+        next_steps="use the matching CLI command for follow-up actions if needed",
+        details=details,
+    )
+
+
+def _append_hint_to_result(result: dict, hint: str) -> dict:
+    if not isinstance(result, dict) or not hint:
+        return result
+    finalization_block = str(result.get("finalization_block") or "").strip()
+    answer = str(result.get("answer") or "").strip()
+    if not finalization_block or not answer.endswith(finalization_block):
+        return result
+    body = answer[: -len(finalization_block)].rstrip()
+    body = f"{body}\n\n{hint}".strip()
+    updated_answer = f"{body}\n\n{finalization_block}".strip()
+    updated = dict(result)
+    updated["answer"] = updated_answer
+    updated["validation_proof"] = abw_proof.generate_proof(
+        updated_answer,
+        finalization_block,
+        str(updated.get("runtime_id") or ""),
+        str(updated.get("nonce") or ""),
+        str(updated.get("binding_source") or "cli"),
+    )
+    return updated
+
+
 def execute_command(
     command,
     *,
@@ -86,6 +143,7 @@ def execute_command(
 ):
     enforce_agent_execution_path()
     command, task = abw_alias.rewrite_entry_command(command, task)
+    command = LEGACY_COMMAND_ALIASES.get(command, command)
     runtime_state_root = runtime_root or str(Path(__file__).resolve().parent.parent)
     runtime_state = abw_update.initialize_runtime(runtime_state_root)
     if command not in SUPPORTED_COMMANDS:
@@ -132,15 +190,41 @@ def execute_command(
             result.setdefault("workspace", workspace)
         return result
 
-    if command == "/abw-health":
+    if command == "/abw-doctor":
         result = abw_health.run_health(
             workspace=workspace,
             runtime_root=runtime_root,
             binding_status="runner_enforced",
             mode="audit",
         )
+        version_report = build_version_report(workspace)
+        if stale_install_suspected(version_report):
+            result = _append_hint_to_result(
+                result,
+                "Stale install suspected. Run `abw self-check`.",
+            )
         if isinstance(result, dict):
             result.setdefault("workspace", workspace)
+        return result
+
+    if command == "/abw-version":
+        report = build_version_report(workspace)
+        result = _structured_runner_result(
+            task="/abw-version",
+            body=render_version_report(report),
+            details={"version_report": report},
+        )
+        result.setdefault("workspace", workspace)
+        return result
+
+    if command == "/abw-migrate":
+        report = build_migration_report(workspace)
+        result = _structured_runner_result(
+            task="/abw-migrate",
+            body=render_migration_report(report),
+            details={"migration_report": report},
+        )
+        result.setdefault("workspace", workspace)
         return result
 
     if command == "/abw-update":

@@ -12,10 +12,8 @@ if str(ROOT / "src") not in sys.path:
 
 from abw.overview import build_overview
 from abw.save import save_candidate
-from abw.doctor import build_doctor_report, render_doctor_report
-from abw.migrate import build_migration_report, render_migration_report
+from abw.self_check import build_self_check_report, render_self_check_report
 from abw.upgrade import build_upgrade_report, render_upgrade_report
-from abw.version import build_version_report, render_version_report
 from abw.workspace import ensure_workspace
 from abw.commands import DEPRECATED_ALIASES, PUBLIC_HELP
 
@@ -103,6 +101,7 @@ def parse_args(argv=None):
     add_hidden_parser(sub, "upgrade")
     add_hidden_parser(sub, "rollback")
     add_hidden_parser(sub, "repair")
+    add_hidden_parser(sub, "self-check")
     add_hidden_parser(sub, "research")
     add_public_parser(sub, "init")
     sub.add_parser("menu", help=argparse.SUPPRESS)
@@ -177,19 +176,17 @@ def main(argv=None) -> int:
         return run_entry(f"ingest {args.path}", args.debug, level=level)
 
     if args.command == "review":
-        return run_entry("review drafts", args.debug, level=level)
+        return run_entry_command("/abw-review", debug=args.debug, level=level)
 
     if args.command == "overview":
         print(build_overview(".")["content"], end="")
         return 0
 
     if args.command == "version":
-        print(render_version_report(build_version_report(".")))
-        return 0
+        return run_entry_command("/abw-version", debug=args.debug, level=level)
 
     if args.command == "migrate":
-        print(render_migration_report(build_migration_report(".")))
-        return 0
+        return run_entry_command("/abw-migrate", debug=args.debug, level=level)
 
     if args.command == "save":
         text = args.text
@@ -205,8 +202,7 @@ def main(argv=None) -> int:
         return 0
 
     if args.command == "doctor":
-        print(render_doctor_report(build_doctor_report(".")))
-        return 0
+        return run_entry_command("/abw-doctor", debug=args.debug, level=level)
 
     if args.command == "upgrade":
         print(render_upgrade_report(build_upgrade_report(".")))
@@ -217,6 +213,10 @@ def main(argv=None) -> int:
 
     if args.command == "repair":
         return run_entry_command("/abw-repair", debug=args.debug, level=level)
+
+    if args.command == "self-check":
+        print(render_self_check_report(build_self_check_report(".")))
+        return 0
 
     if args.command == "research":
         print("Research mode is not a separate public runtime command yet. Use: abw ask \"...\"")
@@ -240,8 +240,7 @@ def main(argv=None) -> int:
 
     if args.command == "health":
         print_deprecation("health")
-        print(render_doctor_report(build_doctor_report(".")))
-        return 0
+        return run_entry_command("/abw-health", debug=args.debug, level=level)
 
     if args.command == "update":
         print_deprecation("update")

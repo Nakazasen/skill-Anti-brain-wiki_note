@@ -245,9 +245,9 @@ function Write-GeminiRegistration {
         [string]$ModeReason
     )
 
-    $publicCommands = @("/abw-ask", "/help")
-    $powerCommands = @("/abw-health", "/abw-update", "/abw-rollback", "/abw-repair")
-    $legacyAliases = @("/abw-ingest", "/abw-review", "/abw-query", "/abw-query-deep")
+    $publicCommands = @("/abw-ask", "/abw-review", "/abw-doctor", "/abw-version", "/abw-migrate", "/help")
+    $powerCommands = @("/abw-update", "/abw-rollback", "/abw-repair")
+    $legacyAliases = @("/abw-health", "/abw-status", "/abw-ingest", "/abw-query", "/abw-query-deep")
     $devSurface = $env:ABW_INSTALL_DEV_SURFACE -eq "1"
     $allCommands = New-Object System.Collections.Generic.List[string]
 

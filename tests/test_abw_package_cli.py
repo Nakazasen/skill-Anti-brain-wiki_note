@@ -43,33 +43,39 @@ class AbwPackageCliTests(unittest.TestCase):
         cli = self.load_cli()
         with tempfile.TemporaryDirectory() as tmp:
             with patch.dict("os.environ", {"ABW_WORKSPACE": tmp}), patch(
-                "abw.cli.entry.ask",
+                "abw.cli._legacy_entry.execute_command",
                 return_value={
                     "binding_status": "runner_enforced",
                     "runner_status": "completed",
                     "answer": "ok",
                 },
-            ) as ask_mock, patch("abw.cli.output.render", return_value="ok"):
+            ) as execute_mock, patch(
+                "abw.cli._legacy_entry.final_output",
+                side_effect=lambda result: result,
+            ), patch("abw.cli.output.render", return_value="ok"):
                 exit_code = cli.main(["ask", "dashboard"])
 
             self.assertEqual(exit_code, 0)
-            ask_mock.assert_called_once_with("dashboard", workspace=str(Path(tmp).resolve()))
+            execute_mock.assert_called_once_with("/abw-ask", task="dashboard", workspace=str(Path(tmp).resolve()))
 
     def test_workspace_argument_overrides_environment(self):
         cli = self.load_cli()
         with tempfile.TemporaryDirectory() as env_tmp, tempfile.TemporaryDirectory() as arg_tmp:
             with patch.dict("os.environ", {"ABW_WORKSPACE": env_tmp}), patch(
-                "abw.cli.entry.ask",
+                "abw.cli._legacy_entry.execute_command",
                 return_value={
                     "binding_status": "runner_enforced",
                     "runner_status": "completed",
                     "answer": "ok",
                 },
-            ) as ask_mock, patch("abw.cli.output.render", return_value="ok"):
+            ) as execute_mock, patch(
+                "abw.cli._legacy_entry.final_output",
+                side_effect=lambda result: result,
+            ), patch("abw.cli.output.render", return_value="ok"):
                 exit_code = cli.main(["--workspace", arg_tmp, "ask", "dashboard"])
 
             self.assertEqual(exit_code, 0)
-            ask_mock.assert_called_once_with("dashboard", workspace=str(Path(arg_tmp).resolve()))
+            execute_mock.assert_called_once_with("/abw-ask", task="dashboard", workspace=str(Path(arg_tmp).resolve()))
 
     def test_help_uses_product_facade_without_runner(self):
         cli = self.load_cli()

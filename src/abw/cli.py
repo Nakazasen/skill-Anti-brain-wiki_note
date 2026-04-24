@@ -9,6 +9,7 @@ from . import entry, ingest as ingest_module, output, overview as overview_modul
 from .doctor import build_doctor_report, render_doctor_report
 from .help import build_help_report, render_help_report
 from .migrate import build_migration_report, render_migration_report
+from .self_check import build_self_check_report, render_self_check_report
 from .upgrade import build_upgrade_report, render_upgrade_report
 from .version import build_version_report, render_version_report
 from .commands import DEPRECATED_ALIASES, PUBLIC_HELP
@@ -64,6 +65,7 @@ def parse_args(argv=None):
     add_hidden_parser(sub, "upgrade")
     add_hidden_parser(sub, "rollback")
     add_hidden_parser(sub, "repair")
+    add_hidden_parser(sub, "self-check")
     add_hidden_parser(sub, "research")
     add_public_parser(sub, "init")
     sub.add_parser("menu", help=argparse.SUPPRESS)
@@ -118,7 +120,18 @@ def _print_deprecation(command: str) -> None:
 
 
 def _doctor_result(workspace: str):
-    return _legacy_entry.execute_command("/abw-health", workspace=workspace)
+    result = _legacy_entry.execute_command("/abw-doctor", workspace=workspace)
+    return _legacy_entry.final_output(result)
+
+
+def _version_result(workspace: str):
+    result = _legacy_entry.execute_command("/abw-version", workspace=workspace)
+    return _legacy_entry.final_output(result)
+
+
+def _migrate_result(workspace: str):
+    result = _legacy_entry.execute_command("/abw-migrate", workspace=workspace)
+    return _legacy_entry.final_output(result)
 
 
 def _upgrade_result(workspace: str):
@@ -166,7 +179,9 @@ def main(argv=None) -> int:
             if str(args.text).strip().lower() == "overview":
                 print(overview_module.build_overview(workspace)["content"], end="")
                 return 0
-            result = entry.ask(args.text, workspace=str(workspace))
+            result = _legacy_entry.final_output(
+                _legacy_entry.execute_command("/abw-ask", task=args.text, workspace=str(workspace))
+            )
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "ingest":
@@ -174,7 +189,9 @@ def main(argv=None) -> int:
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "review":
-            result = review.review_drafts(workspace=str(workspace))
+            result = _legacy_entry.final_output(
+                _legacy_entry.execute_command("/abw-review", workspace=str(workspace))
+            )
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "overview":
@@ -182,12 +199,10 @@ def main(argv=None) -> int:
             return 0
 
         if args.command == "version":
-            print(render_version_report(build_version_report(workspace)))
-            return 0
+            return _render_and_exit(_version_result(str(workspace)), debug=debug, level=level)
 
         if args.command == "migrate":
-            print(render_migration_report(build_migration_report(workspace)))
-            return 0
+            return _render_and_exit(_migrate_result(str(workspace)), debug=debug, level=level)
 
         if args.command == "save":
             text = args.text
@@ -203,8 +218,7 @@ def main(argv=None) -> int:
             return 0
 
         if args.command == "doctor":
-            print(render_doctor_report(build_doctor_report(workspace)))
-            return 0
+            return _render_and_exit(_doctor_result(str(workspace)), debug=debug, level=level)
 
         if args.command == "upgrade":
             print(render_upgrade_report(build_upgrade_report(workspace)))
@@ -215,6 +229,10 @@ def main(argv=None) -> int:
 
         if args.command == "repair":
             return _render_and_exit(_repair_result(str(workspace)), debug=debug, level=level)
+
+        if args.command == "self-check":
+            print(render_self_check_report(build_self_check_report(workspace)))
+            return 0
 
         if args.command == "research":
             print('Research mode is not a separate public runtime command yet. Use: abw ask "..."')

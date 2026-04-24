@@ -263,6 +263,67 @@ class AbwEntryTests(unittest.TestCase):
             self.assertNotIn("binding_status", completed.stdout)
             self.assertNotIn("validation_proof", completed.stdout)
 
+    def test_doctor_and_legacy_status_alias_route_to_health_audit(self):
+        fake = {
+            "binding_status": "runner_enforced",
+            "current_state": "verified",
+            "runner_status": "completed",
+            "answer": "health ok",
+        }
+        for command in ("/abw-doctor", "/abw-health", "/abw-status"):
+            with self.subTest(command=command), patch("abw_entry.abw_health.run_health", return_value=fake) as health_mock:
+                result = abw_entry.execute_command(command, workspace=".")
+
+            health_mock.assert_called_once()
+            self.assertEqual(health_mock.call_args.kwargs["mode"], "audit")
+            self.assertEqual(result["answer"], "health ok")
+
+    def test_doctor_adds_self_check_hint_when_stale_install_suspected(self):
+        fake = {
+            "binding_status": "runner_enforced",
+            "binding_source": "cli",
+            "current_state": "verified",
+            "runner_status": "completed",
+            "runtime_id": "123",
+            "nonce": "a" * 32,
+            "finalization_block": "## Finalization\n- current_state: verified\n- evidence: ok\n- gaps_or_limitations: none\n- next_steps: none",
+        }
+        fake["answer"] = "ABW health audit completed.\n\n" + fake["finalization_block"]
+        with patch("abw_entry.abw_health.run_health", return_value=fake), patch(
+            "abw_entry.build_version_report",
+            return_value={"release_match_state": "mismatched"},
+        ), patch("abw_entry.stale_install_suspected", return_value=True):
+            result = abw_entry.execute_command("/abw-doctor", workspace=".")
+        self.assertIn("abw self-check", result["answer"])
+
+    def test_version_command_returns_structured_report_result(self):
+        version_report = {"package_version": "0.2.4"}
+        with patch("abw_entry.build_version_report", return_value=version_report) as build_mock, patch(
+            "abw_entry.render_version_report",
+            return_value="ABW Version\n- package_version: 0.2.4",
+        ) as render_mock:
+            result = abw_entry.execute_command("/abw-version", workspace=".")
+
+        build_mock.assert_called_once_with(".")
+        render_mock.assert_called_once_with(version_report)
+        self.assertEqual(result["task"], "/abw-version")
+        self.assertEqual(result["binding_status"], "runner_enforced")
+        self.assertIn("ABW Version", result["answer"])
+
+    def test_migrate_command_returns_structured_report_result(self):
+        migration_report = {"status": "already_compatible"}
+        with patch("abw_entry.build_migration_report", return_value=migration_report) as build_mock, patch(
+            "abw_entry.render_migration_report",
+            return_value="ABW Migrate\n- result: already_compatible",
+        ) as render_mock:
+            result = abw_entry.execute_command("/abw-migrate", workspace=".")
+
+        build_mock.assert_called_once_with(".")
+        render_mock.assert_called_once_with(migration_report)
+        self.assertEqual(result["task"], "/abw-migrate")
+        self.assertEqual(result["binding_status"], "runner_enforced")
+        self.assertIn("ABW Migrate", result["answer"])
+
     def test_repair_cli_path_works(self):
         tmp, workspace, runtime = self.make_layout()
         with tmp:

@@ -90,3 +90,9 @@ Allowed verdicts:
 ## Operational Rule
 
 Do not claim the runtime is updated unless the installed runtime, MCP registration, and verification checks all pass.
+
+## Command Surface References
+
+- `docs/COMMAND_SURFACE.md`
+- `docs/COMMAND_MIGRATION.md`
+- `workflows/abw-commands.md`

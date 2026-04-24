@@ -300,9 +300,9 @@ join_commands() {
 }
 
 write_gemini_registration() {
-  local public_commands=("/abw-ask" "/help")
-  local power_commands=("/abw-health" "/abw-update" "/abw-rollback" "/abw-repair")
-  local legacy_aliases=("/abw-ingest" "/abw-review" "/abw-query" "/abw-query-deep")
+  local public_commands=("/abw-ask" "/abw-review" "/abw-doctor" "/abw-version" "/abw-migrate" "/help")
+  local power_commands=("/abw-update" "/abw-rollback" "/abw-repair")
+  local legacy_aliases=("/abw-health" "/abw-status" "/abw-ingest" "/abw-query" "/abw-query-deep")
   local all_commands=()
   local registered_public=()
   local dev_surface="${ABW_INSTALL_DEV_SURFACE:-0}"
