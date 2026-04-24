@@ -4,7 +4,7 @@ This document is the source of truth for repository boundaries, runtime packagin
 
 ## Current Product Boundary
 
-As of `v0.2.1`, the normal product entrypoint is the `abw` package CLI. The installer/workflow runtime remains supported, but the public user model is package-first:
+As of `v0.2.2`, the normal product entrypoint is the `abw` package CLI. The installer/workflow runtime remains supported, but the public user model is package-first:
 
 - `abw init`
 - `abw ask "..."`

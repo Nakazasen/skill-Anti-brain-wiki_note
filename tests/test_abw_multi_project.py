@@ -50,9 +50,9 @@ class AbwMultiProjectTests(unittest.TestCase):
             self.assertNotIn("validation_proof", rendered)
 
     def test_release_match_state_is_explicit(self):
-        self.assertEqual(release_match_state("0.2.1", "v0.2.1"), "matched")
-        self.assertEqual(release_match_state("0.2.1", "v0.2.0"), "mismatched")
-        self.assertEqual(release_match_state("0.2.1", None), "unknown")
+        self.assertEqual(release_match_state("0.2.2", "v0.2.2"), "matched")
+        self.assertEqual(release_match_state("0.2.2", "v0.2.1"), "mismatched")
+        self.assertEqual(release_match_state("0.2.2", None), "unknown")
 
     def test_doctor_detects_missing_folders_and_config(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -117,7 +117,7 @@ class AbwMultiProjectTests(unittest.TestCase):
             "abw.upgrade.build_version_report",
             return_value={
                 "workspace": "D:/work",
-                "package_version": "0.2.1",
+                "package_version": "0.2.2",
                 "install_mode": "editable/dev",
             },
         ):

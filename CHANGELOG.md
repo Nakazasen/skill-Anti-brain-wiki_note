@@ -5,6 +5,27 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-04-24
+
+### Added
+- Release smoke flow through `scripts/release_smoke.py`
+- Drift guard tests for critical `scripts/` and `src/abw/_legacy/` runtime mirrors
+- Entrypoint parity tests for `abw`, `py -m abw.cli`, `py scripts/abw_cli.py`, and `abw.bat`
+
+### Changed
+- Unified public command surface contract behind shared command metadata
+- Improved entrypoint parity for help, version, doctor, and dashboard smoke flows
+- Clarified `doctor` workspace health vs engine health signals
+- Clarified `version` release match state
+
+### Fixed
+- Hidden command leakage in normal CLI help
+- Script entrypoint integrity checks now evaluate the runtime root instead of the user workspace
+- Stale upgrade-style warning when release match cannot be verified
+
+### Security / Trust
+- Proof, nonce/replay, acceptance, finalization, and rollback semantics are unchanged
+
 ## [0.2.1] - 2026-04-24
 
 ### Added

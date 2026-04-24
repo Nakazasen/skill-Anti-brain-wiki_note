@@ -74,6 +74,12 @@ Show product help:
 .\abw.bat help
 ```
 
+Run release smoke checks:
+
+```powershell
+py scripts\release_smoke.py
+```
+
 ## One-command Rule
 
 If you are not sure which command to use, start with:

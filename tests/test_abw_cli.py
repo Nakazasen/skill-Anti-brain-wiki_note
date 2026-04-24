@@ -121,9 +121,9 @@ class AbwCliTests(unittest.TestCase):
 
     def test_version_prints_direct_report(self):
         stdout = io.StringIO()
-        with patch("abw_cli.build_version_report", return_value={"package_version": "0.2.1"}), patch(
+        with patch("abw_cli.build_version_report", return_value={"package_version": "0.2.2"}), patch(
             "abw_cli.render_version_report",
-            return_value="ABW Version\n- package_version: 0.2.1",
+            return_value="ABW Version\n- package_version: 0.2.2",
         ), patch("sys.stdout", stdout):
             exit_code = abw_cli.main(["version"])
 
