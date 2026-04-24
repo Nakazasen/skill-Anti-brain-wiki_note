@@ -86,7 +86,8 @@ def execute_command(
 ):
     enforce_agent_execution_path()
     command, task = abw_alias.rewrite_entry_command(command, task)
-    runtime_state = abw_update.initialize_runtime(workspace)
+    runtime_state_root = runtime_root or str(Path(__file__).resolve().parent.parent)
+    runtime_state = abw_update.initialize_runtime(runtime_state_root)
     if command not in SUPPORTED_COMMANDS:
         if str(command or "").startswith("/abw-"):
             command, task = "/abw-ask", f"{command} {task}".strip()

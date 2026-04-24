@@ -1,2 +1,2 @@
 @echo off
-py scripts\abw_cli.py %*
+py "%~dp0scripts\abw_cli.py" %*
