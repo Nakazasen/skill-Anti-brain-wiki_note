@@ -5,26 +5,11 @@ from pathlib import Path
 import abw_alias
 import abw_i18n
 import abw_suggestions
+from abw.commands import ADVANCED_COMMANDS, PUBLIC_COMMANDS, command_items as prefixed_command_items
 
 
-PUBLIC_COMMANDS = [
-    ("abw init", "Create or normalize the current workspace structure."),
-    ('abw ask "..."', "Ask ABW to route a normal task."),
-    ("abw ingest raw/<file>", "Create a draft from a raw source."),
-    ("abw review", "Review pending drafts."),
-    ("abw doctor", "Check system health."),
-    ("abw version", "Show package and workspace version info."),
-    ("abw migrate", "Normalize an older workspace safely."),
-    ("abw help", "Show this help."),
-]
-
-POWER_USER_COMMANDS = [
-    ("abw upgrade", "Upgrade the local ABW runtime."),
-    ("abw rollback", "Restore the last runtime backup."),
-    ("abw repair", "Repair runtime drift and encoding issues."),
-    ("abw research", "Reserved command. Not implemented yet."),
-    ("abw help --advanced", "Show maintainer commands."),
-]
+PUBLIC_COMMAND_ITEMS = prefixed_command_items(PUBLIC_COMMANDS)
+POWER_USER_COMMAND_ITEMS = prefixed_command_items(ADVANCED_COMMANDS)
 
 PUBLIC_NEXT_ACTIONS = {
     'ask "..."',
@@ -188,7 +173,7 @@ def build_sections(snapshot, next_actions, advanced=False):
         },
         {
             "title": "Commands",
-            "items": command_items(PUBLIC_COMMANDS),
+            "items": command_items(PUBLIC_COMMAND_ITEMS),
         },
         {
             "title": "Workspace",
@@ -199,7 +184,7 @@ def build_sections(snapshot, next_actions, advanced=False):
         sections.append(
             {
                 "title": "Advanced commands",
-                "items": command_items(POWER_USER_COMMANDS),
+                "items": command_items(POWER_USER_COMMAND_ITEMS),
             }
         )
         sections.append(
@@ -283,6 +268,6 @@ def run(workspace=".", advanced=None, mode="product"):
         "sections": sections,
         "next_actions": next_actions,
         "advanced": advanced,
-        "public_commands": [command for command, _description in PUBLIC_COMMANDS],
-        "advanced_commands": [command for command, _description in POWER_USER_COMMANDS] if advanced else [],
+        "public_commands": [command for command, _description in PUBLIC_COMMAND_ITEMS],
+        "advanced_commands": [command for command, _description in POWER_USER_COMMAND_ITEMS] if advanced else [],
     }

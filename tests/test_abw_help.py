@@ -8,6 +8,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import abw_help  # noqa: E402
+from abw.commands import ADVANCED_COMMANDS, PUBLIC_COMMANDS, command_items  # noqa: E402
 
 
 def commands(actions):
@@ -21,14 +22,7 @@ class AbwHelpTests(unittest.TestCase):
 
         self.assertFalse(result["advanced"])
         self.assertEqual(result["public_commands"], [
-            "abw init",
-            'abw ask "..."',
-            "abw ingest raw/<file>",
-            "abw review",
-            "abw doctor",
-            "abw version",
-            "abw migrate",
-            "abw help",
+            command for command, _description in command_items(PUBLIC_COMMANDS)
         ])
         self.assertEqual([section["title"] for section in result["sections"]], [
             "Quick start",
@@ -52,11 +46,7 @@ class AbwHelpTests(unittest.TestCase):
 
         self.assertTrue(result["advanced"])
         self.assertEqual(result["advanced_commands"], [
-            "abw upgrade",
-            "abw rollback",
-            "abw repair",
-            "abw research",
-            "abw help --advanced",
+            command for command, _description in command_items(ADVANCED_COMMANDS)
         ])
         advanced_section = next(section for section in result["sections"] if section["title"] == "Advanced commands")
         text = "\n".join(advanced_section["items"])

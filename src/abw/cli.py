@@ -11,38 +11,13 @@ from .help import build_help_report, render_help_report
 from .migrate import build_migration_report, render_migration_report
 from .upgrade import build_upgrade_report, render_upgrade_report
 from .version import build_version_report, render_version_report
+from .commands import DEPRECATED_ALIASES, PUBLIC_HELP
 from .legacy import load
 from .workspace import ensure_workspace, init_workspace, resolve_workspace
 
 
 USER_LEVELS = ("beginner", "intermediate", "expert")
 _legacy_entry = load("abw_entry")
-
-DEPRECATED_ALIASES = {
-    "health": "doctor",
-    "update": "upgrade",
-    "query": "ask",
-    "query-deep": "ask",
-    "query_deep": "ask",
-}
-
-PUBLIC_HELP = {
-    "help": "Show product help.",
-    "ask": "Route a normal task.",
-    "ingest": "Create a draft from a raw source.",
-    "review": "Review pending drafts.",
-    "overview": "Show a workspace overview.",
-    "version": "Show package and workspace version info.",
-    "migrate": "Normalize an older workspace safely.",
-    "save": "Save a candidate note.",
-    "doctor": "Check system health.",
-    "upgrade": "Show upgrade guidance.",
-    "rollback": "Restore the last runtime backup.",
-    "repair": "Repair runtime drift.",
-    "research": "Reserved placeholder.",
-    "init": "Create or normalize workspace structure.",
-    "menu": "Show the simple menu.",
-}
 
 
 def add_common(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:

@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+
+PUBLIC_COMMANDS = (
+    ("init", "Create or normalize workspace structure."),
+    ("ask", "Route a normal task."),
+    ("ingest", "Create a draft from a raw source."),
+    ("review", "Review pending drafts."),
+    ("doctor", "Check system health."),
+    ("version", "Show package and workspace version info."),
+    ("migrate", "Normalize an older workspace safely."),
+    ("help", "Show product help."),
+)
+
+ADVANCED_COMMANDS = (
+    ("upgrade", "Show upgrade guidance."),
+    ("rollback", "Restore the last runtime backup."),
+    ("repair", "Repair runtime drift."),
+    ("research", "Reserved command. Not implemented yet."),
+    ("help --advanced", "Show maintainer commands."),
+)
+
+DEPRECATED_ALIASES = {
+    "health": "doctor",
+    "update": "upgrade",
+    "query": "ask",
+    "query-deep": "ask",
+    "query_deep": "ask",
+}
+
+PUBLIC_HELP = dict(PUBLIC_COMMANDS)
+ADVANCED_HELP = dict(ADVANCED_COMMANDS)
+
+PUBLIC_USAGE = {
+    "ask": 'ask "..."',
+    "ingest": "ingest raw/<file>",
+}
+
+
+def command_items(commands=PUBLIC_COMMANDS, *, prefix: str = "abw") -> list[tuple[str, str]]:
+    return [(f"{prefix} {PUBLIC_USAGE.get(command, command)}", description) for command, description in commands]

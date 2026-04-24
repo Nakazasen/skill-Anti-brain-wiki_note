@@ -17,36 +17,11 @@ from abw.migrate import build_migration_report, render_migration_report
 from abw.upgrade import build_upgrade_report, render_upgrade_report
 from abw.version import build_version_report, render_version_report
 from abw.workspace import ensure_workspace
+from abw.commands import DEPRECATED_ALIASES, PUBLIC_HELP
 
 import abw_help
 
 USER_LEVELS = ("beginner", "intermediate", "expert")
-
-DEPRECATED_ALIASES = {
-    "health": "doctor",
-    "update": "upgrade",
-    "query": "ask",
-    "query-deep": "ask",
-    "query_deep": "ask",
-}
-
-PUBLIC_HELP = {
-    "help": "Show product help.",
-    "ask": "Route a normal task.",
-    "ingest": "Create a draft from a raw source.",
-    "review": "Review pending drafts.",
-    "overview": "Show a workspace overview.",
-    "version": "Show package and workspace version info.",
-    "migrate": "Normalize an older workspace safely.",
-    "save": "Save a candidate note.",
-    "doctor": "Check system health.",
-    "upgrade": "Show upgrade guidance.",
-    "rollback": "Restore the last runtime backup.",
-    "repair": "Repair runtime drift.",
-    "research": "Reserved placeholder.",
-    "init": "Create or normalize workspace structure.",
-    "menu": "Show the simple menu.",
-}
 
 
 def run_entry(task: str, debug: bool = False, level: str = None, *, advanced_help: bool = False) -> int:
