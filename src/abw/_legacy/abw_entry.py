@@ -206,19 +206,27 @@ def _read_payload(args):
 
 def main(argv=None):
     configure_stdout()
-    args = parse_args(argv)
-    payload = _read_payload(args)
-    result = execute_command(
-        args.command,
-        task=payload["task"],
-        workspace=payload["workspace"],
-        runtime_root=payload["runtime_root"],
-        task_kind=payload["task_kind"],
-        candidate_answer=payload["candidate_answer"],
-    )
-    trusted_result = final_output(result)
-    print(abw_output.render(trusted_result, debug=payload["debug"], level=payload["level"]))
-    return 0 if trusted_result.get("binding_status") != "rejected" and trusted_result.get("runner_status") != "blocked" else 3
+    previous_cli_mode = os.environ.get("ABW_CLI_MODE")
+    os.environ["ABW_CLI_MODE"] = "1"
+    try:
+        args = parse_args(argv)
+        payload = _read_payload(args)
+        result = execute_command(
+            args.command,
+            task=payload["task"],
+            workspace=payload["workspace"],
+            runtime_root=payload["runtime_root"],
+            task_kind=payload["task_kind"],
+            candidate_answer=payload["candidate_answer"],
+        )
+        trusted_result = final_output(result)
+        print(abw_output.render(trusted_result, debug=payload["debug"], level=payload["level"]))
+        return 0 if trusted_result.get("binding_status") != "rejected" and trusted_result.get("runner_status") != "blocked" else 3
+    finally:
+        if previous_cli_mode is None:
+            os.environ.pop("ABW_CLI_MODE", None)
+        else:
+            os.environ["ABW_CLI_MODE"] = previous_cli_mode
 
 
 if __name__ == "__main__":

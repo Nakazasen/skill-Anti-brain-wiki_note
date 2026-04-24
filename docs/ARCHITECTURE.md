@@ -2,6 +2,21 @@
 
 This document is the source of truth for repository boundaries, runtime packaging, and ABW system structure.
 
+## Current Product Boundary
+
+As of `v0.2.1`, the normal product entrypoint is the `abw` package CLI. The installer/workflow runtime remains supported, but the public user model is package-first:
+
+- `abw init`
+- `abw ask "..."`
+- `abw ingest raw/<file>`
+- `abw review`
+- `abw doctor`
+- `abw version`
+- `abw migrate`
+- `abw help`
+
+Package facade commands such as `init`, `doctor`, `version`, `migrate`, and `upgrade` are local workspace/install reports. Routed AI work still flows through the legacy trust runner.
+
 ## System Layers
 
 1. Repository layer: `workflows/`, `skills/`, `scripts/`, `schemas/`, `templates/`, `wiki/`, `.brain/`
@@ -14,7 +29,7 @@ This document is the source of truth for repository boundaries, runtime packagin
    - delivery & evaluation (`/audit`, `/abw-eval`)
    - customization & utility
 
-## Public Surface
+## Workflow Public Surface
 
 Public surface means the commands a normal user is expected to discover and run after installer registration.
 

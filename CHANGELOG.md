@@ -5,6 +5,30 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-04-24
+
+### Added
+- Multi-project workspace initialization through `abw init`
+- Package-level `abw version` report with install mode, source path, git tag, commit, and workspace schema
+- Package-level `abw migrate` report that creates missing workspace folders/config without moving existing raw/wiki/draft data
+- Package-level `abw doctor` report for workspace and install health
+- Package-level `abw upgrade` guidance that explains the correct update command for pip, git+pip, or editable installs
+
+### Changed
+- Public command surface is now: `init`, `ask`, `ingest`, `review`, `doctor`, `version`, `migrate`, `help`
+- `doctor`, `version`, `migrate`, and `upgrade` are direct package facade reports; routed work still uses the trust runner
+- Help output now uses the product facade directly instead of routing a help request through the runner
+- Workspace config now records `workspace_schema`, `abw_version`, and project-local raw/wiki/drafts directories
+
+### Fixed
+- Package CLI help no longer depends on agent-only runner execution path
+- Package legacy help mirror now matches the script runtime help implementation
+- Multi-project workspace isolation is covered by tests
+
+### Security / Trust
+- Proof, nonce, acceptance, finalization, routing, and continuation gate semantics are unchanged
+- Release only changes command facade/reporting and workspace initialization behavior
+
 ## [0.2.0] - 2026-04-23
 
 ### Added

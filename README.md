@@ -1,6 +1,6 @@
 # ABW
 
-ABW is a small CLI for grounded local AI work. The public surface is intentionally small: ask, ingest, review, doctor, help.
+ABW is a small CLI for grounded local AI work. The public surface is intentionally small: init, ask, ingest, review, doctor, version, migrate, help.
 
 ## Quick Start
 
@@ -8,6 +8,12 @@ Run commands from the repository folder:
 
 ```powershell
 cd d:\Sandbox\skill-Anti-brain-wiki_note
+```
+
+Initialize a workspace:
+
+```powershell
+.\abw.bat init
 ```
 
 Use this for most tasks:
@@ -32,6 +38,18 @@ Check system health:
 
 ```powershell
 .\abw.bat doctor
+```
+
+Inspect the installed engine and workspace:
+
+```powershell
+.\abw.bat version
+```
+
+Normalize an older ABW project layout safely:
+
+```powershell
+.\abw.bat migrate
 ```
 
 ## New in Phase 1
@@ -95,6 +113,36 @@ These are maintainer-facing commands. They stay out of normal help and menu outp
 
 `research` is reserved but not implemented as a separate runtime command yet.
 
+`upgrade` is guidance-only in the package CLI. The legacy governed runtime update path remains `/abw-update` for installed workflow runtimes.
+
+## Multi-Project Use
+
+### New project
+
+```powershell
+py -m pip install abw-skill
+abw init
+abw ask "dashboard"
+```
+
+### Existing project using older ABW
+
+```powershell
+abw migrate
+abw doctor
+abw ask "dashboard"
+```
+
+### Update ABW engine
+
+```powershell
+abw version
+abw upgrade
+abw doctor
+```
+
+Each project is isolated by default. The current working directory is the workspace unless `ABW_WORKSPACE` is set.
+
 ## Developer Notes
 
 The public UX is intentionally smaller than the repo contents. Many files under `workflows/` are internal guidance or compatibility docs, not equal public runtime commands.
@@ -102,7 +150,7 @@ The public UX is intentionally smaller than the repo contents. Many files under 
 High-level runtime flow:
 
 ```text
-CLI -> abw_entry.py -> abw_runner.py -> abw_output.py
+CLI facade -> package workspace/report helpers or abw_entry.py -> abw_runner.py -> abw_output.py
 ```
 
-The runner, proof generation, and trust logic are kept intact. v2 only narrows the public facade so product-facing commands match what the runtime can actually do today.
+The runner, proof generation, and trust logic are kept intact for routed work. v2.1 adds package-level workspace reports for `init`, `doctor`, `version`, `migrate`, and `upgrade` so multi-project setup does not depend on the trust runner.

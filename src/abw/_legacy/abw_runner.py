@@ -732,7 +732,7 @@ def coverage_lane_result(task, workspace=".", route=None, binding_source="mcp"):
 
 
 def help_lane_result(task, workspace=".", route=None, binding_source="mcp"):
-    help_result = abw_help.run(workspace)
+    help_result = abw_help.run(workspace, mode="legacy_runtime")
     sections = help_result["sections"]
     snapshot = help_result["state_snapshot"]
     lines = [help_result["message"]]

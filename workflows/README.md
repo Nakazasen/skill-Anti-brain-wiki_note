@@ -6,9 +6,12 @@ It is not a guarantee that every file here is an equal public runtime command.
 The v2 product surface is intentionally smaller and is defined by the CLI/help facade:
 
 - `abw ask "..."`
+- `abw init`
 - `abw ingest <path>`
 - `abw review`
 - `abw doctor`
+- `abw version`
+- `abw migrate`
 - `abw help`
 
 Advanced maintainer commands remain available but hidden from normal UX:
@@ -30,6 +33,8 @@ Advanced maintainer commands remain available but hidden from normal UX:
 ## `/abw-update` Runtime Contract
 
 `/abw-update` is not just a file copy command. It is the deployment path that must prove runtime readiness.
+
+The package CLI command `abw upgrade` is intentionally guidance-only. It tells the user how to update the installed package for their install mode. Do not treat `abw upgrade` as equivalent to the governed `/abw-update` workflow.
 
 The update flow must distinguish:
 

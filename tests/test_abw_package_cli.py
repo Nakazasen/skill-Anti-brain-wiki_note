@@ -71,6 +71,15 @@ class AbwPackageCliTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             ask_mock.assert_called_once_with("dashboard", workspace=str(Path(arg_tmp).resolve()))
 
+    def test_help_uses_product_facade_without_runner(self):
+        cli = self.load_cli()
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("abw.cli.entry.ask") as ask_mock:
+                exit_code = cli.main(["--workspace", tmp, "help"])
+
+            self.assertEqual(exit_code, 0)
+            ask_mock.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

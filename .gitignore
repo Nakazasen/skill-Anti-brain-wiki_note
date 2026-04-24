@@ -69,8 +69,11 @@ notebooks/packages/
 
 # --- Node/Python artifacts (if applicable) ---
 node_modules/
+build/
+dist/
 __pycache__/
 *.pyc
+*.egg-info/
 *.log
 .env
 .env.local

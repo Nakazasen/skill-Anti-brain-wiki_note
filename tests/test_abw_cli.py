@@ -14,28 +14,25 @@ import abw_entry  # noqa: E402
 
 class AbwCliTests(unittest.TestCase):
     def test_help_routes_through_entry(self):
-        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
+        stdout = io.StringIO()
+        with patch("abw_cli.abw_help.run", return_value={"message": "help", "sections": []}), patch(
+            "abw_cli.render_help_report",
+            return_value="ABW Help",
+        ), patch("sys.stdout", stdout), patch("abw_cli.subprocess.run") as run_mock:
             exit_code = abw_cli.main(["help"])
 
         self.assertEqual(exit_code, 0)
-        self.assertEqual(
-            run_mock.call_args.args[0],
-            [
-                sys.executable,
-                str(REPO_ROOT / "scripts" / "abw_entry.py"),
-                "/abw-ask",
-                "--task",
-                "help",
-                "--workspace",
-                ".",
-            ],
-        )
+        self.assertIn("ABW Help", stdout.getvalue())
+        run_mock.assert_not_called()
 
     def test_help_advanced_sets_help_env(self):
-        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
+        with patch("abw_cli.abw_help.run", return_value={"message": "help", "sections": []}) as help_mock, patch(
+            "abw_cli.render_help_report",
+            return_value="ABW Help",
+        ):
             abw_cli.main(["help", "--advanced"])
 
-        self.assertEqual(run_mock.call_args.kwargs["env"]["ABW_HELP_ADVANCED"], "1")
+        self.assertTrue(help_mock.call_args.kwargs["advanced"])
 
     def test_public_commands_route_through_honest_surface(self):
         cases = [
@@ -92,16 +89,72 @@ class AbwCliTests(unittest.TestCase):
         self.assertIn("Saved candidate note:", output)
         self.assertIn("Suggested next step:", output)
 
-    def test_doctor_uses_health_entry_command(self):
-        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run_mock:
-            abw_cli.main(["doctor"])
+    def test_init_command_reports_workspace_state(self):
+        stdout = io.StringIO()
+        with patch(
+            "abw_cli.ensure_workspace",
+            return_value={
+                "root": Path("D:/tmp/workspace"),
+                "created_dirs": ["raw", "wiki"],
+                "config_status": "created",
+                "config": {"workspace_schema": 1},
+            },
+        ), patch("sys.stdout", stdout):
+            exit_code = abw_cli.main(["init"])
 
-        self.assertEqual(run_mock.call_args.args[0][2], "/abw-health")
-        self.assertNotIn("--task", run_mock.call_args.args[0])
+        self.assertEqual(exit_code, 0)
+        output = stdout.getvalue()
+        self.assertIn("ABW workspace initialized:", output)
+        self.assertIn("Workspace schema: 1", output)
+
+    def test_doctor_prints_direct_report(self):
+        stdout = io.StringIO()
+        with patch("abw_cli.build_doctor_report", return_value={"ok": True}), patch(
+            "abw_cli.render_doctor_report",
+            return_value="ABW Doctor\n- OK: workspace initialized",
+        ), patch("sys.stdout", stdout), patch("abw_cli.subprocess.run") as run_mock:
+            exit_code = abw_cli.main(["doctor"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("ABW Doctor", stdout.getvalue())
+        run_mock.assert_not_called()
+
+    def test_version_prints_direct_report(self):
+        stdout = io.StringIO()
+        with patch("abw_cli.build_version_report", return_value={"package_version": "0.2.1"}), patch(
+            "abw_cli.render_version_report",
+            return_value="ABW Version\n- package_version: 0.2.1",
+        ), patch("sys.stdout", stdout):
+            exit_code = abw_cli.main(["version"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("ABW Version", stdout.getvalue())
+
+    def test_migrate_prints_direct_report(self):
+        stdout = io.StringIO()
+        with patch("abw_cli.build_migration_report", return_value={"status": "migrated"}), patch(
+            "abw_cli.render_migration_report",
+            return_value="ABW Migrate\n- result: migrated",
+        ), patch("sys.stdout", stdout):
+            exit_code = abw_cli.main(["migrate"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("ABW Migrate", stdout.getvalue())
+
+    def test_upgrade_prints_guidance_report(self):
+        stdout = io.StringIO()
+        with patch("abw_cli.build_upgrade_report", return_value={"install_mode": "pip package"}), patch(
+            "abw_cli.render_upgrade_report",
+            return_value="ABW Upgrade\n- RUN: py -m pip install -U abw-skill",
+        ), patch("sys.stdout", stdout), patch("abw_cli.subprocess.run") as run_mock:
+            exit_code = abw_cli.main(["upgrade"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("ABW Upgrade", stdout.getvalue())
+        run_mock.assert_not_called()
 
     def test_power_commands_route_to_direct_entry_points(self):
         cases = [
-            (["upgrade"], "/abw-update"),
             (["rollback"], "/abw-rollback"),
             (["repair"], "/abw-repair"),
         ]
@@ -116,7 +169,10 @@ class AbwCliTests(unittest.TestCase):
 
     def test_deprecated_health_alias_prints_migration_hint(self):
         stdout = io.StringIO()
-        with patch("abw_cli.subprocess.run", return_value=SimpleNamespace(returncode=0)), patch("sys.stdout", stdout):
+        with patch("abw_cli.build_doctor_report", return_value={"ok": True}), patch(
+            "abw_cli.render_doctor_report",
+            return_value="ABW Doctor",
+        ), patch("sys.stdout", stdout):
             abw_cli.main(["health"])
 
         self.assertIn("Deprecated command. Use: abw doctor", stdout.getvalue())

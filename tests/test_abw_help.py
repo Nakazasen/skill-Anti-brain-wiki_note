@@ -21,12 +21,13 @@ class AbwHelpTests(unittest.TestCase):
 
         self.assertFalse(result["advanced"])
         self.assertEqual(result["public_commands"], [
+            "abw init",
             'abw ask "..."',
             "abw ingest raw/<file>",
             "abw review",
-            "abw overview",
-            'abw save "..."',
             "abw doctor",
+            "abw version",
+            "abw migrate",
             "abw help",
         ])
         self.assertEqual([section["title"] for section in result["sections"]], [
@@ -36,10 +37,11 @@ class AbwHelpTests(unittest.TestCase):
             "Suggested next steps",
         ])
         rendered_items = "\n".join("\n".join(section["items"]) for section in result["sections"])
+        self.assertIn("abw init", rendered_items)
         self.assertIn("abw ask", rendered_items)
-        self.assertIn("abw overview", rendered_items)
-        self.assertIn('abw save "..."', rendered_items)
         self.assertIn("abw doctor", rendered_items)
+        self.assertIn("abw version", rendered_items)
+        self.assertIn("abw migrate", rendered_items)
         self.assertNotIn("abw upgrade", rendered_items)
         self.assertNotIn("audit system", rendered_items)
         self.assertNotIn("coverage", rendered_items)

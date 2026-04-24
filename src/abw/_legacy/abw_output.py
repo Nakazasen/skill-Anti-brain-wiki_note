@@ -216,12 +216,12 @@ def agent_title(result):
 def _agent_answer_lines(result):
     intent = result_intent(result)
     if intent == "help":
-        return [
-            f"Raw files: {_state_value(result, 'raw_files')}",
-            f"Draft files: {_state_value(result, 'draft_files')}",
-            f"Wiki files: {_state_value(result, 'wiki_files')}",
-            f"Pending drafts: {_state_value(result, 'pending_drafts')}",
-        ]
+        lines = []
+        for section in result.get("sections") or []:
+            title = str(section.get("title") or "").strip().lower()
+            if title in {"quick start", "commands", "advanced commands"}:
+                lines.extend(str(item).strip() for item in section.get("items") or [] if str(item).strip())
+        return lines[:6] or ["Use `abw ask \"...\"` for most tasks."]
 
     if intent == "coverage":
         report = result.get("coverage_report") if isinstance(result.get("coverage_report"), dict) else {}
@@ -426,7 +426,14 @@ def render_help(result):
     lines = box_header("ABW Help")
     for section in result.get("sections") or []:
         title = str(section.get("title") or "").strip()
-        items = [str(item).strip() for item in section.get("items") or [] if str(item).strip()]
+        items = []
+        for item in section.get("items") or []:
+            if isinstance(item, dict) and item.get("label") and item.get("command"):
+                text = f"{item['label']}: {item['command']}"
+            else:
+                text = str(item).strip()
+            if text:
+                items.append(text)
         append_section(lines, title, items, limit=7 if title == "Commands" else None)
     return limit_lines(lines, max_lines=24)
 

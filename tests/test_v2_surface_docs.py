@@ -9,12 +9,15 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 class V2SurfaceDocsTests(unittest.TestCase):
     def test_readme_quick_start_matches_v2_surface(self):
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn(r'.\abw.bat init', readme)
         self.assertIn(r'.\abw.bat ask "what you want to do"', readme)
         self.assertIn(r'.\abw.bat ingest raw\<file>', readme)
         self.assertIn(r'.\abw.bat review', readme)
-        self.assertIn(r'.\abw.bat overview', readme)
-        self.assertIn(r'.\abw.bat save "..."', readme)
         self.assertIn(r'.\abw.bat doctor', readme)
+        self.assertIn(r'.\abw.bat version', readme)
+        self.assertIn(r'.\abw.bat migrate', readme)
+        self.assertIn("## Multi-Project Use", readme)
+        self.assertIn("abw init", readme)
         self.assertIn("Ingest now checks for possible contradictions", readme)
         self.assertNotIn("42 public workflow commands", readme)
 

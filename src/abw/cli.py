@@ -6,8 +6,13 @@ import sys
 from pathlib import Path
 
 from . import entry, ingest as ingest_module, output, overview as overview_module, review, save as save_module
+from .doctor import build_doctor_report, render_doctor_report
+from .help import build_help_report, render_help_report
+from .migrate import build_migration_report, render_migration_report
+from .upgrade import build_upgrade_report, render_upgrade_report
+from .version import build_version_report, render_version_report
 from .legacy import load
-from .workspace import init_workspace, resolve_workspace
+from .workspace import ensure_workspace, init_workspace, resolve_workspace
 
 
 USER_LEVELS = ("beginner", "intermediate", "expert")
@@ -21,6 +26,24 @@ DEPRECATED_ALIASES = {
     "query_deep": "ask",
 }
 
+PUBLIC_HELP = {
+    "help": "Show product help.",
+    "ask": "Route a normal task.",
+    "ingest": "Create a draft from a raw source.",
+    "review": "Review pending drafts.",
+    "overview": "Show a workspace overview.",
+    "version": "Show package and workspace version info.",
+    "migrate": "Normalize an older workspace safely.",
+    "save": "Save a candidate note.",
+    "doctor": "Check system health.",
+    "upgrade": "Show upgrade guidance.",
+    "rollback": "Restore the last runtime backup.",
+    "repair": "Repair runtime drift.",
+    "research": "Reserved placeholder.",
+    "init": "Create or normalize workspace structure.",
+    "menu": "Show the simple menu.",
+}
+
 
 def add_common(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument("--debug", action="store_true", default=argparse.SUPPRESS)
@@ -29,7 +52,13 @@ def add_common(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
 
 
 def add_hidden_parser(subparsers, name):
-    return add_common(subparsers.add_parser(name, help=argparse.SUPPRESS))
+    parser = add_common(subparsers.add_parser(name, help=argparse.SUPPRESS))
+    subparsers._choices_actions = [action for action in subparsers._choices_actions if action.dest != name]
+    return parser
+
+
+def add_public_parser(subparsers, name):
+    return add_common(subparsers.add_parser(name, help=PUBLIC_HELP.get(name)))
 
 
 def parse_args(argv=None):
@@ -38,29 +67,32 @@ def parse_args(argv=None):
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--level", choices=USER_LEVELS)
 
-    sub = parser.add_subparsers(dest="command")
+    sub = parser.add_subparsers(dest="command", metavar="command")
 
-    help_parser = add_common(sub.add_parser("help"))
+    help_parser = add_public_parser(sub, "help")
     help_parser.add_argument("--advanced", action="store_true")
 
-    ask = add_common(sub.add_parser("ask"))
+    ask = add_public_parser(sub, "ask")
     ask.add_argument("text")
 
-    ingest_parser = add_common(sub.add_parser("ingest"))
+    ingest_parser = add_public_parser(sub, "ingest")
     ingest_parser.add_argument("path")
 
-    add_common(sub.add_parser("review"))
-    add_common(sub.add_parser("overview"))
-    save_parser = add_common(sub.add_parser("save"))
+    add_public_parser(sub, "review")
+    add_hidden_parser(sub, "overview")
+    add_public_parser(sub, "version")
+    add_public_parser(sub, "migrate")
+    save_parser = add_hidden_parser(sub, "save")
     save_parser.add_argument("text", nargs="?")
     save_parser.add_argument("--stdin", action="store_true")
-    add_common(sub.add_parser("doctor"))
-    add_common(sub.add_parser("upgrade"))
-    add_common(sub.add_parser("rollback"))
-    add_common(sub.add_parser("repair"))
-    add_common(sub.add_parser("research"))
-    add_common(sub.add_parser("init"))
-    sub.add_parser("menu")
+    add_public_parser(sub, "doctor")
+    add_hidden_parser(sub, "upgrade")
+    add_hidden_parser(sub, "rollback")
+    add_hidden_parser(sub, "repair")
+    add_hidden_parser(sub, "research")
+    add_public_parser(sub, "init")
+    sub.add_parser("menu", help=argparse.SUPPRESS)
+    sub._choices_actions = [action for action in sub._choices_actions if action.dest != "menu"]
 
     approve = add_hidden_parser(sub, "approve")
     approve.add_argument("path")
@@ -141,25 +173,19 @@ def main(argv=None) -> int:
             return _print_menu()
 
         if args.command == "init":
-            root = init_workspace(workspace)
-            print(f"ABW workspace initialized: {root}")
-            print("Created: raw/, wiki/, drafts/, abw_config.json")
+            report = ensure_workspace(workspace)
+            print(f"ABW workspace initialized: {report['root']}")
+            if report["config_status"] == "invalid":
+                print("Preserved invalid abw_config.json. Run: abw doctor")
+                return 2
+            created_dirs = ", ".join(f"{name}/" for name in report["created_dirs"]) or "no new folders"
+            print(f"Workspace state: {created_dirs}")
+            print(f"Workspace schema: {report['config'].get('workspace_schema', 'unknown')}")
             return 0
 
         if args.command == "help":
-            previous = os.environ.get("ABW_HELP_ADVANCED")
-            if getattr(args, "advanced", False):
-                os.environ["ABW_HELP_ADVANCED"] = "1"
-            else:
-                os.environ.pop("ABW_HELP_ADVANCED", None)
-            try:
-                result = entry.ask("help", workspace=str(workspace))
-            finally:
-                if previous is None:
-                    os.environ.pop("ABW_HELP_ADVANCED", None)
-                else:
-                    os.environ["ABW_HELP_ADVANCED"] = previous
-            return _render_and_exit(result, debug=debug, level=level)
+            print(render_help_report(build_help_report(workspace, advanced=getattr(args, "advanced", False))))
+            return 0
 
         if args.command == "ask":
             if str(args.text).strip().lower() == "overview":
@@ -180,6 +206,14 @@ def main(argv=None) -> int:
             print(overview_module.build_overview(workspace)["content"], end="")
             return 0
 
+        if args.command == "version":
+            print(render_version_report(build_version_report(workspace)))
+            return 0
+
+        if args.command == "migrate":
+            print(render_migration_report(build_migration_report(workspace)))
+            return 0
+
         if args.command == "save":
             text = args.text
             if getattr(args, "stdin", False):
@@ -194,10 +228,12 @@ def main(argv=None) -> int:
             return 0
 
         if args.command == "doctor":
-            return _render_and_exit(_doctor_result(str(workspace)), debug=debug, level=level)
+            print(render_doctor_report(build_doctor_report(workspace)))
+            return 0
 
         if args.command == "upgrade":
-            return _render_and_exit(_upgrade_result(str(workspace)), debug=debug, level=level)
+            print(render_upgrade_report(build_upgrade_report(workspace)))
+            return 0
 
         if args.command == "rollback":
             return _render_and_exit(_rollback_result(str(workspace)), debug=debug, level=level)
@@ -223,11 +259,13 @@ def main(argv=None) -> int:
 
         if args.command == "health":
             _print_deprecation("health")
-            return _render_and_exit(_doctor_result(str(workspace)), debug=debug, level=level)
+            print(render_doctor_report(build_doctor_report(workspace)))
+            return 0
 
         if args.command == "update":
             _print_deprecation("update")
-            return _render_and_exit(_upgrade_result(str(workspace)), debug=debug, level=level)
+            print(render_upgrade_report(build_upgrade_report(workspace)))
+            return 0
 
         if args.command == "query":
             _print_deprecation("query")

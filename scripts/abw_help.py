@@ -8,12 +8,13 @@ import abw_suggestions
 
 
 PUBLIC_COMMANDS = [
+    ("abw init", "Create or normalize the current workspace structure."),
     ('abw ask "..."', "Ask ABW to route a normal task."),
     ("abw ingest raw/<file>", "Create a draft from a raw source."),
     ("abw review", "Review pending drafts."),
-    ("abw overview", "Generate a short workspace overview."),
-    ('abw save "..."', "Save a candidate note under raw/captured_notes."),
     ("abw doctor", "Check system health."),
+    ("abw version", "Show package and workspace version info."),
+    ("abw migrate", "Normalize an older workspace safely."),
     ("abw help", "Show this help."),
 ]
 
@@ -30,7 +31,9 @@ PUBLIC_NEXT_ACTIONS = {
     "doctor",
     "help",
     "ingest raw/<file>",
+    "migrate",
     "review drafts",
+    "version",
 }
 
 
@@ -85,11 +88,13 @@ def advanced_mode_enabled(explicit=None):
 def quick_start_items():
     return [
         'Use `abw ask "..."` for most tasks.',
+        "Run `abw init` once in a new project.",
         "Add documents with `abw ingest raw/<file>`.",
         "Promote draft knowledge through `abw review`.",
-        "Generate a workspace summary with `abw overview`.",
-        'Capture a candidate note with `abw save "..."`.',
         "Run `abw doctor` when the system looks wrong.",
+        "Use `abw version` to inspect the installed engine and workspace schema.",
+        "Use `abw migrate` before working in older ABW project layouts.",
+        "Workspace isolation: the current working directory is the default workspace unless ABW_WORKSPACE is set.",
     ]
 
 
@@ -269,7 +274,7 @@ def run(workspace=".", advanced=None, mode="product"):
     next_actions = product_next_actions(next_actions)
     advanced = advanced_mode_enabled(advanced)
     sections = build_sections(snapshot, next_actions, advanced=advanced)
-    message = "ABW v2 keeps the public surface small: ask, ingest, review, overview, save, doctor, help."
+    message = "ABW v0.2.1 keeps the public surface small: init, ask, ingest, review, doctor, version, migrate, help."
     if advanced:
         message += " Advanced mode adds maintainer commands and notes that ingest flags possible contradictions automatically."
     return {

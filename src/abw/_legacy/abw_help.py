@@ -2,16 +2,19 @@ import json
 import os
 from pathlib import Path
 
+import abw_alias
+import abw_i18n
 import abw_suggestions
 
 
 PUBLIC_COMMANDS = [
+    ("abw init", "Create or normalize the current workspace structure."),
     ('abw ask "..."', "Ask ABW to route a normal task."),
     ("abw ingest raw/<file>", "Create a draft from a raw source."),
     ("abw review", "Review pending drafts."),
-    ("abw overview", "Generate a short workspace overview."),
-    ('abw save "..."', "Save a candidate note under raw/captured_notes."),
     ("abw doctor", "Check system health."),
+    ("abw version", "Show package and workspace version info."),
+    ("abw migrate", "Normalize an older workspace safely."),
     ("abw help", "Show this help."),
 ]
 
@@ -22,6 +25,16 @@ POWER_USER_COMMANDS = [
     ("abw research", "Reserved command. Not implemented yet."),
     ("abw help --advanced", "Show maintainer commands."),
 ]
+
+PUBLIC_NEXT_ACTIONS = {
+    'ask "..."',
+    "doctor",
+    "help",
+    "ingest raw/<file>",
+    "migrate",
+    "review drafts",
+    "version",
+}
 
 
 def load_json(path, default=None):
@@ -75,11 +88,79 @@ def advanced_mode_enabled(explicit=None):
 def quick_start_items():
     return [
         'Use `abw ask "..."` for most tasks.',
+        "Run `abw init` once in a new project.",
         "Add documents with `abw ingest raw/<file>`.",
         "Promote draft knowledge through `abw review`.",
-        "Generate a workspace summary with `abw overview`.",
-        'Capture a candidate note with `abw save "..."`.',
         "Run `abw doctor` when the system looks wrong.",
+        "Use `abw version` to inspect the installed engine and workspace schema.",
+        "Use `abw migrate` before working in older ABW project layouts.",
+        "Workspace isolation: the current working directory is the default workspace unless ABW_WORKSPACE is set.",
+    ]
+
+
+def format_coverage(value):
+    if value is None:
+        return "unknown"
+    return f"{value:.2f}"
+
+
+def situational_guidance(snapshot, next_actions, workspace="."):
+    guidance = []
+    if snapshot["raw_files"] == 0 and snapshot["wiki_files"] == 0 and snapshot["draft_files"] == 0:
+        guidance.append(abw_i18n.t("help.guidance.no_data", workspace))
+    if snapshot["pending_drafts"] > 0:
+        guidance.append(abw_i18n.t("help.guidance.pending_drafts", workspace))
+    if snapshot["coverage_ratio"] is not None and snapshot["coverage_ratio"] < 0.6:
+        guidance.append(abw_i18n.t("help.guidance.low_coverage", workspace))
+    if snapshot["raw_files"] > 0 and snapshot["pending_drafts"] == 0 and snapshot["wiki_files"] == 0:
+        guidance.append(abw_i18n.t("help.guidance.raw_without_wiki", workspace))
+    if not guidance and next_actions:
+        guidance.append(abw_i18n.t("help.guidance.ready", workspace))
+    return guidance
+
+
+def minimal_commands(snapshot, workspace="."):
+    commands = []
+    if snapshot["raw_files"] > 0:
+        commands.append("ingest raw/<file>")
+    else:
+        commands.append(abw_i18n.t("help.command.add_raw_and_ingest", workspace))
+    if snapshot["pending_drafts"] > 0:
+        commands.extend(["review drafts", "approve draft drafts/<file>"])
+    if snapshot["wiki_files"] > 0:
+        commands.append(abw_i18n.t("help.command.ask_direct", workspace))
+    commands.extend(["coverage", "audit system"])
+
+    deduped = []
+    seen = set()
+    for command in commands:
+        if command in seen:
+            continue
+        seen.add(command)
+        deduped.append(command)
+    return deduped
+
+
+def alias_command_items():
+    labels = {
+        "approve_draft": "Approve draft",
+        "coverage": "Coverage",
+        "dashboard": "Dashboard",
+        "explain_draft": "Explain draft",
+        "help": "Help",
+        "ingest": "Ingest",
+        "list_drafts": "Drafts",
+        "query": "Query",
+        "query_deep": "Deep query",
+        "resume": "Resume",
+        "review_drafts": "Review drafts",
+        "set_language": "Language",
+        "system_trend": "System trend",
+        "wizard": "Wizard",
+    }
+    return [
+        f"{labels.get(item['intent'], item['intent'])}: natural: \"{item['natural']}\"; command: {item['command']}"
+        for item in abw_alias.help_pairs()
     ]
 
 
@@ -137,13 +218,63 @@ def build_sections(snapshot, next_actions, advanced=False):
     return sections
 
 
-def run(workspace=".", advanced=None):
+def product_next_actions(actions):
+    filtered = []
+    for action in actions or []:
+        command = str(action.get("command") if isinstance(action, dict) else action or "").strip()
+        if command in PUBLIC_NEXT_ACTIONS:
+            filtered.append(action)
+    return filtered
+
+
+def build_legacy_sections(snapshot, next_actions, workspace="."):
+    guidance = situational_guidance(snapshot, next_actions, workspace=workspace)
+    return [
+        {
+            "title": abw_i18n.t("help.overview", workspace),
+            "items": [
+                f"Raw files: {snapshot['raw_files']}",
+                f"Draft files: {snapshot['draft_files']}",
+                f"Wiki files: {snapshot['wiki_files']}",
+                f"Pending drafts: {snapshot['pending_drafts']}",
+                f"Coverage ratio: {format_coverage(snapshot['coverage_ratio'])}",
+            ],
+        },
+        {
+            "title": abw_i18n.t("help.next_actions", workspace),
+            "items": list(next_actions),
+        },
+        {
+            "title": abw_i18n.t("help.situational_guidance", workspace),
+            "items": guidance,
+        },
+        {
+            "title": abw_i18n.t("help.minimal_commands", workspace),
+            "items": minimal_commands(snapshot, workspace=workspace),
+        },
+        {
+            "title": "Explicit commands",
+            "items": alias_command_items(),
+        },
+    ]
+
+
+def run(workspace=".", advanced=None, mode="product"):
     workspace = str(workspace or ".")
     snapshot = build_state_snapshot(workspace)
     next_actions = abw_suggestions.suggest_next_actions(workspace)
+    if mode == "legacy_runtime":
+        sections = build_legacy_sections(snapshot, next_actions, workspace=workspace)
+        return {
+            "message": abw_i18n.t("help.message", workspace),
+            "state_snapshot": snapshot,
+            "sections": sections,
+            "next_actions": next_actions,
+        }
+    next_actions = product_next_actions(next_actions)
     advanced = advanced_mode_enabled(advanced)
     sections = build_sections(snapshot, next_actions, advanced=advanced)
-    message = "ABW v2 keeps the public surface small: ask, ingest, review, overview, save, doctor, help."
+    message = "ABW v0.2.1 keeps the public surface small: init, ask, ingest, review, doctor, version, migrate, help."
     if advanced:
         message += " Advanced mode adds maintainer commands and notes that ingest flags possible contradictions automatically."
     return {
