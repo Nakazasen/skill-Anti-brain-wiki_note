@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from abw.doctor import build_doctor_report, render_doctor_report  # noqa: E402
+from abw import migrate as migrate_module  # noqa: E402
 from abw.migrate import build_migration_report, render_migration_report  # noqa: E402
 from abw.upgrade import build_upgrade_report, render_upgrade_report  # noqa: E402
 from abw.version import build_version_report, render_version_report  # noqa: E402
@@ -139,6 +140,8 @@ class AbwMultiProjectTests(unittest.TestCase):
             self.assertEqual(report["after"]["raw"], 1)
             self.assertEqual(report["after"]["wiki"], 1)
             self.assertEqual(report["after"]["drafts"], 1)
+            self.assertIn("git", report)
+            self.assertIn("adoption_commit_scope", report)
             self.assertIn("ABW Migrate", rendered)
 
     def test_migrate_creates_missing_config_schema_safely(self):
@@ -152,6 +155,28 @@ class AbwMultiProjectTests(unittest.TestCase):
             self.assertIn(report["status"], {"migrated", "partially_migrated", "already_compatible"})
             self.assertEqual(status, "ok")
             self.assertEqual(config["workspace_schema"], 1)
+
+    def test_migrate_warns_when_unrelated_dirty_files_exist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(
+                migrate_module,
+                "_git_status_summary",
+                return_value={
+                    "available": True,
+                    "branch": "main",
+                    "dirty_files": ["main.py", ".gitignore", "abw_config.json"],
+                    "migration_scope_files": [".gitignore", "abw_config.json"],
+                    "unrelated_dirty_files": ["main.py"],
+                },
+            ):
+                report = build_migration_report(tmp)
+                rendered = render_migration_report(report)
+        self.assertIn("Repository has unrelated dirty files. Keep migration commit isolated.", report["warnings"])
+        self.assertTrue(
+            any("create branch `chore/abw-package-migration`" in step for step in report["next_steps"])
+        )
+        self.assertIn("commit only `.gitignore` and `abw_config.json`", report["next_steps"])
+        self.assertIn("unrelated_dirty_files: main.py", rendered)
 
     def test_upgrade_gives_mode_specific_guidance(self):
         with patch(

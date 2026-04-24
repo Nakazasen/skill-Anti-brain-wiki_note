@@ -259,7 +259,7 @@ def run(workspace=".", advanced=None, mode="product"):
     next_actions = product_next_actions(next_actions)
     advanced = advanced_mode_enabled(advanced)
     sections = build_sections(snapshot, next_actions, advanced=advanced)
-    message = "ABW v0.2.3 keeps the public surface small: init, ask, ingest, review, doctor, version, migrate, help."
+    message = "ABW v0.2.4 keeps the public surface small: init, ask, ingest, review, doctor, version, migrate, help."
     if advanced:
         message += " Advanced mode adds maintainer commands and notes that ingest flags possible contradictions automatically."
     return {

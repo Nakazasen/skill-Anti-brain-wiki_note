@@ -110,7 +110,7 @@ py -m pip install -U abw-skill
 Or pin from repository tag:
 
 ```powershell
-py -m pip install -U git+https://github.com/Nakazasen/skill-Anti-brain-wiki_note.git@v0.2.3
+py -m pip install -U git+https://github.com/Nakazasen/skill-Anti-brain-wiki_note.git@v0.2.4
 ```
 
 Verify installed version:

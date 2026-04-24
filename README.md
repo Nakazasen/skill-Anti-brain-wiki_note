@@ -163,4 +163,4 @@ High-level runtime flow:
 CLI facade -> package workspace/report helpers or abw_entry.py -> abw_runner.py -> abw_output.py
 ```
 
-The runner, proof generation, and trust logic are kept intact for routed work. `v0.2.3` keeps `scripts/` as canonical runtime in editable/dev installs and preserves `src/abw/_legacy/` as packaged fallback with mirror drift guards.
+The runner, proof generation, and trust logic are kept intact for routed work. `v0.2.4` keeps `scripts/` as canonical runtime in editable/dev installs, preserves `src/abw/_legacy/` as packaged fallback with mirror drift guards, and adds migration adoption diagnostics for dirty repos.

@@ -5,6 +5,22 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2026-04-24
+
+### Added
+- `abw migrate` git hygiene diagnostics for branch, dirty file count, and migration-scope files.
+- Adoption-safe migration guidance when unrelated dirty files exist in the workspace repository.
+
+### Changed
+- Migration report now includes explicit commit scope recommendation: `.gitignore` and `abw_config.json`.
+- Migration output now surfaces unrelated dirty files to prevent accidental business-file commits.
+
+### Fixed
+- Reduced migration adoption friction in dirty repositories by making isolation guidance part of standard `abw migrate` output.
+
+### Security / Trust
+- No changes to proof, nonce, acceptance, finalization, rollback, router fallback, or trusted wiki promotion semantics.
+
 ## [0.2.3] - 2026-04-24
 
 ### Added

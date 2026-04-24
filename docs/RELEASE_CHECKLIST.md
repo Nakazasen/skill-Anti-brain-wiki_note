@@ -15,6 +15,7 @@ Use this before shipping ABW changes.
 - [ ] `abw version` reports package/tag match for the release commit
 - [ ] `abw version` reports `runtime_source` and `mirror_status`
 - [ ] `abw doctor` returns OK on the repository workspace
+- [ ] `abw migrate` warns clearly when unrelated dirty files exist in the repository
 - [ ] `py -m pip install -e .` refreshes local editable metadata
 
 ## Entry Points
