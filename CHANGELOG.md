@@ -5,6 +5,23 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-04-24
+
+### Added
+- Runtime mirror manifest in `src/abw/runtime_manifest.py`
+- Runtime source reporting in `abw version` and `abw doctor`
+- Expanded manifest-driven mirror drift guard coverage
+
+### Changed
+- Editable/dev installs now prefer `scripts/` runtime as canonical source
+- Packaged fallback remains `src/abw/_legacy/`
+
+### Fixed
+- Reduced silent drift risk between `scripts/` and packaged legacy runtime
+
+### Security / Trust
+- No changes to proof, nonce, acceptance, finalization, rollback, or trusted wiki promotion semantics
+
 ## [0.2.2] - 2026-04-24
 
 ### Added

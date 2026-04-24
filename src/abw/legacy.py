@@ -26,6 +26,13 @@ def _scripts_runtime_available() -> bool:
     return (SCRIPTS_DIR / "abw_runner.py").exists()
 
 
+def _safe_resolve_path(path_value: str | Path) -> Path | None:
+    try:
+        return Path(path_value).resolve()
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _resolve_override_value() -> str:
     override = str(os.environ.get(_ENV_RUNTIME_SOURCE, "") or "").strip().lower()
     if override in {"", _RUNTIME_SOURCE_AUTO, _RUNTIME_SOURCE_SCRIPTS, _RUNTIME_SOURCE_PACKAGED}:
@@ -66,10 +73,17 @@ def _remove_conflicting_modules(selected_root: Path) -> None:
 
 
 def _set_runtime_path(selected_root: Path) -> None:
-    selected = str(selected_root)
+    resolved_selected = selected_root.resolve()
+    selected = str(resolved_selected)
     other_roots = {str(SCRIPTS_DIR.resolve()), str(LEGACY_DIR.resolve())}
     other_roots.discard(selected)
-    sys.path[:] = [entry for entry in sys.path if str(Path(entry).resolve()) not in other_roots]
+    filtered_entries = []
+    for entry in sys.path:
+        resolved_entry = _safe_resolve_path(entry)
+        if resolved_entry and str(resolved_entry) in other_roots:
+            continue
+        filtered_entries.append(entry)
+    sys.path[:] = filtered_entries
     if selected not in sys.path:
         sys.path.insert(0, selected)
 
@@ -104,12 +118,15 @@ def load(name: str):
 
 
 def current_runtime_search_paths() -> tuple[str, ...]:
+    normalized_paths = set()
+    for entry in sys.path:
+        if not entry:
+            continue
+        resolved_entry = _safe_resolve_path(entry)
+        if resolved_entry:
+            normalized_paths.add(str(resolved_entry))
     return tuple(
         sorted(
-            {
-                str(Path(entry).resolve())
-                for entry in sys.path
-                if entry
-            }
+            normalized_paths
         )
     )

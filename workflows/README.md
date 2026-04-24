@@ -21,6 +21,8 @@ Advanced maintainer commands remain available but hidden from normal UX:
 - `abw repair`
 - `abw help --advanced`
 
+`abw version` and `abw doctor` expose runtime source diagnostics (`scripts` vs `src/abw/_legacy`) and mirror status for topology checks.
+
 ## Core Entry Points
 
 - `/abw-ask`: primary router for Hybrid ABW requests

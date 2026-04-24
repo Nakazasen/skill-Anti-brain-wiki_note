@@ -81,6 +81,7 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
         engine_checks.append(_status("OK", "runtime mirror status matched"))
     elif mirror_status == "mismatch":
         mismatch_list = ", ".join(version.get("mirror_mismatches", [])) or "unknown files"
+        engine_checks.append(_status("WARN", "runtime mirror status mismatch"))
         engine_checks.append(_status("WARN", f"runtime mirror mismatch: {mismatch_list}"))
         next_steps.append("sync scripts/* and src/abw/_legacy/* critical runtime modules")
     else:

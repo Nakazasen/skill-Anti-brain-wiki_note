@@ -13,6 +13,7 @@ Use this before shipping ABW changes.
 - [ ] `abw --help` shows only the public command surface
 - [ ] `abw help --advanced` shows maintainer commands
 - [ ] `abw version` reports package/tag match for the release commit
+- [ ] `abw version` reports `runtime_source` and `mirror_status`
 - [ ] `abw doctor` returns OK on the repository workspace
 - [ ] `py -m pip install -e .` refreshes local editable metadata
 
@@ -21,6 +22,7 @@ Use this before shipping ABW changes.
 - [ ] `abw help`, `py -m abw.cli help`, `py scripts/abw_cli.py help`, and `abw.bat help` agree
 - [ ] dashboard smoke works through all supported entrypoints
 - [ ] critical `scripts/` and `src/abw/_legacy/` mirrors have no drift
+- [ ] runtime source override (`ABW_RUNTIME_SOURCE`) works for `scripts`, `packaged`, and `auto`
 
 ## Evaluation
 

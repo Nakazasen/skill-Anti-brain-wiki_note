@@ -4,7 +4,7 @@ This document is the source of truth for repository boundaries, runtime packagin
 
 ## Current Product Boundary
 
-As of `v0.2.2`, the normal product entrypoint is the `abw` package CLI. The installer/workflow runtime remains supported, but the public user model is package-first:
+As of `v0.2.3`, the normal product entrypoint is the `abw` package CLI. The installer/workflow runtime remains supported, but the public user model is package-first:
 
 - `abw init`
 - `abw ask "..."`
@@ -16,6 +16,12 @@ As of `v0.2.2`, the normal product entrypoint is the `abw` package CLI. The inst
 - `abw help`
 
 Package facade commands such as `init`, `doctor`, `version`, `migrate`, and `upgrade` are local workspace/install reports. Routed AI work still flows through the legacy trust runner.
+
+Runtime source selection for package CLI:
+
+- editable/dev repo with `scripts/abw_runner.py`: canonical runtime is `scripts/`
+- packaged install or forced packaged mode: fallback runtime is `src/abw/_legacy/`
+- `abw version` and `abw doctor` report runtime source and mirror status
 
 ## System Layers
 

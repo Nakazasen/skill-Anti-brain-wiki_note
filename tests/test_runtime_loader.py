@@ -66,6 +66,19 @@ class RuntimeLoaderTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "ABW_RUNTIME_SOURCE must be one of"):
                 legacy.selected_runtime_source()
 
+    def test_forced_scripts_requires_runner_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scripts_dir = root / "scripts"
+            scripts_dir.mkdir(parents=True, exist_ok=True)
+            legacy_dir = root / "_legacy"
+            legacy_dir.mkdir(parents=True, exist_ok=True)
+            with patch.object(legacy, "SCRIPTS_DIR", scripts_dir), patch.object(legacy, "LEGACY_DIR", legacy_dir), patch.dict(
+                os.environ, {"ABW_RUNTIME_SOURCE": "scripts"}
+            ):
+                with self.assertRaisesRegex(RuntimeError, "ABW_RUNTIME_SOURCE=scripts"):
+                    legacy.selected_runtime_source()
+
     def test_ensure_legacy_path_prefers_forced_packaged_without_mixed_roots(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -82,6 +95,22 @@ class RuntimeLoaderTests(unittest.TestCase):
                     search_paths = legacy.current_runtime_search_paths()
             self.assertIn(str(legacy_dir.resolve()), search_paths)
             self.assertNotIn(str(scripts_dir.resolve()), search_paths)
+
+    def test_ensure_legacy_path_tolerates_non_filesystem_sys_path_entries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scripts_dir = root / "scripts"
+            scripts_dir.mkdir(parents=True, exist_ok=True)
+            (scripts_dir / "abw_runner.py").write_text("# test\n", encoding="utf-8")
+            legacy_dir = root / "_legacy"
+            legacy_dir.mkdir(parents=True, exist_ok=True)
+            with patch.object(legacy, "SCRIPTS_DIR", scripts_dir), patch.object(legacy, "LEGACY_DIR", legacy_dir), patch.dict(
+                os.environ, {"ABW_RUNTIME_SOURCE": "packaged"}
+            ):
+                with patch.object(sys, "path", [str(scripts_dir), "<frozen importlib._bootstrap>", str(legacy_dir)]):
+                    legacy.ensure_legacy_path()
+                    search_paths = legacy.current_runtime_search_paths()
+            self.assertIn(str(legacy_dir.resolve()), search_paths)
 
     def test_cli_commands_still_work_with_auto_runtime_selection(self):
         with tempfile.TemporaryDirectory() as tmp:

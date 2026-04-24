@@ -159,4 +159,4 @@ High-level runtime flow:
 CLI facade -> package workspace/report helpers or abw_entry.py -> abw_runner.py -> abw_output.py
 ```
 
-The runner, proof generation, and trust logic are kept intact for routed work. v2.1 adds package-level workspace reports for `init`, `doctor`, `version`, `migrate`, and `upgrade` so multi-project setup does not depend on the trust runner.
+The runner, proof generation, and trust logic are kept intact for routed work. `v0.2.3` keeps `scripts/` as canonical runtime in editable/dev installs and preserves `src/abw/_legacy/` as packaged fallback with mirror drift guards.
