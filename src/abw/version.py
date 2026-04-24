@@ -80,6 +80,14 @@ def git_tag() -> str | None:
     return _git_value(["describe", "--tags", "--exact-match"])
 
 
+def release_match_state(package_version_value: str, git_tag_value: str | None) -> str:
+    if not git_tag_value:
+        return "unknown"
+    if git_tag_value == f"v{package_version_value}":
+        return "matched"
+    return "mismatched"
+
+
 def install_mode_details() -> dict:
     distribution = _safe_distribution()
     direct_url = _direct_url_payload(distribution)
@@ -114,16 +122,21 @@ def build_version_report(workspace: str | Path = ".") -> dict:
     current_package_version = package_version()
     current_git_tag = git_tag()
     current_git_commit = git_commit()
+    current_release_match_state = release_match_state(current_package_version, current_git_tag)
     workspace_schema = None
     if config_status == "ok" and isinstance(config, dict):
         workspace_schema = config.get("workspace_schema") or config.get("workspace_version")
-    note = "Run `abw upgrade` to check for a newer engine build."
-    if current_git_tag == f"v{current_package_version}":
+    if current_release_match_state == "matched":
         note = "Package version matches the current tagged source."
+    elif current_release_match_state == "mismatched":
+        note = "Package version does not match the current tagged source."
+    else:
+        note = "Release match could not be verified because the current source is not exactly tagged."
     return {
         "package_version": current_package_version,
         "git_tag": current_git_tag or "unknown",
         "git_commit": current_git_commit or "unknown",
+        "release_match_state": current_release_match_state,
         "workspace": str(root),
         "workspace_schema": workspace_schema or "unknown",
         "install_mode": install["install_mode"],
@@ -139,6 +152,7 @@ def render_version_report(report: dict) -> str:
         f"- package_version: {report['package_version']}",
         f"- git_tag: {report['git_tag']}",
         f"- git_commit: {report['git_commit']}",
+        f"- release_match: {report['release_match_state']}",
         f"- workspace: {report['workspace']}",
         f"- install_mode: {report['install_mode']}",
         f"- workspace_schema: {report['workspace_schema']}",

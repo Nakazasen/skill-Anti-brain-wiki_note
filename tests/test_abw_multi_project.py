@@ -14,6 +14,7 @@ from abw.doctor import build_doctor_report, render_doctor_report  # noqa: E402
 from abw.migrate import build_migration_report, render_migration_report  # noqa: E402
 from abw.upgrade import build_upgrade_report, render_upgrade_report  # noqa: E402
 from abw.version import build_version_report, render_version_report  # noqa: E402
+from abw.version import release_match_state  # noqa: E402
 from abw.workspace import ensure_workspace, read_workspace_config  # noqa: E402
 
 
@@ -43,8 +44,15 @@ class AbwMultiProjectTests(unittest.TestCase):
             self.assertEqual(str(Path(tmp).resolve()), report["workspace"])
             self.assertIn("install_mode", report)
             self.assertIn("workspace_schema", report)
+            self.assertIn("release_match_state", report)
             self.assertIn("ABW Version", rendered)
+            self.assertIn("release_match:", rendered)
             self.assertNotIn("validation_proof", rendered)
+
+    def test_release_match_state_is_explicit(self):
+        self.assertEqual(release_match_state("0.2.1", "v0.2.1"), "matched")
+        self.assertEqual(release_match_state("0.2.1", "v0.2.0"), "mismatched")
+        self.assertEqual(release_match_state("0.2.1", None), "unknown")
 
     def test_doctor_detects_missing_folders_and_config(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -52,10 +60,13 @@ class AbwMultiProjectTests(unittest.TestCase):
             rendered = render_doctor_report(report)
 
             self.assertEqual(report["overall"], "WARN")
+            self.assertEqual(report["workspace_health"], "WARN")
             messages = [item["message"] for item in report["checks"]]
             self.assertIn("missing raw/", messages)
             self.assertIn("missing abw_config.json", messages)
             self.assertIn("ABW Doctor", rendered)
+            self.assertIn("Workspace checks:", rendered)
+            self.assertIn("Engine checks:", rendered)
             self.assertNotIn("validation_proof", rendered)
 
     def test_doctor_detects_legacy_local_abw_folder(self):
