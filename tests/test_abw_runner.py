@@ -1229,6 +1229,39 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertEqual(action_commands(result["next_actions"]), ["review drafts"])
             self.assertTrue(result["guidance"])
 
+    def test_ingest_raw_directory_shortcut_does_not_fallback_to_query(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "raw" / "a.md").parent.mkdir(parents=True, exist_ok=True)
+            (Path(tmp) / "raw" / "a.md").write_text("# A\n", encoding="utf-8")
+            (Path(tmp) / "raw" / "nested" / "b.txt").parent.mkdir(parents=True, exist_ok=True)
+            (Path(tmp) / "raw" / "nested" / "b.txt").write_text("B\n", encoding="utf-8")
+
+            result = abw_runner.dispatch_request(
+                task="ingest raw",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "ingest")
+            self.assertNotIn("fallback_from", result["route"])
+            self.assertEqual(result.get("runner_status"), "completed")
+            self.assertGreaterEqual(result.get("ingest_result", {}).get("ingested_count", 0), 2)
+
+    def test_ingest_missing_path_is_blocked_without_query_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = abw_runner.dispatch_request(
+                task="ingest raw/missing.md",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "ingest")
+            self.assertNotIn("fallback_from", result["route"])
+            self.assertEqual(result.get("runner_status"), "blocked")
+            self.assertIn("Use: ingest raw/<file> or ingest raw/", result["answer"])
+
     def test_list_drafts_lane_uses_state_based_next_actions(self):
         with tempfile.TemporaryDirectory() as tmp:
             raw_path = Path(tmp) / "raw" / "sample.md"

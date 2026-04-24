@@ -5,6 +5,24 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2026-04-24
+
+### Added
+- Recursive directory ingest for `abw ingest <path>` when `<path>` is a directory under `raw/`.
+- `raw`/`raw/` shortcut support so `abw ingest raw` ingests supported files in the `raw/` tree.
+- Explicit ingest path errors for missing/invalid inputs with actionable retry guidance.
+
+### Changed
+- Ingest path parsing now accepts both file and directory targets under `raw/`.
+- Runner ingest error handling now blocks invalid ingest requests instead of silently falling back to query.
+
+### Fixed
+- `abw ingest raw` no longer drops into knowledge-query fallback; it now routes to ingest lane correctly.
+- Added regression coverage for file ingest, directory ingest, raw shortcut, and no-query-fallback ingest mistakes.
+
+### Security / Trust
+- No changes to proof, nonce, acceptance, finalization, rollback, router fallback policy outside ingest input handling, or trusted wiki promotion semantics.
+
 ## [0.2.5] - 2026-04-24
 
 ### Added

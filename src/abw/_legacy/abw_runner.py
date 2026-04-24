@@ -2228,27 +2228,53 @@ def dispatch_request(
                 searched_locations=["raw/", ".brain/ingest_queue.json"],
                 reason=f"ingest lane failed: {exc}",
             )
-            fallback_route = build_lane_route(
-                resolved_route,
-                "query",
-                reason="fallback to query after ingest failure",
-                fallback_from="ingest",
-                fallback_reason=str(exc),
-            )
-            abw_router.log_route_decision(
-                workspace,
-                task,
-                fallback_route,
-                event="fallback",
-                details={"error": str(exc)},
-            )
-            result = query_lane_result(
-                task,
-                workspace=workspace,
-                route=fallback_route,
-                binding_source=binding_source,
-                deep=False,
-            )
+            if isinstance(exc, (FileNotFoundError, NotADirectoryError, ValueError)):
+                model_output = f"""## Finalization
+- current_state: blocked
+- evidence: ingest rejected input path for task: {task}
+- gaps_or_limitations: {str(exc)}
+- next_steps: use ingest raw/<file> or ingest raw/ and retry
+"""
+                gate = run_finalization_gate(model_output, task_kind="")
+                body = (
+                    "Ingest request was blocked due to invalid input path. "
+                    f"Details: {exc}"
+                )
+                answer = compose_answer(body, gate["block"])
+                result = base_result(
+                    task,
+                    "runner_checked",
+                    answer,
+                    gate,
+                    "blocked",
+                    extra=route_extra(
+                        resolved_route,
+                        ingest_error=str(exc),
+                    ),
+                    binding_source=binding_source,
+                )
+            else:
+                fallback_route = build_lane_route(
+                    resolved_route,
+                    "query",
+                    reason="fallback to query after ingest failure",
+                    fallback_from="ingest",
+                    fallback_reason=str(exc),
+                )
+                abw_router.log_route_decision(
+                    workspace,
+                    task,
+                    fallback_route,
+                    event="fallback",
+                    details={"error": str(exc)},
+                )
+                result = query_lane_result(
+                    task,
+                    workspace=workspace,
+                    route=fallback_route,
+                    binding_source=binding_source,
+                    deep=False,
+                )
         else:
             raise
     result = apply_acceptance_validation(result, workspace=workspace)

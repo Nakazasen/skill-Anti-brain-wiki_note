@@ -15,6 +15,7 @@ from abw.conflicts import detect_conflicts, write_conflict_reports
 MAX_SUMMARY_CHARS = 500
 MAX_KEY_CONCEPTS = 5
 MAX_QUERY_SUGGESTIONS = 5
+SUPPORTED_EXTENSIONS = {".md", ".markdown", ".txt", ".rst", ".adoc"}
 
 
 def now_iso():
@@ -22,26 +23,66 @@ def now_iso():
 
 
 def candidate_path_tokens(task):
-    pattern = r"[A-Za-z0-9_./\\-]+\.[A-Za-z0-9]+"
-    return [token.strip("`'\"()[]{}<>.,;:") for token in re.findall(pattern, str(task or ""))]
+    tokens = []
+    text = str(task or "").strip()
+    match = re.search(r"\b(?:ingest|process|review)\s+([^\s]+)", text, flags=re.IGNORECASE)
+    if match:
+        tokens.append(match.group(1))
+    pattern = r"(?:raw(?:[\\/][A-Za-z0-9_./\\-]+)?)|(?:[A-Za-z0-9_./\\-]+\.[A-Za-z0-9]+)"
+    tokens.extend(re.findall(pattern, text))
+    deduped = []
+    seen = set()
+    for token in tokens:
+        cleaned = str(token).strip("`'\"()[]{}<>.,;:")
+        key = cleaned.lower()
+        if not cleaned or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(cleaned)
+    return deduped
 
 
-def extract_raw_file_path(task, workspace="."):
+def resolve_raw_target(path_token, workspace="."):
     workspace_root = Path(workspace).resolve()
+    token = str(path_token or "").strip().replace("\\", "/")
+    if token.lower() in {"raw", "raw/"}:
+        token = "raw"
+
+    candidate = Path(token)
+    if not candidate.is_absolute():
+        candidate = workspace_root / candidate
+    try:
+        resolved = candidate.resolve()
+        relative = resolved.relative_to(workspace_root)
+    except ValueError as exc:
+        raise ValueError("Ingest path must stay inside the current workspace.") from exc
+
+    relative_text = str(relative).replace("\\", "/")
+    if relative_text == "raw":
+        pass
+    elif not relative_text.startswith("raw/"):
+        raise ValueError("Ingest path must point to raw/ (file or directory).")
+
+    if not resolved.exists():
+        raise FileNotFoundError(
+            f"Ingest path not found: {relative_text}. Use: ingest raw/<file> or ingest raw/"
+        )
+    return relative_text, resolved
+
+
+def extract_ingest_target(task, workspace="."):
+    invalid_error = None
     for token in candidate_path_tokens(task):
-        candidate = Path(token)
-        if not candidate.is_absolute():
-            candidate = workspace_root / candidate
         try:
-            relative = candidate.resolve().relative_to(workspace_root)
-        except ValueError:
+            return resolve_raw_target(token, workspace=workspace)
+        except FileNotFoundError:
+            raise
+        except ValueError as exc:
+            invalid_error = exc
             continue
-        relative_text = str(relative).replace("\\", "/")
-        if not relative_text.startswith("raw/"):
-            continue
-        if candidate.exists() and candidate.is_file():
-            return relative_text, candidate
-    return None, None
+    if invalid_error is not None:
+        raise ValueError(str(invalid_error))
+    raise FileNotFoundError("No valid ingest path found. Use: ingest raw/<file> or ingest raw/")
 
 
 def deterministic_id(relative_raw_path, content):
@@ -201,12 +242,30 @@ def update_ingest_queue(workspace, source_id, relative_raw_path, draft_file):
     return item
 
 
-def run(task: str, workspace: str) -> dict:
-    workspace = str(workspace or ".")
-    relative_raw_path, raw_path = extract_raw_file_path(task, workspace=workspace)
-    if raw_path is None:
-        raise FileNotFoundError("No valid raw file path found in task.")
+def list_supported_raw_files(raw_target_path):
+    target = Path(raw_target_path)
+    if target.is_file():
+        if target.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            raise ValueError(
+                f"Unsupported file extension: {target.suffix or '<none>'}. "
+                f"Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+            )
+        return [target]
+    if not target.is_dir():
+        raise NotADirectoryError(f"Ingest target is not a file or directory: {target}")
+    files = []
+    for candidate in sorted(target.rglob("*")):
+        if candidate.is_file() and candidate.suffix.lower() in SUPPORTED_EXTENSIONS:
+            files.append(candidate)
+    if not files:
+        raise FileNotFoundError(
+            "No supported files found in directory. "
+            f"Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+        )
+    return files
 
+
+def ingest_single_file(raw_path, relative_raw_path, workspace):
     content = raw_path.read_text(encoding="utf-8-sig", errors="ignore")
     source_id = deterministic_id(relative_raw_path, content)
     summary = summarize_text(content)
@@ -225,14 +284,39 @@ def run(task: str, workspace: str) -> dict:
         source_id,
     )
     update_ingest_queue(workspace, source_id, relative_raw_path, draft_file)
-
-    result = {
+    return {
         "status": "draft_created",
         "raw_file": relative_raw_path,
         "draft_file": draft_file,
         "queue_status": "review_needed",
         "conflict_count": len(conflict_reports),
         "conflict_reports": conflict_reports,
+        "source_id": source_id,
+    }
+
+
+def run(task: str, workspace: str) -> dict:
+    workspace = str(workspace or ".")
+    relative_target, target_path = extract_ingest_target(task, workspace=workspace)
+    raw_files = list_supported_raw_files(target_path)
+    items = []
+    for raw_file in raw_files:
+        relative_raw_path = str(raw_file.resolve().relative_to(Path(workspace).resolve())).replace("\\", "/")
+        items.append(ingest_single_file(raw_file, relative_raw_path, workspace))
+
+    first = items[0]
+    result = {
+        "status": "draft_created" if len(items) == 1 else "drafts_created",
+        "raw_file": first["raw_file"],
+        "draft_file": first["draft_file"],
+        "queue_status": first["queue_status"],
+        "conflict_count": sum(item["conflict_count"] for item in items),
+        "conflict_reports": [report for item in items for report in item.get("conflict_reports", [])],
+        "ingested_count": len(items),
+        "ingested_files": [item["raw_file"] for item in items],
+        "draft_files": [item["draft_file"] for item in items],
+        "target": relative_target,
+        "target_type": "directory" if target_path.is_dir() else "file",
     }
     append_jsonl(
         ingest_runs_path(workspace),
@@ -240,7 +324,7 @@ def run(task: str, workspace: str) -> dict:
             "timestamp": now_iso(),
             "task": str(task or ""),
             "result": result,
-            "source_id": source_id,
+            "source_id": first["source_id"],
         },
     )
     return result
