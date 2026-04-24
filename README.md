@@ -149,6 +149,10 @@ abw doctor
 
 Each project is isolated by default. The current working directory is the workspace unless `ABW_WORKSPACE` is set.
 
+Migration guidance for legacy projects:
+
+- [ABW Migration Playbook](docs/ABW_MIGRATION_PLAYBOOK.md)
+
 ## Developer Notes
 
 The public UX is intentionally smaller than the repo contents. Many files under `workflows/` are internal guidance or compatibility docs, not equal public runtime commands.

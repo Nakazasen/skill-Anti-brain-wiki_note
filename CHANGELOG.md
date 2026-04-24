@@ -112,6 +112,9 @@ Initial package, CLI, and multi-project workspace milestone before the v2 produc
 
 ## [Unreleased]
 
+### Added
+- Official migration guide: `docs/ABW_MIGRATION_PLAYBOOK.md` for converting legacy projects into clean ABW package-workspace mode
+
 ### Fixed
 - **NotebookLM account verification:** `/abw-setup` now requires an explicit Google email and must verify the authenticated account before marking the MCP bridge as authenticated. It no longer permits account inference from Windows usernames, IDE/browser profiles, notebook lists, git config, or workspace files.
 - **Legacy AWF cleanup:** Installers no longer ship `awf_skills/*`, remove stale installed `awf-*` helper skills, and keep `/help` bound to the ABW help workflow.
