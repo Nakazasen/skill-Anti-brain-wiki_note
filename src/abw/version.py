@@ -8,6 +8,7 @@ from pathlib import Path
 
 from . import __version__
 from .legacy import runtime_source_details
+from .providers import provider_state_summary
 from .runtime_manifest import CRITICAL_RUNTIME_MODULES
 from .workspace import read_workspace_config, resolve_workspace
 
@@ -126,6 +127,7 @@ def build_version_report(workspace: str | Path = ".") -> dict:
     current_git_commit = git_commit()
     current_release_match_state = release_match_state(current_package_version, current_git_tag)
     runtime = runtime_source_details()
+    provider_state = provider_state_summary(root)
     mirror = runtime_mirror_status()
     workspace_schema = None
     if config_status == "ok" and isinstance(config, dict):
@@ -150,6 +152,10 @@ def build_version_report(workspace: str | Path = ".") -> dict:
         "runtime_source_path": runtime["runtime_source_path"],
         "mirror_status": mirror["status"],
         "mirror_mismatches": mirror["mismatches"],
+        "provider_default": provider_state["default"],
+        "provider_ask_mode": provider_state["ask_mode"],
+        "provider_healthy_count": provider_state["healthy_count"],
+        "provider_cost_mode": provider_state["cost_mode"],
         "note": note,
     }
     report["stale_install_suspected"] = stale_install_suspected(report)
@@ -189,6 +195,10 @@ def render_version_report(report: dict) -> str:
         f"- runtime_source: {report['runtime_source']}",
         f"- runtime_source_path: {report['runtime_source_path']}",
         f"- mirror_status: {report['mirror_status']}",
+        f"- provider_default: {report.get('provider_default', 'unknown')}",
+        f"- provider_ask_mode: {report.get('provider_ask_mode', 'unknown')}",
+        f"- provider_healthy_count: {report.get('provider_healthy_count', 'unknown')}",
+        f"- provider_cost_mode: {report.get('provider_cost_mode', 'unknown')}",
     ]
     if report.get("source_path"):
         lines.append(f"- source_path: {report['source_path']}")

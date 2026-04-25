@@ -33,9 +33,9 @@ class AbwHealthDashboardTests(unittest.TestCase):
         tmp, workspace, runtime = self.make_layout()
         with tmp:
             self.make_clean_pair(workspace, runtime)
-            abw_health.run_health(workspace=workspace, runtime_root=runtime)
+            abw_health.run_health(workspace=workspace, runtime_root=runtime, persist_log=True)
 
-            log_path = workspace / ".brain" / "health_log.jsonl"
+            log_path = abw_health.health_log_path(workspace)
             self.assertTrue(log_path.exists())
             rows = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
             self.assertEqual(len(rows), 1)
@@ -49,11 +49,11 @@ class AbwHealthDashboardTests(unittest.TestCase):
         tmp, workspace, runtime = self.make_layout()
         with tmp:
             self.make_clean_pair(workspace, runtime)
-            abw_health.run_health(workspace=workspace, runtime_root=runtime)
+            abw_health.run_health(workspace=workspace, runtime_root=runtime, persist_log=True)
             (runtime / "scripts" / "abw_runner.py").write_text("print('drift')\n", encoding="utf-8")
-            abw_health.run_health(workspace=workspace, runtime_root=runtime)
+            abw_health.run_health(workspace=workspace, runtime_root=runtime, persist_log=True)
 
-            trend = abw_health.compute_health_trend(workspace / ".brain" / "health_log.jsonl")
+            trend = abw_health.compute_health_trend(abw_health.health_log_path(workspace))
             self.assertEqual(trend["total_runs"], 2)
             self.assertEqual(len(trend["recent_runs"]), 2)
             self.assertGreater(trend["drift_rate"], 0.0)
@@ -69,9 +69,9 @@ class AbwHealthDashboardTests(unittest.TestCase):
         tmp, workspace, runtime = self.make_layout()
         with tmp:
             self.make_clean_pair(workspace, runtime)
-            clean = abw_health.run_health(workspace=workspace, runtime_root=runtime)
+            clean = abw_health.run_health(workspace=workspace, runtime_root=runtime, persist_log=True)
             (runtime / "scripts" / "abw_runner.py").write_text("print('drift')\n", encoding="utf-8")
-            drifted = abw_health.run_health(workspace=workspace, runtime_root=runtime)
+            drifted = abw_health.run_health(workspace=workspace, runtime_root=runtime, persist_log=True)
 
             self.assertGreater(
                 clean["health_dashboard"]["stability_score"],
@@ -86,7 +86,7 @@ class AbwHealthDashboardTests(unittest.TestCase):
         tmp, workspace, runtime = self.make_layout()
         with tmp:
             self.make_clean_pair(workspace, runtime)
-            result = abw_health.run_health(workspace=workspace, runtime_root=runtime)
+            result = abw_health.run_health(workspace=workspace, runtime_root=runtime, persist_log=True)
 
             self.assertEqual(result["health_dashboard"]["stability_score"], 100)
             self.assertEqual(result["health_dashboard"]["total_runs"], 1)
@@ -105,10 +105,10 @@ class AbwHealthDashboardTests(unittest.TestCase):
         tmp, workspace, runtime = self.make_layout()
         with tmp:
             self.make_clean_pair(workspace, runtime)
-            abw_health.run_health(workspace=workspace, runtime_root=runtime, binding_status="runner_enforced")
-            abw_health.run_health(workspace=workspace, runtime_root=runtime, binding_status="runner_checked")
+            abw_health.run_health(workspace=workspace, runtime_root=runtime, binding_status="runner_enforced", persist_log=True)
+            abw_health.run_health(workspace=workspace, runtime_root=runtime, binding_status="runner_checked", persist_log=True)
 
-            trend = abw_health.compute_health_trend(workspace / ".brain" / "health_log.jsonl")
+            trend = abw_health.compute_health_trend(abw_health.health_log_path(workspace))
             self.assertEqual(trend["validation_rate"], 0.5)
             self.assertEqual(trend["execution_rate"], 0.5)
 
@@ -121,15 +121,17 @@ class AbwHealthDashboardTests(unittest.TestCase):
                 runtime_root=runtime,
                 binding_status="runner_checked",
                 validation_source="fallback",
+                persist_log=True,
             )
             abw_health.run_health(
                 workspace=workspace,
                 runtime_root=runtime,
                 binding_status="runner_checked",
                 validation_source="policy",
+                persist_log=True,
             )
 
-            trend = abw_health.compute_health_trend(workspace / ".brain" / "health_log.jsonl")
+            trend = abw_health.compute_health_trend(abw_health.health_log_path(workspace))
             self.assertEqual(trend["validation_rate"], 1.0)
             self.assertEqual(trend["validation_rate_fallback"], 0.5)
             self.assertEqual(trend["validation_rate_policy"], 0.5)
@@ -147,7 +149,7 @@ class AbwHealthDashboardTests(unittest.TestCase):
     def test_missing_validation_source_defaults_to_none(self):
         tmp, workspace, runtime = self.make_layout()
         with tmp:
-            log_path = workspace / ".brain" / "health_log.jsonl"
+            log_path = abw_health.health_log_path(workspace)
             log_path.parent.mkdir(parents=True, exist_ok=True)
             log_path.write_text(
                 json.dumps(
@@ -176,7 +178,7 @@ class AbwHealthDashboardTests(unittest.TestCase):
     def test_invariant_violation_flags_dashboard_without_raising(self):
         tmp, workspace, runtime = self.make_layout()
         with tmp:
-            log_path = workspace / ".brain" / "health_log.jsonl"
+            log_path = abw_health.health_log_path(workspace)
             log_path.parent.mkdir(parents=True, exist_ok=True)
             rows = [
                 {
@@ -201,7 +203,7 @@ class AbwHealthDashboardTests(unittest.TestCase):
             self.assertEqual(trend["invariant_severity"], "major")
 
             self.make_clean_pair(workspace, runtime)
-            result = abw_health.run_health(workspace=workspace, runtime_root=runtime)
+            result = abw_health.run_health(workspace=workspace, runtime_root=runtime, persist_log=True)
             self.assertIn("invariant_violation", result["health_dashboard"])
             self.assertIn("anomaly_override_reason", result["health_dashboard"])
 
@@ -245,7 +247,7 @@ class AbwHealthDashboardTests(unittest.TestCase):
         tmp, workspace, runtime = self.make_layout()
         with tmp:
             self.make_clean_pair(workspace, runtime)
-            log_path = workspace / ".brain" / "health_log.jsonl"
+            log_path = abw_health.health_log_path(workspace)
             log_path.parent.mkdir(parents=True, exist_ok=True)
             log_path.write_text(
                 "".join(

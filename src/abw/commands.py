@@ -6,6 +6,7 @@ PUBLIC_COMMANDS = (
     ("ask", "Route a normal task."),
     ("ingest", "Create a draft from a raw source."),
     ("review", "Review pending drafts."),
+    ("provider", "Manage multi-provider routing and health."),
     ("doctor", "Check system health."),
     ("version", "Show package and workspace version info."),
     ("migrate", "Normalize an older workspace safely."),

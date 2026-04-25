@@ -2,6 +2,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -29,7 +30,14 @@ def new_runtime_id():
 
 
 def health_log_path(workspace="."):
-    return Path(workspace) / ".brain" / "health_log.jsonl"
+    return Path(workspace) / ".brain" / "cache" / "health_log.jsonl"
+
+
+def health_log_enabled(persist_log=None):
+    if persist_log is not None:
+        return bool(persist_log)
+    raw = str(os.environ.get("ABW_HEALTH_PERSIST_LOG", "0")).strip().lower()
+    return raw in {"1", "true", "yes", "on"}
 
 
 def sha256_file(path):
@@ -184,37 +192,22 @@ def append_health_log(workspace, entry):
 
 def compute_health_trend(log_path):
     path = Path(log_path)
-    if not path.exists():
-        return {
-            "total_runs": 0,
-            "recent_runs": [],
-            "drift_rate": 0.0,
-            "encoding_rate": 0.0,
-            "mojibake_rate": 0.0,
-            "clean_pass_rate": 1.0,
-            "remediation_rate": 0.0,
-            "validation_rate": 0.0,
-            "validation_rate_fallback": 0.0,
-            "validation_rate_policy": 0.0,
-            "execution_rate": 1.0,
-            "validation_count": 0,
-            "fallback_count": 0,
-            "policy_count": 0,
-            "stability_score": 100,
-            "invariant_violation": False,
-            "invariant_severity": "none",
-        }
-
     rows = []
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            rows.append(json.loads(line))
+    if path.exists():
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                rows.append(json.loads(line))
+    return _compute_health_trend_from_rows(rows, total_runs=len(rows))
 
+
+def _compute_health_trend_from_rows(rows, *, total_runs=None):
+    rows = list(rows or [])
+    if total_runs is None:
+        total_runs = len(rows)
     recent_runs = rows[-10:]
-    total_runs = len(rows)
     sample_size = len(recent_runs)
     if sample_size == 0:
         return {
@@ -352,6 +345,7 @@ def run_health(
     binding_source="cli",
     validation_source=None,
     mode="audit",
+    persist_log=None,
 ):
     mode = normalize_mode(mode)
     initial_drift = check_drift(workspace=workspace, runtime_root=runtime_root)
@@ -399,8 +393,12 @@ def run_health(
         "validation_source": normalized_validation_source,
         "status": current_state,
     }
-    log_path = append_health_log(workspace, log_entry)
-    health_dashboard = compute_health_trend(log_path)
+    log_path = health_log_path(workspace)
+    if health_log_enabled(persist_log=persist_log):
+        log_path = append_health_log(workspace, log_entry)
+        health_dashboard = compute_health_trend(log_path)
+    else:
+        health_dashboard = _compute_health_trend_from_rows([log_entry], total_runs=1)
     health_dashboard["trend"] = render_stability_graph(health_dashboard["recent_runs"])
     health_dashboard["anomaly"] = detect_anomaly(health_dashboard["recent_runs"])
     if health_dashboard.get("invariant_violation"):
@@ -486,6 +484,7 @@ def main(argv=None):
     parser.add_argument("--binding-status", default="runner_enforced")
     parser.add_argument("--validation-source")
     parser.add_argument("--mode", default="audit", help="audit or repair")
+    parser.add_argument("--persist-log", action="store_true", help="Persist health trend log to .brain/cache/health_log.jsonl")
     args = parser.parse_args(argv)
 
     result = run_health(
@@ -495,6 +494,7 @@ def main(argv=None):
         binding_source="cli",
         validation_source=args.validation_source,
         mode=args.mode,
+        persist_log=args.persist_log,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if result.get("current_state") == "verified" else 3

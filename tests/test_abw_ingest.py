@@ -2,7 +2,9 @@ import json
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -141,6 +143,229 @@ class AbwIngestTests(unittest.TestCase):
             with self.assertRaises(ValueError) as exc:
                 abw_ingest.run("ingest wiki", tmp)
             self.assertIn("must point to raw/", str(exc.exception))
+
+    def test_xlsx_ingest_extracts_cells_comments_textboxes_charts_and_images(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            xlsx_path = workspace / "raw" / "report.xlsx"
+            xlsx_path.parent.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(xlsx_path, "w") as archive:
+                archive.writestr("xl/sharedStrings.xml", "<sst><si><t>Q1 output</t></si><si><t>42</t></si></sst>")
+                archive.writestr("xl/comments1.xml", "<comments><commentList><comment><text><t>note-a</t></text></comment></commentList></comments>")
+                archive.writestr("xl/drawings/drawing1.xml", "<xdr><txBody><a:t>textbox alpha</a:t></txBody></xdr>")
+                archive.writestr("xl/charts/chart1.xml", "<c:chart><c:title><a:t>capacity trend</a:t></c:title></c:chart>")
+                archive.writestr("xl/media/image1.png", b"PNG")
+
+            result = abw_ingest.run("ingest raw/report.xlsx", str(workspace))
+
+            self.assertEqual(result["format"], "xlsx")
+            self.assertGreaterEqual(result["provenance_count"], 5)
+            self.assertIn(result["queue_status"], {"review_needed", "candidate_promoted"})
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("## Provenance", draft)
+            self.assertIn("cells", draft)
+            self.assertIn("comments", draft)
+            self.assertIn("textboxes", draft)
+            self.assertIn("charts", draft)
+            self.assertIn("embedded_images", draft)
+
+    def test_pdf_ingest_ai_mode_can_promote_candidate_with_provider_assist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            config = {
+                "project_name": "x",
+                "workspace_schema": 1,
+                "abw_version": "0.2.6",
+                "domain_profile": "generic",
+                "raw_dir": "raw",
+                "wiki_dir": "wiki",
+                "drafts_dir": "drafts",
+                "providers": {
+                    "ingest_mode": "ai",
+                    "default": "mock",
+                    "fallback_chain": ["mock"],
+                },
+            }
+            (workspace / "abw_config.json").write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+            raw_file = workspace / "raw" / "scan.pdf"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_bytes(b"%PDF-1.4\nFactory station line lead time improved\n%%EOF")
+
+            result = abw_ingest.run("ingest raw/scan.pdf", str(workspace))
+
+            self.assertEqual(result["ingest_mode"], "ai")
+            self.assertEqual(result["format"], "pdf")
+            self.assertTrue(result["provider"]["used"])
+            self.assertEqual(result["provider"]["status"], "success")
+            self.assertIn(result["queue_status"], {"candidate_promoted", "review_needed"})
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("Provider semantic summary", draft)
+            self.assertIn("confidence", draft)
+
+    def test_image_ingest_hybrid_falls_back_to_local_on_provider_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            config = {
+                "project_name": "x",
+                "workspace_schema": 1,
+                "abw_version": "0.2.6",
+                "domain_profile": "generic",
+                "raw_dir": "raw",
+                "wiki_dir": "wiki",
+                "drafts_dir": "drafts",
+                "providers": {
+                    "ingest_mode": "hybrid",
+                    "default": "mock",
+                    "fallback_chain": ["mock"],
+                    "task_routes": {"summarization": ["mock"]},
+                    "sensitivity_routes": {"normal": ["mock"]},
+                },
+            }
+            (workspace / "abw_config.json").write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+            raw_file = workspace / "raw" / "diagram.png"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_bytes(b"\x89PNG\r\n\x1a\n")
+
+            with patch.dict("os.environ", {"ABW_PROVIDER_FORCE_FAIL": "mock"}, clear=False):
+                result = abw_ingest.run("ingest raw/diagram.png", str(workspace))
+
+            self.assertEqual(result["ingest_mode"], "hybrid")
+            self.assertEqual(result["format"], "png")
+            self.assertFalse(result["provider"]["used"])
+            self.assertEqual(result["provider"]["status"], "failed")
+            self.assertGreaterEqual(result["provider"]["fail_count"], 1)
+            self.assertEqual(result["queue_status"], "review_needed")
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("Provider Assistance", draft)
+
+    def test_supported_perception_providers_are_reported(self):
+        providers = abw_ingest.supported_perception_providers()
+
+        self.assertIn("paddleocr", providers["local_ocr"])
+        self.assertIn("tesseract", providers["local_ocr"])
+        self.assertIn("openai_vision", providers["cloud_vision"])
+        self.assertIn("claude_vision", providers["cloud_vision"])
+        self.assertIn("gemini_vision", providers["cloud_vision"])
+
+    def test_image_ingest_detects_ui_tables_and_labels_with_provenance_refs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw_file = workspace / "raw" / "screen.png"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            png_header = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + (640).to_bytes(4, "big") + (360).to_bytes(4, "big")
+            raw_file.write_bytes(
+                png_header
+                + b"\x08\x02\x00\x00\x00"
+                + b" Login Save Cancel Status Required Total Qty Price 10 20 30 | table row |"
+            )
+
+            with patch.object(abw_ingest, "_run_paddleocr", return_value=([], {"provider": "paddleocr", "status": "unavailable"})), patch.object(
+                abw_ingest,
+                "_run_tesseract",
+                return_value=(
+                    ["Login Save Cancel", "Status Required", "Total Qty Price 10 20 30", "table row"],
+                    {"provider": "tesseract", "status": "success", "tokens": 4},
+                ),
+            ):
+                result = abw_ingest.run("ingest raw/screen.png", str(workspace))
+
+            self.assertEqual(result["format"], "png")
+            self.assertGreaterEqual(result["provenance_count"], 6)
+            self.assertGreater(result["confidence"], 0.3)
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("visual_ui_detector", draft)
+            self.assertIn("visual_table_detector", draft)
+            self.assertIn("visual_label_button_detector", draft)
+            self.assertIn("ref=image:screen.png#ui", draft)
+
+    def test_scanned_pdf_flow_adds_pages_layout_summary_and_low_noisy_confidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw_file = workspace / "raw" / "scan.pdf"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_bytes(
+                b"%PDF-1.4\n"
+                b"1 0 obj << /Type /Page /Resources << /XObject << /Im1 << /Subtype /Image >> >> >> >> endobj\n"
+                b"2 0 obj << /Type /Page >> endobj\n"
+                b"Factory Flow Step Input Output Total Qty 12 13 14\n"
+                b"%%EOF"
+            )
+
+            result = abw_ingest.run("ingest raw/scan.pdf", str(workspace))
+
+            self.assertEqual(result["format"], "pdf")
+            self.assertLessEqual(result["confidence"], 0.18)
+            self.assertEqual(result["queue_status"], "review_needed")
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("PDF pages detected", draft)
+            self.assertIn("Layout blocks", draft)
+            self.assertIn("semantic_summary", draft)
+            self.assertIn("ref=pdf:/pages/*/blocks", draft)
+
+    def test_xlsx_embedded_image_ocr_extracts_probe_text_and_cell_refs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            xlsx_path = workspace / "raw" / "image-report.xlsx"
+            xlsx_path.parent.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(xlsx_path, "w") as archive:
+                archive.writestr("xl/sharedStrings.xml", "<sst><si><t>Station table</t></si></sst>")
+                archive.writestr("xl/media/image1.png", b"\x89PNG\r\n\x1a\nChart Label Save Button")
+
+            result = abw_ingest.run("ingest raw/image-report.xlsx", str(workspace))
+
+            self.assertEqual(result["format"], "xlsx")
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("Embedded image metadata/text probe", draft)
+            self.assertIn("Chart Label Save Button", draft)
+            self.assertIn("ref=xl/media/*", draft)
+
+    def test_mom_like_png_binary_markers_do_not_inflate_ocr_confidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw_file = workspace / "raw" / "mom-screen.png"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            png_header = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + (1598).to_bytes(4, "big") + (852).to_bytes(4, "big")
+            raw_file.write_bytes(png_header + b"sRGB\x00gAMA\x00pHYs\x00IDATx\x9cDDDDDDDDDDDDDDDDxref Obj /Type/Page")
+
+            with patch.object(abw_ingest, "_run_paddleocr", return_value=([], {"provider": "paddleocr", "status": "unavailable"})), patch.object(
+                abw_ingest,
+                "_run_tesseract",
+                return_value=([], {"provider": "tesseract", "status": "unavailable"}),
+            ):
+                result = abw_ingest.run("ingest raw/mom-screen.png", str(workspace))
+
+            self.assertEqual(result["format"], "png")
+            self.assertLessEqual(result["confidence"], 0.1)
+            self.assertEqual(result["queue_status"], "review_needed")
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("binary_text_probe=metadata_only", draft)
+            self.assertIn("metadata_only=True", draft)
+            self.assertIn("OCR text: - none recovered", draft)
+
+    def test_mom_like_pdf_metadata_probe_does_not_inflate_confidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw_file = workspace / "raw" / "mom-scan.pdf"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_bytes(
+                b"%PDF-1.4\n"
+                b"1 0 obj << /Type /Catalog /Pages 2 0 R /StructTreeRoot 10 0 R >> endobj\n"
+                b"2 0 obj << /Type /Pages /Count 1 /Kids [3 0 R] >> endobj\n"
+                b"3 0 obj << /Type /Page /Resources << /XObject << /Im1 << /Subtype /Image >> >> >> >> endobj\n"
+                b"xref\n0 4\ntrailer\n%%EOF"
+            )
+
+            result = abw_ingest.run("ingest raw/mom-scan.pdf", str(workspace))
+
+            self.assertEqual(result["format"], "pdf")
+            self.assertLessEqual(result["confidence"], 0.1)
+            self.assertEqual(result["queue_status"], "review_needed")
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("pdf_metadata_probe", draft)
+            self.assertIn("metadata_only=True", draft)
+            self.assertIn("OCR/local text extraction did not recover readable PDF text.", draft)
 
 
 if __name__ == "__main__":

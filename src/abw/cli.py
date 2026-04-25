@@ -9,6 +9,17 @@ from . import entry, ingest as ingest_module, output, overview as overview_modul
 from .doctor import build_doctor_report, render_doctor_report
 from .help import build_help_report, render_help_report
 from .migrate import build_migration_report, render_migration_report
+from .providers import (
+    explain_route,
+    list_providers,
+    prepare_ask_task,
+    render_provider_list,
+    render_provider_route,
+    render_provider_test,
+    run_provider_health_checks,
+    set_ask_mode,
+    set_default_provider,
+)
 from .self_check import build_self_check_report, render_self_check_report
 from .upgrade import build_upgrade_report, render_upgrade_report
 from .version import build_version_report, render_version_report
@@ -62,6 +73,24 @@ def parse_args(argv=None):
     save_parser.add_argument("text", nargs="?")
     save_parser.add_argument("--stdin", action="store_true")
     add_public_parser(sub, "doctor")
+    provider = add_public_parser(sub, "provider")
+    provider_sub = provider.add_subparsers(dest="provider_command", metavar="provider-command")
+
+    provider_sub.add_parser("list", help="List configured providers and statuses.")
+    provider_sub.add_parser("test", help="Run provider health checks.")
+
+    provider_set = provider_sub.add_parser("set-default", help="Set default provider.")
+    provider_set.add_argument("name")
+    provider_mode = provider_sub.add_parser("set-mode", help="Set ask mode.")
+    provider_mode.add_argument("mode")
+
+    provider_route = provider_sub.add_parser("route", help="Provider routing tools.")
+    provider_route_sub = provider_route.add_subparsers(dest="provider_route_command", metavar="route-command")
+    provider_explain = provider_route_sub.add_parser("explain", help="Explain route decision.")
+    provider_explain.add_argument("--task", default="general")
+    provider_explain.add_argument("--sensitivity", default="normal")
+    provider_explain.add_argument("--cost", default="balanced")
+
     add_hidden_parser(sub, "upgrade")
     add_hidden_parser(sub, "rollback")
     add_hidden_parser(sub, "repair")
@@ -179,9 +208,12 @@ def main(argv=None) -> int:
             if str(args.text).strip().lower() == "overview":
                 print(overview_module.build_overview(workspace)["content"], end="")
                 return 0
+            ask_plan = prepare_ask_task(workspace, args.text)
             result = _legacy_entry.final_output(
-                _legacy_entry.execute_command("/abw-ask", task=args.text, workspace=str(workspace))
+                _legacy_entry.execute_command("/abw-ask", task=ask_plan["task"], workspace=str(workspace))
             )
+            if isinstance(result, dict):
+                result["provider"] = ask_plan["provider"]
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "ingest":
@@ -219,6 +251,42 @@ def main(argv=None) -> int:
 
         if args.command == "doctor":
             return _render_and_exit(_doctor_result(str(workspace)), debug=debug, level=level)
+
+        if args.command == "provider":
+            if args.provider_command == "list":
+                print(render_provider_list(list_providers(workspace)))
+                return 0
+            if args.provider_command == "test":
+                print(render_provider_test(run_provider_health_checks(workspace)))
+                return 0
+            if args.provider_command == "set-default":
+                try:
+                    result = set_default_provider(workspace, args.name)
+                except ValueError as exc:
+                    print(str(exc))
+                    return 2
+                print(f"default provider set to: {result['default']}")
+                print(f"fallback_chain: {', '.join(result['fallback_chain'])}")
+                return 0
+            if args.provider_command == "set-mode":
+                try:
+                    result = set_ask_mode(workspace, args.mode)
+                except ValueError as exc:
+                    print(str(exc))
+                    return 2
+                print(f"ask mode set to: {result['ask_mode']}")
+                return 0
+            if args.provider_command == "route" and args.provider_route_command == "explain":
+                report = explain_route(
+                    workspace,
+                    task=getattr(args, "task", "general"),
+                    sensitivity=getattr(args, "sensitivity", "normal"),
+                    cost_mode=getattr(args, "cost", "balanced"),
+                )
+                print(render_provider_route(report))
+                return 0
+            print("Unknown provider command")
+            return 2
 
         if args.command == "upgrade":
             print(render_upgrade_report(build_upgrade_report(workspace)))

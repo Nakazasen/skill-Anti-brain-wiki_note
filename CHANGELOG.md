@@ -5,6 +5,25 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2026-04-25
+
+### Added
+- Production multimodal ingest coverage for images, scanned PDFs, and XLSX embedded media with provenance references.
+- Optional local OCR adapter hooks for PaddleOCR and Tesseract, plus cloud vision routing metadata for Claude Vision, Gemini Vision, and OpenAI Vision.
+- Regression tests using MOM-like PNG/PDF binary-marker samples to prevent fake OCR confidence inflation.
+
+### Changed
+- Image/PDF ingest confidence now requires real OCR or readable text quality gates; binary probes are metadata-only evidence.
+- XLSX embedded image bytes are reported as metadata/text probes rather than OCR unless readable text quality gates pass.
+- Review routing now keeps no-real-OCR image/PDF artifacts in `review_needed`.
+
+### Fixed
+- PNG/PDF signatures and container markers such as `IHDR`, `IDAT`, `xref`, `obj`, and `/Type/Page` no longer inflate OCR confidence.
+- Screenshots and scanned PDFs without usable OCR no longer receive false high confidence.
+
+### Security / Trust
+- No changes to proof, nonce, acceptance, finalization, rollback, router fallback policy, or trusted wiki promotion semantics.
+
 ## [0.2.6] - 2026-04-24
 
 ### Added

@@ -26,6 +26,13 @@ def default_config(root: Path) -> dict:
         "project_name": root.name,
         "workspace_schema": WORKSPACE_SCHEMA,
         "abw_version": __version__,
+        "domain_profile": "generic",
+        "providers": {
+            "ask_mode": "local",
+            "cost_mode": "balanced",
+            "default": "mock",
+            "fallback_chain": ["mock", "ollama", "vllm", "gemini", "openai", "claude"],
+        },
         "raw_dir": "raw",
         "wiki_dir": "wiki",
         "drafts_dir": "drafts",
@@ -72,10 +79,21 @@ def ensure_workspace(workspace: str | os.PathLike[str] | None = None) -> dict:
         config_status = "created"
     elif config_status == "ok":
         merged = dict(config)
-        for key, value in default_config(root).items():
-            if key not in merged or merged.get(key) in {None, ""}:
+        defaults = default_config(root)
+        for key, value in defaults.items():
+            current = merged.get(key)
+            if key not in merged or current is None or current == "":
                 merged[key] = value
                 config_updated = True
+        # Keep provider settings backward-compatible when older config misses nested keys.
+        if isinstance(merged.get("providers"), dict):
+            providers = dict(merged["providers"])
+            for key, value in dict(defaults.get("providers") or {}).items():
+                current = providers.get(key)
+                if key not in providers or current is None or current == "":
+                    providers[key] = value
+                    config_updated = True
+            merged["providers"] = providers
         if merged.get("workspace_schema") != WORKSPACE_SCHEMA:
             merged["workspace_schema"] = WORKSPACE_SCHEMA
             config_updated = True

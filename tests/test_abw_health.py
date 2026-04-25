@@ -1,3 +1,4 @@
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -62,6 +63,51 @@ class AbwHealthTests(unittest.TestCase):
             self.assertTrue(result["validation_proof"])
             self.assertEqual(result["current_state"], "verified")
             self.assertIn("## Finalization", result["answer"])
+
+    def test_run_health_does_not_create_legacy_health_log_file(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            (workspace / "scripts" / "abw_runner.py").write_text("print('ok')\n", encoding="utf-8")
+            (workspace / "workflows" / "abw-ask.md").write_text("# ask\n", encoding="utf-8")
+            (runtime / "scripts" / "abw_runner.py").write_text("print('ok')\n", encoding="utf-8")
+            (runtime / "global_workflows" / "abw-ask.md").write_text("# ask\n", encoding="utf-8")
+            abw_health.run_health(workspace=workspace, runtime_root=runtime)
+            self.assertFalse((workspace / ".brain" / "health_log.jsonl").exists())
+
+    def test_cache_log_path_works_when_enabled(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            (workspace / "scripts" / "abw_runner.py").write_text("print('ok')\n", encoding="utf-8")
+            (workspace / "workflows" / "abw-ask.md").write_text("# ask\n", encoding="utf-8")
+            (runtime / "scripts" / "abw_runner.py").write_text("print('ok')\n", encoding="utf-8")
+            (runtime / "global_workflows" / "abw-ask.md").write_text("# ask\n", encoding="utf-8")
+            abw_health.run_health(workspace=workspace, runtime_root=runtime, persist_log=True)
+            self.assertTrue(abw_health.health_log_path(workspace).exists())
+
+    def test_git_noise_regression_no_untracked_health_log_by_default(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            subprocess.run(["git", "init"], cwd=str(workspace), check=True, capture_output=True, text=True)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=str(workspace), check=True, capture_output=True, text=True)
+            subprocess.run(["git", "config", "user.name", "Test User"], cwd=str(workspace), check=True, capture_output=True, text=True)
+            (workspace / "README.md").write_text("seed\n", encoding="utf-8")
+            subprocess.run(["git", "add", "README.md"], cwd=str(workspace), check=True, capture_output=True, text=True)
+            subprocess.run(["git", "commit", "-m", "seed"], cwd=str(workspace), check=True, capture_output=True, text=True)
+            (workspace / "scripts" / "abw_runner.py").write_text("print('ok')\n", encoding="utf-8")
+            (workspace / "workflows" / "abw-ask.md").write_text("# ask\n", encoding="utf-8")
+            (runtime / "scripts" / "abw_runner.py").write_text("print('ok')\n", encoding="utf-8")
+            (runtime / "global_workflows" / "abw-ask.md").write_text("# ask\n", encoding="utf-8")
+
+            abw_health.run_health(workspace=workspace, runtime_root=runtime)
+
+            status = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=str(workspace),
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            self.assertNotIn(".brain/health_log.jsonl", status.replace("\\", "/"))
 
     def test_run_health_audit_does_not_fix_drift(self):
         tmp, workspace, runtime = self.make_layout()

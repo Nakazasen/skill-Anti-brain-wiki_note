@@ -91,6 +91,18 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
         engine_checks.append(_status("WARN", "stale install may be active"))
         next_steps.append("run `abw self-check`")
         next_steps.append("run `py -m pip install -U .` or `py -m pip install -U git+<repo-url>`")
+    provider_mode = str(version.get("provider_ask_mode") or "local")
+    provider_default = str(version.get("provider_default") or "unknown")
+    provider_healthy_count = int(version.get("provider_healthy_count") or 0)
+    engine_checks.append(
+        _status(
+            "OK" if provider_healthy_count > 0 or provider_mode == "local" else "WARN",
+            f"provider state mode={provider_mode} default={provider_default} healthy={provider_healthy_count}",
+        )
+    )
+    if provider_mode in {"ai", "hybrid"} and provider_healthy_count == 0:
+        next_steps.append("run `abw provider test`")
+        next_steps.append("run `abw provider set-default mock`")
 
     overall = "OK"
     checks = workspace_checks + engine_checks

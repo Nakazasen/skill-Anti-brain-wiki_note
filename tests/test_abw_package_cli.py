@@ -1,5 +1,6 @@
 import json
 import importlib
+import io
 import sys
 import tempfile
 import unittest
@@ -35,6 +36,7 @@ class AbwPackageCliTests(unittest.TestCase):
             self.assertTrue((root / "drafts").is_dir())
 
             config = json.loads((root / "abw_config.json").read_text(encoding="utf-8"))
+            self.assertEqual(config["domain_profile"], "generic")
             self.assertEqual(config["raw_dir"], "raw")
             self.assertEqual(config["wiki_dir"], "wiki")
             self.assertEqual(config["drafts_dir"], "drafts")
@@ -85,6 +87,136 @@ class AbwPackageCliTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
             ask_mock.assert_not_called()
+
+    def test_provider_list_command_prints_registry(self):
+        cli = self.load_cli()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = io.StringIO()
+            with patch("sys.stdout", output):
+                exit_code = cli.main(["--workspace", tmp, "provider", "list"])
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn("ABW Providers", output.getvalue())
+            self.assertIn("openai", output.getvalue())
+            self.assertIn("claude", output.getvalue())
+
+    def test_provider_test_command_prints_health(self):
+        cli = self.load_cli()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = io.StringIO()
+            with patch("sys.stdout", output):
+                exit_code = cli.main(["--workspace", tmp, "provider", "test"])
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn("ABW Provider Health", output.getvalue())
+
+    def test_provider_set_default_updates_workspace_config(self):
+        cli = self.load_cli()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = io.StringIO()
+            with patch("sys.stdout", output):
+                exit_code = cli.main(["--workspace", tmp, "provider", "set-default", "claude"])
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn("default provider set to: claude", output.getvalue())
+            config = json.loads((Path(tmp) / "abw_config.json").read_text(encoding="utf-8"))
+            self.assertEqual(config["providers"]["default"], "claude")
+
+    def test_provider_route_explain_outputs_selection(self):
+        cli = self.load_cli()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = io.StringIO()
+            with patch("sys.stdout", output):
+                exit_code = cli.main(
+                    [
+                        "--workspace",
+                        tmp,
+                        "provider",
+                        "route",
+                        "explain",
+                        "--task",
+                        "analysis",
+                        "--sensitivity",
+                        "high",
+                        "--cost",
+                        "low",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            rendered = output.getvalue()
+            self.assertIn("ABW Provider Route", rendered)
+            self.assertIn("selected:", rendered)
+
+    def test_provider_set_mode_updates_workspace_config(self):
+        cli = self.load_cli()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = io.StringIO()
+            with patch("sys.stdout", output):
+                exit_code = cli.main(["--workspace", tmp, "provider", "set-mode", "hybrid"])
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn("ask mode set to: hybrid", output.getvalue())
+            config = json.loads((Path(tmp) / "abw_config.json").read_text(encoding="utf-8"))
+            self.assertEqual(config["providers"]["ask_mode"], "hybrid")
+
+    def test_ask_uses_local_mode_without_provider_rewrite(self):
+        cli = self.load_cli()
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "abw_config.json").write_text(
+                json.dumps(
+                    {
+                        "project_name": "x",
+                        "workspace_schema": 1,
+                        "abw_version": "0.2.6",
+                        "domain_profile": "generic",
+                        "raw_dir": "raw",
+                        "wiki_dir": "wiki",
+                        "drafts_dir": "drafts",
+                        "providers": {"ask_mode": "local"},
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with patch("abw.cli._legacy_entry.execute_command", return_value={"answer": "ok"}) as execute_mock, patch(
+                "abw.cli._legacy_entry.final_output",
+                side_effect=lambda result: result,
+            ), patch("abw.cli.output.render", return_value="ok"):
+                exit_code = cli.main(["--workspace", tmp, "ask", "hello"])
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(execute_mock.call_args.kwargs["task"], "hello")
+
+    def test_ask_ai_mode_rewrites_task_with_provider_draft(self):
+        cli = self.load_cli()
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "abw_config.json").write_text(
+                json.dumps(
+                    {
+                        "project_name": "x",
+                        "workspace_schema": 1,
+                        "abw_version": "0.2.6",
+                        "domain_profile": "generic",
+                        "raw_dir": "raw",
+                        "wiki_dir": "wiki",
+                        "drafts_dir": "drafts",
+                        "providers": {"ask_mode": "ai", "default": "mock", "fallback_chain": ["mock"]},
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with patch("abw.cli._legacy_entry.execute_command", return_value={"answer": "ok"}) as execute_mock, patch(
+                "abw.cli._legacy_entry.final_output",
+                side_effect=lambda result: result,
+            ), patch("abw.cli.output.render", return_value="ok"):
+                exit_code = cli.main(["--workspace", tmp, "ask", "hello"])
+            self.assertEqual(exit_code, 0)
+            self.assertIn("[provider_draft]", execute_mock.call_args.kwargs["task"])
 
 
 if __name__ == "__main__":
