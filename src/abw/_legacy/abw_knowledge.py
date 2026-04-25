@@ -248,6 +248,46 @@ def log_knowledge_gap(task, workspace=".", searched_locations=None, reason="No l
     return gap_id
 
 
+def detect_knowledge_gap(query, context, workspace="."):
+    context = context or {}
+    source = context.get("source")
+    confidence = float(context.get("confidence") or 0.0)
+    path = context.get("path")
+    content = str(context.get("content") or "").strip()
+
+    result = {
+        "gap_detected": False,
+        "gap_type": "none",
+        "reason": "",
+        "suggested_sources": [],
+        "confidence": confidence,
+    }
+
+    if source in (None, "none"):
+        result.update(
+            {
+                "gap_detected": True,
+                "gap_type": "missing_evidence",
+                "reason": "No local wiki or explicit source matched the question.",
+                "suggested_sources": ["wiki/", "raw/"],
+            }
+        )
+        return result
+
+    if source == "wiki" and (confidence < 0.6 or not content or not path):
+        result.update(
+            {
+                "gap_detected": True,
+                "gap_type": "weak_answer",
+                "reason": f"Wiki evidence is weak or incomplete for this question; confidence={confidence:.2f}.",
+                "suggested_sources": ["add a targeted wiki note", "ingest a raw source for this question"],
+            }
+        )
+        return result
+
+    return result
+
+
 def _get_knowledge_context(task, workspace="."):
     explicit = _read_explicit_local_source(task, workspace=workspace)
     if explicit:
@@ -302,16 +342,18 @@ def build_source_summary(result):
 
 def enrich_knowledge_result(task, workspace="."):
     context = _get_knowledge_context(task, workspace=workspace)
+    gap = detect_knowledge_gap(task, context, workspace=workspace)
     result = {
         "task": task,
         "knowledge_context": context,
+        "knowledge_gap": gap,
         "refinement_history": [],
         "strategy_trace": {},
         "semantic_fix_applied": False,
     }
     if context.get("source") == "wiki":
         result["evidence"] = f"wiki retrieval matched {context.get('path')}"
-        result["gap_logged"] = False
+        result["gap_logged"] = bool(gap.get("gap_detected"))
     elif context.get("source") == "local":
         result["evidence"] = f"explicit local retrieval matched {context.get('path')}"
         result["gap_logged"] = False

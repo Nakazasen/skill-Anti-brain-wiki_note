@@ -1665,15 +1665,18 @@ def base_result(
 def knowledge_body(task, result):
     context = result.get("knowledge_context") or {}
     content = context.get("content") or ""
+    gap_section = format_knowledge_gap(result.get("knowledge_gap"))
     if result.get("knowledge_evidence_tier") == "E0_unknown":
-        return (
+        body = (
             f"Incomplete knowledge answer for '{task}'. "
             "No grounded project evidence was found, so the request is surfaced as a visible gap."
         )
+        return f"{body}\n{gap_section}" if gap_section else body
     if result.get("knowledge_evidence_tier") == "E2_wiki":
-        return (
+        body = (
             f"Knowledge answer for '{task}' was retrieved from local wiki evidence: {content}"
         )
+        return f"{body}\n{gap_section}" if gap_section else body
     if result.get("knowledge_evidence_tier") == "E3_grounded":
         return (
             f"Knowledge answer for '{task}' was retrieved from an explicit local source: {content}"
@@ -1682,6 +1685,22 @@ def knowledge_body(task, result):
         f"Knowledge answer for '{task}' is allowed as a fallback answer, "
         "but stronger grounded provenance is still recommended."
     )
+
+
+def format_knowledge_gap(gap):
+    gap = gap or {}
+    if not gap.get("gap_detected"):
+        return ""
+    lines = [
+        "",
+        "Knowledge gap:",
+        f"- gap_type: {gap.get('gap_type', 'unknown')}",
+        f"- reason: {gap.get('reason') or 'No reason recorded.'}",
+    ]
+    suggested = gap.get("suggested_sources") or []
+    if suggested:
+        lines.append(f"- suggested_sources: {', '.join(str(item) for item in suggested[:3])}")
+    return "\n".join(lines)
 
 
 def binding_status_for_execution(binding_source, execution_result=None):

@@ -11,6 +11,22 @@ def _status(level: str, message: str) -> dict:
     return {"level": level, "message": message}
 
 
+def _load_open_knowledge_gaps(root: Path) -> list[dict]:
+    path = root / ".brain" / "knowledge_gaps.json"
+    if not path.exists():
+        return []
+    try:
+        import json
+
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception:  # noqa: BLE001
+        return []
+    gaps = payload.get("gaps", [])
+    if not isinstance(gaps, list):
+        return []
+    return [gap for gap in gaps if isinstance(gap, dict) and gap.get("status") == "open"]
+
+
 def build_doctor_report(workspace: str | Path = ".") -> dict:
     root = resolve_workspace(workspace)
     workspace_checks = []
@@ -103,6 +119,13 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
     if provider_mode in {"ai", "hybrid"} and provider_healthy_count == 0:
         next_steps.append("run `abw provider test`")
         next_steps.append("run `abw provider set-default mock`")
+    open_gaps = _load_open_knowledge_gaps(root)
+    if open_gaps:
+        top_gap = open_gaps[-1].get("query") or open_gaps[-1].get("reason") or "unknown"
+        engine_checks.append(_status("WARN", f"coverage gaps open={len(open_gaps)} top_gap={top_gap}"))
+        next_steps.append("ingest raw sources or add wiki notes for open knowledge gaps")
+    else:
+        engine_checks.append(_status("OK", "coverage gaps open=0"))
 
     overall = "OK"
     checks = workspace_checks + engine_checks
