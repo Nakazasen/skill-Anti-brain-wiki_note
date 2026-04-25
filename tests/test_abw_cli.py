@@ -129,17 +129,61 @@ class AbwCliTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(run_mock.call_args.args[0][2], "/abw-migrate")
 
-    def test_upgrade_prints_guidance_report(self):
+    def test_upgrade_executes_zero_touch_flow(self):
         stdout = io.StringIO()
-        with patch("abw_cli.build_upgrade_report", return_value={"install_mode": "pip package"}), patch(
+        with patch(
+            "abw_cli.perform_upgrade",
+            return_value={
+                "workspace": ".",
+                "package_version_before": "0.2.9",
+                "package_version_after": "0.3.0",
+                "install_mode": "pip package",
+                "operation": "upgrade",
+                "channel": "stable",
+                "target_version": "0.3.0",
+                "target_source": "release",
+                "status": "success",
+                "summary": "All health checks passed.",
+                "commands": ["abw upgrade --check", "abw upgrade", "abw doctor"],
+                "note": "Use --check for dry run.",
+            },
+        ), patch("abw_cli.build_upgrade_report") as build_mock, patch(
             "abw_cli.render_upgrade_report",
-            return_value="ABW Upgrade\n- RUN: py -m pip install -U abw-skill",
+            return_value="ABW Upgrade\n- status: success",
         ), patch("sys.stdout", stdout), patch("abw_cli.subprocess.run") as run_mock:
             exit_code = abw_cli.main(["upgrade"])
 
         self.assertEqual(exit_code, 0)
         self.assertIn("ABW Upgrade", stdout.getvalue())
+        build_mock.assert_not_called()
         run_mock.assert_not_called()
+
+    def test_upgrade_check_uses_preflight_report(self):
+        stdout = io.StringIO()
+        with patch(
+            "abw_cli.build_upgrade_report",
+            return_value={
+                "workspace": ".",
+                "package_version": "0.2.9",
+                "install_mode": "pip package",
+                "operation": "upgrade",
+                "channel": "stable",
+                "target_version": "0.3.0",
+                "target_source": "release",
+                "status": "check",
+                "summary": "Check completed.",
+                "commands": ["abw upgrade --check"],
+                "note": "dry-run",
+            },
+        ) as report_mock, patch("abw_cli.perform_upgrade") as perform_mock, patch(
+            "abw_cli.render_upgrade_report",
+            return_value="ABW Upgrade\n- status: check",
+        ), patch("sys.stdout", stdout):
+            exit_code = abw_cli.main(["upgrade", "--check", "--channel", "stable"])
+
+        self.assertEqual(exit_code, 0)
+        report_mock.assert_called_once()
+        perform_mock.assert_not_called()
 
     def test_power_commands_route_to_direct_entry_points(self):
         cases = [

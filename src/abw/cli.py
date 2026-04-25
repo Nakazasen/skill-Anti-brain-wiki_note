@@ -21,7 +21,7 @@ from .providers import (
     set_default_provider,
 )
 from .self_check import build_self_check_report, render_self_check_report
-from .upgrade import build_upgrade_report, render_upgrade_report
+from .upgrade import build_upgrade_report, perform_upgrade, render_upgrade_report
 from .version import build_version_report, render_version_report
 from .commands import DEPRECATED_ALIASES, PUBLIC_HELP
 from .legacy import load
@@ -91,7 +91,11 @@ def parse_args(argv=None):
     provider_explain.add_argument("--sensitivity", default="normal")
     provider_explain.add_argument("--cost", default="balanced")
 
-    add_hidden_parser(sub, "upgrade")
+    upgrade_parser = add_hidden_parser(sub, "upgrade")
+    upgrade_parser.add_argument("--check", action="store_true")
+    upgrade_parser.add_argument("--to", dest="to_version")
+    upgrade_parser.add_argument("--rollback", action="store_true")
+    upgrade_parser.add_argument("--channel", choices=("stable", "beta"), default="stable")
     add_hidden_parser(sub, "rollback")
     add_hidden_parser(sub, "repair")
     add_hidden_parser(sub, "self-check")
@@ -289,8 +293,24 @@ def main(argv=None) -> int:
             return 2
 
         if args.command == "upgrade":
-            print(render_upgrade_report(build_upgrade_report(workspace)))
-            return 0
+            if getattr(args, "check", False):
+                report = build_upgrade_report(
+                    workspace,
+                    channel=getattr(args, "channel", "stable"),
+                    to_version=getattr(args, "to_version", None),
+                    rollback=getattr(args, "rollback", False),
+                )
+            else:
+                report = perform_upgrade(
+                    workspace,
+                    check=False,
+                    to_version=getattr(args, "to_version", None),
+                    rollback=getattr(args, "rollback", False),
+                    channel=getattr(args, "channel", "stable"),
+                )
+            print(render_upgrade_report(report))
+            status = str(report.get("status") or "check")
+            return 0 if status in {"check", "success"} else 2
 
         if args.command == "rollback":
             return _render_and_exit(_rollback_result(str(workspace)), debug=debug, level=level)

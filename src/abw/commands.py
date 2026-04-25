@@ -14,7 +14,7 @@ PUBLIC_COMMANDS = (
 )
 
 ADVANCED_COMMANDS = (
-    ("upgrade", "Show upgrade guidance."),
+    ("upgrade", "Upgrade ABW package safely with backup and health checks."),
     ("rollback", "Restore the last runtime backup."),
     ("repair", "Repair runtime drift."),
     ("research", "Reserved command. Not implemented yet."),

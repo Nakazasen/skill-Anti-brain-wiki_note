@@ -24,8 +24,43 @@ def _safe_distribution():
         return None
 
 
+def runtime_package_path() -> str:
+    return str(Path(__file__).resolve())
+
+
+def package_version_details() -> dict:
+    distribution = _safe_distribution()
+    metadata_version = None
+    if distribution is not None:
+        try:
+            metadata_version = str(distribution.version).strip() or None
+        except Exception:  # noqa: BLE001
+            metadata_version = None
+
+    fallback_version = str(__version__).strip() or "unknown"
+    resolved_version = metadata_version or fallback_version
+    mismatch = bool(metadata_version and metadata_version != fallback_version)
+    warning = None
+    if mismatch:
+        warning = (
+            "Version mismatch detected: installed distribution metadata and abw.__version__ differ. "
+            "Runtime version uses installed metadata."
+        )
+    source = "importlib.metadata" if metadata_version else "abw.__version__"
+
+    return {
+        "resolved_version": resolved_version,
+        "source": source,
+        "metadata_version": metadata_version,
+        "fallback_version": fallback_version,
+        "mismatch": mismatch,
+        "warning": warning,
+        "runtime_path": runtime_package_path(),
+    }
+
+
 def package_version() -> str:
-    return __version__
+    return package_version_details()["resolved_version"]
 
 
 def _direct_url_payload(distribution) -> dict | None:
@@ -122,7 +157,8 @@ def build_version_report(workspace: str | Path = ".") -> dict:
     root = resolve_workspace(workspace)
     config, config_status = read_workspace_config(root)
     install = install_mode_details()
-    current_package_version = package_version()
+    version_details = package_version_details()
+    current_package_version = version_details["resolved_version"]
     current_git_tag = git_tag()
     current_git_commit = git_commit()
     current_release_match_state = release_match_state(current_package_version, current_git_tag)
@@ -150,6 +186,12 @@ def build_version_report(workspace: str | Path = ".") -> dict:
         "python": f"{sys.version_info.major}.{sys.version_info.minor}",
         "runtime_source": runtime["runtime_source"],
         "runtime_source_path": runtime["runtime_source_path"],
+        "version_source": version_details["source"],
+        "version_runtime_path": version_details["runtime_path"],
+        "version_metadata": version_details["metadata_version"] or "unknown",
+        "version_fallback": version_details["fallback_version"],
+        "version_mismatch": version_details["mismatch"],
+        "version_warning": version_details["warning"],
         "mirror_status": mirror["status"],
         "mirror_mismatches": mirror["mismatches"],
         "provider_default": provider_state["default"],
@@ -192,6 +234,8 @@ def render_version_report(report: dict) -> str:
         f"- install_mode: {report['install_mode']}",
         f"- workspace_schema: {report['workspace_schema']}",
         f"- python: {report['python']}",
+        f"- version_source: {report.get('version_source', 'unknown')}",
+        f"- version_runtime_path: {report.get('version_runtime_path', runtime_package_path())}",
         f"- runtime_source: {report['runtime_source']}",
         f"- runtime_source_path: {report['runtime_source_path']}",
         f"- mirror_status: {report['mirror_status']}",
@@ -205,6 +249,13 @@ def render_version_report(report: dict) -> str:
     if report.get("mirror_mismatches"):
         lines.append(f"- mirror_mismatches: {', '.join(report['mirror_mismatches'])}")
     lines.append(f"- note: {report['note']}")
+    if report.get("version_mismatch"):
+        lines.append(
+            f"- WARN: {report.get('version_warning') or 'Version mismatch detected between metadata and fallback version.'}"
+        )
+        lines.append(
+            f"- WARN: metadata={report.get('version_metadata', 'unknown')} fallback={report.get('version_fallback', 'unknown')}"
+        )
     if report.get("stale_install_suspected"):
         lines.append(f"- NEXT: {report.get('self_check_hint') or self_check_hint()}")
         lines.append("- NEXT: run `py -m pip install -U .` or `py -m pip install -U git+<repo-url>`")

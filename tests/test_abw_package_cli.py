@@ -218,6 +218,36 @@ class AbwPackageCliTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertIn("[provider_draft]", execute_mock.call_args.kwargs["task"])
 
+    def test_upgrade_command_runs_zero_touch_upgrade(self):
+        cli = self.load_cli()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = io.StringIO()
+            with patch(
+                "abw.cli.perform_upgrade",
+                return_value={
+                    "workspace": tmp,
+                    "package_version_before": "0.2.9",
+                    "package_version_after": "0.3.0",
+                    "install_mode": "pip package",
+                    "operation": "upgrade",
+                    "channel": "stable",
+                    "target_version": "0.3.0",
+                    "target_source": "release",
+                    "status": "success",
+                    "summary": "All health checks passed.",
+                    "commands": ["abw upgrade --check", "abw upgrade", "abw doctor"],
+                    "note": "Use --check for dry run.",
+                },
+            ) as perform_mock, patch("abw.cli.render_upgrade_report", return_value="ABW Upgrade\n- status: success"), patch(
+                "sys.stdout",
+                output,
+            ):
+                exit_code = cli.main(["--workspace", tmp, "upgrade"])
+
+            self.assertEqual(exit_code, 0)
+            perform_mock.assert_called_once()
+            self.assertIn("ABW Upgrade", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

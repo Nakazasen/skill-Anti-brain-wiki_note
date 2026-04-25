@@ -5,6 +5,23 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-04-25
+
+### Changed
+
+- `abw version` now resolves package version from `importlib.metadata` first so output reflects the installed runtime distribution truth.
+- Added explicit fallback to `abw.__version__` when package metadata is unavailable.
+- Version report now shows runtime module path used for resolution to make runtime source debugging deterministic.
+
+### Fixed
+
+- Fixed stale `abw version` outputs where `__version__` lagged behind the installed wheel metadata.
+- Added mismatch detection and warning when installed metadata version and fallback `__version__` differ.
+
+### Security / Trust
+
+- No changes to proof, nonce, acceptance, finalization, rollback, router fallback policy, or trusted wiki promotion semantics.
+
 ## [0.3.0] - 2026-04-25
 
 ### Added
