@@ -5,6 +5,23 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-04-25
+
+### Changed
+
+- Refined coverage-gap detection to reduce weak-answer false positives while preserving missing-evidence visibility.
+- Improved `abw ask` Knowledge gap output with clearer status, confidence, and next-source wording.
+- Improved `abw doctor` coverage reporting with open gap count, high-priority count, and truncated latest gap context.
+
+### Fixed
+
+- Hardened gap detection against invalid confidence values.
+- Added regression coverage for ordinary single wiki matches, invalid confidence values, ask gap messaging, and doctor coverage summaries.
+
+### Security / Trust
+
+- No changes to retrieval engine, router expansion, proof, nonce, acceptance, finalization, rollback, or trusted wiki promotion semantics.
+
 ## [0.3.1] - 2026-04-25
 
 ### Changed

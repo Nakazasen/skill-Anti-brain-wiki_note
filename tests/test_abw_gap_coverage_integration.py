@@ -47,13 +47,41 @@ class GapCoverageIntegrationTests(unittest.TestCase):
             {
                 "source": "wiki",
                 "content": "Sparse note.",
-                "confidence": 0.45,
+                "confidence": 0.35,
                 "path": "wiki/concepts/sparse.md",
             },
         )
 
         self.assertTrue(gap["gap_detected"])
         self.assertEqual(gap["gap_type"], "weak_answer")
+
+    def test_detect_knowledge_gap_accepts_ordinary_single_wiki_match(self):
+        gap = abw_knowledge.detect_knowledge_gap(
+            "explain focused topic",
+            {
+                "source": "wiki",
+                "content": "Focused wiki evidence.",
+                "confidence": 0.50,
+                "path": "wiki/concepts/focused.md",
+            },
+        )
+
+        self.assertFalse(gap["gap_detected"])
+        self.assertEqual(gap["gap_type"], "none")
+
+    def test_detect_knowledge_gap_handles_invalid_confidence(self):
+        gap = abw_knowledge.detect_knowledge_gap(
+            "explain sparse topic",
+            {
+                "source": "wiki",
+                "content": "Sparse note.",
+                "confidence": "not-a-number",
+                "path": "wiki/concepts/sparse.md",
+            },
+        )
+
+        self.assertTrue(gap["gap_detected"])
+        self.assertEqual(gap["confidence"], 0.0)
 
     def test_ask_body_surfaces_weak_answer_gap(self):
         body = abw_runner.knowledge_body(
@@ -71,12 +99,16 @@ class GapCoverageIntegrationTests(unittest.TestCase):
                     "gap_type": "weak_answer",
                     "reason": "Wiki evidence is weak.",
                     "suggested_sources": ["raw/source.md"],
+                    "confidence": 0.35,
                 },
             },
         )
 
         self.assertIn("Knowledge gap:", body)
         self.assertIn("gap_type: weak_answer", body)
+        self.assertIn("status: answer may be incomplete", body)
+        self.assertIn("evidence_confidence:", body)
+        self.assertIn("next_sources:", body)
 
     def test_doctor_reports_open_coverage_gaps_as_warn(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -90,7 +122,8 @@ class GapCoverageIntegrationTests(unittest.TestCase):
                         "gaps": [
                             {
                                 "id": "gap-1",
-                                "query": "Missing AGV source",
+                                "query": "Missing AGV source " + ("x" * 120),
+                                "priority": "high",
                                 "status": "open",
                             }
                         ]
@@ -105,6 +138,8 @@ class GapCoverageIntegrationTests(unittest.TestCase):
         messages = [item["message"] for item in report["engine_checks"]]
         self.assertIn("WARN", [item["level"] for item in report["engine_checks"]])
         self.assertTrue(any("coverage gaps open=1" in message for message in messages))
+        self.assertTrue(any("high_priority=1" in message for message in messages))
+        self.assertFalse(any("x" * 100 in message for message in messages))
 
     def test_doctor_reports_zero_open_coverage_gaps_as_ok(self):
         with tempfile.TemporaryDirectory() as tmp:

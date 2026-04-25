@@ -27,6 +27,13 @@ def _load_open_knowledge_gaps(root: Path) -> list[dict]:
     return [gap for gap in gaps if isinstance(gap, dict) and gap.get("status") == "open"]
 
 
+def _short_text(value: object, limit: int = 80) -> str:
+    text = " ".join(str(value or "unknown").split())
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3].rstrip() + "..."
+
+
 def build_doctor_report(workspace: str | Path = ".") -> dict:
     root = resolve_workspace(workspace)
     workspace_checks = []
@@ -121,8 +128,15 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
         next_steps.append("run `abw provider set-default mock`")
     open_gaps = _load_open_knowledge_gaps(root)
     if open_gaps:
-        top_gap = open_gaps[-1].get("query") or open_gaps[-1].get("reason") or "unknown"
-        engine_checks.append(_status("WARN", f"coverage gaps open={len(open_gaps)} top_gap={top_gap}"))
+        high_priority = sum(1 for gap in open_gaps if str(gap.get("priority") or "").lower() == "high")
+        recent_gap = open_gaps[-1]
+        recent_label = recent_gap.get("query") or recent_gap.get("reason") or recent_gap.get("id") or "unknown"
+        engine_checks.append(
+            _status(
+                "WARN",
+                f"coverage gaps open={len(open_gaps)} high_priority={high_priority} latest={_short_text(recent_label)}",
+            )
+        )
         next_steps.append("ingest raw sources or add wiki notes for open knowledge gaps")
     else:
         engine_checks.append(_status("OK", "coverage gaps open=0"))

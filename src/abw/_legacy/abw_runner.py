@@ -1694,12 +1694,19 @@ def format_knowledge_gap(gap):
     lines = [
         "",
         "Knowledge gap:",
+        "- status: answer may be incomplete until more local evidence is added",
         f"- gap_type: {gap.get('gap_type', 'unknown')}",
         f"- reason: {gap.get('reason') or 'No reason recorded.'}",
     ]
+    if gap.get("confidence") is not None:
+        try:
+            confidence = float(gap.get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            confidence = 0.0
+        lines.append(f"- evidence_confidence: {confidence:.2f}")
     suggested = gap.get("suggested_sources") or []
     if suggested:
-        lines.append(f"- suggested_sources: {', '.join(str(item) for item in suggested[:3])}")
+        lines.append(f"- next_sources: {', '.join(str(item) for item in suggested[:3])}")
     return "\n".join(lines)
 
 

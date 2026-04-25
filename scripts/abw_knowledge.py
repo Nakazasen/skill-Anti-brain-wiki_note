@@ -33,6 +33,7 @@ KNOWLEDGE_STOPWORDS = {
     "why",
 }
 WIKI_SEARCH_DIRS = ("concepts", "entities", "timelines", "sources")
+WEAK_WIKI_CONFIDENCE_THRESHOLD = 0.45
 
 
 def now_iso():
@@ -82,6 +83,13 @@ def _summarize_document(text, limit=420):
     if len(summary) <= limit:
         return summary
     return summary[: limit - 3].rstrip() + "..."
+
+
+def _safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _candidate_source_tokens(task):
@@ -251,7 +259,7 @@ def log_knowledge_gap(task, workspace=".", searched_locations=None, reason="No l
 def detect_knowledge_gap(query, context, workspace="."):
     context = context or {}
     source = context.get("source")
-    confidence = float(context.get("confidence") or 0.0)
+    confidence = _safe_float(context.get("confidence"))
     path = context.get("path")
     content = str(context.get("content") or "").strip()
 
@@ -274,12 +282,26 @@ def detect_knowledge_gap(query, context, workspace="."):
         )
         return result
 
-    if source == "wiki" and (confidence < 0.6 or not content or not path):
+    if source == "wiki" and (not content or not path):
         result.update(
             {
                 "gap_detected": True,
                 "gap_type": "weak_answer",
-                "reason": f"Wiki evidence is weak or incomplete for this question; confidence={confidence:.2f}.",
+                "reason": "Wiki evidence matched, but the answer lacks usable content or source path.",
+                "suggested_sources": ["add a targeted wiki note", "ingest a raw source for this question"],
+            }
+        )
+        return result
+
+    if source == "wiki" and confidence < WEAK_WIKI_CONFIDENCE_THRESHOLD:
+        result.update(
+            {
+                "gap_detected": True,
+                "gap_type": "weak_answer",
+                "reason": (
+                    "Wiki evidence matched, but confidence is below the weak-answer threshold "
+                    f"({confidence:.2f} < {WEAK_WIKI_CONFIDENCE_THRESHOLD:.2f})."
+                ),
                 "suggested_sources": ["add a targeted wiki note", "ingest a raw source for this question"],
             }
         )
