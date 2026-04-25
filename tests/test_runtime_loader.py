@@ -124,6 +124,17 @@ class RuntimeLoaderTests(unittest.TestCase):
                 with redirect_stdout(io.StringIO()):
                     self.assertEqual(main(["--workspace", tmp, "version"]), 0)
 
+    def test_cli_ask_dashboard_works_with_forced_packaged_runtime(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ensure_workspace(tmp)
+            with patch.dict(os.environ, {"ABW_RUNTIME_SOURCE": "packaged"}):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    exit_code = main(["--workspace", tmp, "ask", "dashboard"])
+            rendered = stdout.getvalue()
+            self.assertEqual(exit_code, 0)
+            self.assertNotIn("invalid runtime_id", rendered)
+
 
 if __name__ == "__main__":
     unittest.main()

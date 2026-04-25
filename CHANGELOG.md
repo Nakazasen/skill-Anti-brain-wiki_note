@@ -5,6 +5,21 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2026-04-25
+
+### Added
+- Wheel-mode regression coverage for `abw ask "dashboard"` under forced packaged runtime selection.
+
+### Changed
+- Runtime integrity checks now resolve critical files from the active runtime source (`scripts/` in editable/dev mode, `_legacy/` in packaged mode).
+- Integrity snapshots and mismatch reports now use stable workspace-relative paths.
+
+### Fixed
+- Eliminated packaged wheel `invalid runtime_id` failures caused by false `integrity_compromised` detection in `ask` flow.
+
+### Security / Trust
+- No changes to proof, nonce, acceptance, finalization, rollback, router fallback policy, or trusted wiki promotion semantics.
+
 ## [0.2.7] - 2026-04-25
 
 ### Added

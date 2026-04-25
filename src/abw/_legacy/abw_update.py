@@ -18,6 +18,12 @@ CRITICAL_FILES = (
     "scripts/abw_proof.py",
     "scripts/abw_output.py",
 )
+RUNTIME_CRITICAL_FILES = (
+    "abw_runner.py",
+    "abw_proof.py",
+    "abw_output.py",
+    "abw_accept.py",
+)
 MODULES_TO_RELOAD = (
     "abw_accept",
     "abw_health",
@@ -195,11 +201,36 @@ def file_hash(path):
     return hasher.hexdigest()
 
 
-def current_integrity_snapshot(workspace):
+def runtime_files_root(workspace):
     root = Path(workspace).resolve()
+    scripts_root = root / "scripts"
+    if (scripts_root / "abw_runner.py").exists():
+        return scripts_root
+    legacy_root = root / "_legacy"
+    if (legacy_root / "abw_runner.py").exists():
+        return legacy_root
+    if (root / "abw_runner.py").exists():
+        return root
+    return scripts_root
+
+
+def runtime_file_paths(workspace):
+    runtime_root = runtime_files_root(workspace)
+    paths = {}
+    for filename in RUNTIME_CRITICAL_FILES:
+        full_path = runtime_root / filename
+        try:
+            key = full_path.relative_to(Path(workspace).resolve()).as_posix()
+        except ValueError:
+            key = filename
+        paths[key] = full_path
+    return runtime_root, paths
+
+
+def current_integrity_snapshot(workspace):
+    _, runtime_paths = runtime_file_paths(workspace)
     snapshot = {}
-    for relpath in CRITICAL_FILES:
-        path = root / relpath
+    for relpath, path in runtime_paths.items():
         if path.exists():
             snapshot[relpath] = file_hash(path)
     return snapshot
@@ -207,10 +238,11 @@ def current_integrity_snapshot(workspace):
 
 def verify_runtime_integrity(workspace="."):
     workspace = Path(workspace).resolve()
+    runtime_root, runtime_paths = runtime_file_paths(workspace)
     missing = []
     compromised = []
-    for relpath in (*CRITICAL_FILES, "scripts/abw_accept.py"):
-        if not (workspace / relpath).exists():
+    for relpath, path in runtime_paths.items():
+        if not path.exists():
             missing.append(relpath)
 
     current_snapshot = current_integrity_snapshot(workspace)
@@ -227,6 +259,7 @@ def verify_runtime_integrity(workspace="."):
 
     return {
         "state": state,
+        "runtime_root": str(runtime_root),
         "missing": missing,
         "changed": compromised,
         "snapshot": current_snapshot,
