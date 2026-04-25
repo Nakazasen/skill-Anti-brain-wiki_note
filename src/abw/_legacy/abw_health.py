@@ -65,7 +65,36 @@ def iter_drift_pairs(workspace, runtime_root):
         for source in workspace_root.glob(pattern):
             if not source.is_file():
                 continue
-            yield source, runtime / runtime_dir / source.name
+            target = _resolve_runtime_target(runtime, runtime_dir, source.name)
+            if target is None:
+                continue
+            yield source, target
+
+
+def _resolve_runtime_target(runtime_root, runtime_dir, filename):
+    runtime_root = Path(runtime_root)
+    if runtime_dir == "scripts":
+        nested_scripts = runtime_root / "scripts"
+        if nested_scripts.exists():
+            return nested_scripts / filename
+        if (runtime_root / "abw_runner.py").exists():
+            return runtime_root / filename
+        return None
+    if runtime_dir == "global_workflows":
+        global_workflows = runtime_root / "global_workflows"
+        local_workflows = runtime_root / "workflows"
+        global_target = global_workflows / filename
+        local_target = local_workflows / filename
+        if global_target.exists():
+            return global_target
+        if local_target.exists():
+            return local_target
+        if global_workflows.exists():
+            return global_target
+        if local_workflows.exists():
+            return local_target
+        return None
+    return runtime_root / runtime_dir / filename
 
 
 def check_drift(workspace=".", runtime_root=None):

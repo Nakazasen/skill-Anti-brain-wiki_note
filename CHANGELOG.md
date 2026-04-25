@@ -5,6 +5,23 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] - 2026-04-25
+
+### Added
+- Regression test coverage to ensure `/abw-doctor` uses runtime integrity root when `--runtime-root` is not provided.
+- Drift compatibility test coverage for runtime layouts that store workflow mirrors under `workflows/` instead of `global_workflows/`.
+
+### Changed
+- `/abw-doctor` and `/abw-repair` now resolve health drift checks against the active runtime integrity root by default.
+- Drift target resolution now supports both nested runtime layout (`scripts/`, `global_workflows/`) and flat runtime layout (`abw_*.py` files in runtime root).
+
+### Fixed
+- Eliminated frozen doctor metrics (`stability_score=50`, `drift_rate=100%`) caused by health drift checks reading mismatched runtime paths.
+- Prevented false workflow drift when both `global_workflows/` and `workflows/` exist but only `workflows/` contains the mirrored file.
+
+### Security / Trust
+- No changes to proof, nonce, acceptance, finalization, rollback, router fallback policy, or trusted wiki promotion semantics.
+
 ## [0.2.8] - 2026-04-25
 
 ### Added

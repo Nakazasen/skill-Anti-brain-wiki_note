@@ -278,6 +278,27 @@ class AbwEntryTests(unittest.TestCase):
             self.assertEqual(health_mock.call_args.kwargs["mode"], "audit")
             self.assertEqual(result["answer"], "health ok")
 
+    def test_doctor_uses_runtime_integrity_root_when_runtime_root_not_provided(self):
+        fake = {
+            "binding_status": "runner_enforced",
+            "current_state": "verified",
+            "runner_status": "completed",
+            "answer": "health ok",
+        }
+        runtime_state = {"integrity": {"state": "verified", "runtime_root": "/runtime/root"}}
+        with patch("abw_entry.abw_update.initialize_runtime", return_value=runtime_state), patch(
+            "abw_entry.abw_health.run_health",
+            return_value=fake,
+        ) as health_mock, patch("abw_entry.build_version_report", return_value={}), patch(
+            "abw_entry.stale_install_suspected",
+            return_value=False,
+        ):
+            result = abw_entry.execute_command("/abw-doctor", workspace=".")
+
+        health_mock.assert_called_once()
+        self.assertEqual(health_mock.call_args.kwargs["runtime_root"], "/runtime/root")
+        self.assertEqual(result["answer"], "health ok")
+
     def test_doctor_adds_self_check_hint_when_stale_install_suspected(self):
         fake = {
             "binding_status": "runner_enforced",

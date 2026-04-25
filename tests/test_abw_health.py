@@ -137,6 +137,17 @@ class AbwHealthTests(unittest.TestCase):
             self.assertEqual(result["current_state"], "verified")
             self.assertEqual(abw_health.check_drift(workspace=workspace, runtime_root=runtime), [])
 
+    def test_check_drift_supports_runtime_workflows_layout(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            (workspace / "scripts" / "abw_runner.py").write_text("print('ok')\n", encoding="utf-8")
+            (workspace / "workflows" / "abw-ask.md").write_text("# ask\n", encoding="utf-8")
+            (runtime / "scripts" / "abw_runner.py").write_text("print('ok')\n", encoding="utf-8")
+            (runtime / "workflows").mkdir(parents=True, exist_ok=True)
+            (runtime / "workflows" / "abw-ask.md").write_text("# ask\n", encoding="utf-8")
+
+            self.assertEqual(abw_health.check_drift(workspace=workspace, runtime_root=runtime), [])
+
     def test_detect_mojibake_false_for_normal_utf8(self):
         self.assertFalse(abw_health.detect_mojibake("Xin chao, day la noi dung UTF-8 hop le."))
 

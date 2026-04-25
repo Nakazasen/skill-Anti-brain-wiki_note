@@ -132,6 +132,17 @@ def _append_hint_to_result(result: dict, hint: str) -> dict:
     return updated
 
 
+def _effective_health_runtime_root(runtime_root, runtime_state):
+    if runtime_root:
+        return runtime_root
+    integrity = runtime_state.get("integrity") if isinstance(runtime_state, dict) else {}
+    if isinstance(integrity, dict):
+        resolved = integrity.get("runtime_root")
+        if resolved:
+            return resolved
+    return None
+
+
 def execute_command(
     command,
     *,
@@ -146,6 +157,7 @@ def execute_command(
     command = LEGACY_COMMAND_ALIASES.get(command, command)
     runtime_state_root = runtime_root or str(Path(__file__).resolve().parent.parent)
     runtime_state = abw_update.initialize_runtime(runtime_state_root)
+    effective_health_runtime_root = _effective_health_runtime_root(runtime_root, runtime_state)
     if command not in SUPPORTED_COMMANDS:
         if str(command or "").startswith("/abw-"):
             command, task = "/abw-ask", f"{command} {task}".strip()
@@ -193,7 +205,7 @@ def execute_command(
     if command == "/abw-doctor":
         result = abw_health.run_health(
             workspace=workspace,
-            runtime_root=runtime_root,
+            runtime_root=effective_health_runtime_root,
             binding_status="runner_enforced",
             mode="audit",
         )
@@ -242,7 +254,7 @@ def execute_command(
 
     result = abw_health.run_health(
         workspace=workspace,
-        runtime_root=runtime_root,
+        runtime_root=effective_health_runtime_root,
         binding_status="runner_enforced",
         mode="repair",
     )
