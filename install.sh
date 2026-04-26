@@ -300,7 +300,7 @@ join_commands() {
 }
 
 write_gemini_registration() {
-  local public_commands=("/abw-ask" "/abw-review" "/abw-doctor" "/abw-version" "/abw-migrate" "/help")
+  local public_commands=("/abw-ask" "/abw-review" "/abw-doctor" "/abw-version" "/abw-migrate")
   local power_commands=("/abw-update" "/abw-rollback" "/abw-repair")
   local legacy_aliases=("/abw-health" "/abw-status" "/abw-ingest" "/abw-query" "/abw-query-deep")
   local all_commands=()
@@ -324,9 +324,13 @@ write_gemini_registration() {
 # Hybrid ABW - Antigravity IDE Command Surface
 
 ## CRITICAL: Command Recognition
-When the user types one of the registered commands below, treat it as a Hybrid ABW workflow command loaded from \`~/.gemini/antigravity/global_workflows\`.
+ABW is explicit-invocation only. Normal prompts, plain chat, and non-ABW slash workflows must bypass ABW.
+
+Invoke ABW only when the user explicitly types \`/abw...\` or runs an \`abw\` CLI command.
+
+When the user types one of the registered \`/abw...\` commands below, treat it as a Hybrid ABW workflow command loaded from \`~/.gemini/antigravity/global_workflows\`.
 Do not silently fall back to a stale local clone when the verified remote snapshot is newer.
-Hybrid ABW commands are authoritative. In particular, \`/help\` MUST load \`~/.gemini/antigravity/global_workflows/help.md\` and should not be answered from memory or a short summary.
+Hybrid ABW commands are authoritative only for \`/abw...\` inputs.
 
 ## Public Commands
 $(join_commands "${registered_public[@]}")
@@ -498,6 +502,27 @@ if not entry.get("args") or not os.path.isabs(entry["args"][0]):
 PY
 }
 
+remove_abw_mcp_config() {
+  if [ ! -f "$MCP_CONFIG_PATH" ]; then
+    return 0
+  fi
+  if [ -z "$PYTHON_CMD" ]; then
+    return 0
+  fi
+  "$PYTHON_CMD" - "$MCP_CONFIG_PATH" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+config_path = Path(sys.argv[1])
+raw = config_path.read_text(encoding="utf-8")
+data = json.loads(raw) if raw.strip() else {}
+if isinstance(data, dict) and isinstance(data.get("mcpServers"), dict):
+    data["mcpServers"].pop("abw_runner", None)
+config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+PY
+}
+
 verify_runtime_artifacts() {
   local script_name workflow_name rel_path
 
@@ -539,9 +564,9 @@ verify_runtime_artifacts() {
     append_error VERIFY_ERRORS "verification limitation: py_compile could not run because python was unavailable"
   fi
 
-  if [ ! -f "$MCP_CONFIG_PATH" ]; then
+  if [ "${ABW_INSTALL_MCP:-0}" = "1" ] && [ ! -f "$MCP_CONFIG_PATH" ]; then
     append_error VERIFY_ERRORS "missing MCP config: $MCP_CONFIG_PATH"
-  elif [ -n "$PYTHON_CMD" ]; then
+  elif [ "${ABW_INSTALL_MCP:-0}" = "1" ] && [ -n "$PYTHON_CMD" ]; then
     if ! "$PYTHON_CMD" - "$MCP_CONFIG_PATH" "$SCRIPTS_DIR/abw_runner.py" <<'PY'
 import json
 import os
@@ -770,11 +795,15 @@ done
 write_gemini_registration
 
 if ! resolve_python_command; then
-  append_error MCP_ERRORS "python executable could not be resolved; MCP registration cannot be completed"
-fi
-
-if ! patch_mcp_config; then
-  :
+  if [ "${ABW_INSTALL_MCP:-0}" = "1" ]; then
+    append_error MCP_ERRORS "python executable could not be resolved; MCP registration cannot be completed"
+  fi
+elif [ "${ABW_INSTALL_MCP:-0}" = "1" ]; then
+  if ! patch_mcp_config; then
+    :
+  fi
+else
+  remove_abw_mcp_config
 fi
 
 if [ "$missing" -gt 0 ]; then
@@ -783,7 +812,9 @@ else
   RUNTIME_SYNC_RESULT="PASS"
 fi
 
-if [ "${#MCP_ERRORS[@]}" -gt 0 ]; then
+if [ "${ABW_INSTALL_MCP:-0}" != "1" ]; then
+  MCP_SYNC_RESULT="SKIPPED"
+elif [ "${#MCP_ERRORS[@]}" -gt 0 ]; then
   MCP_SYNC_RESULT="FAIL"
 else
   MCP_SYNC_RESULT="PASS"

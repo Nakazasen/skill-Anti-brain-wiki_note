@@ -49,7 +49,7 @@ The update flow must verify:
 
 - required runtime scripts exist after install
 - required runtime workflows exist after install
-- MCP config contains a valid `abw_runner` registration
+- MCP config contains a valid `abw_runner` registration only when `ABW_INSTALL_MCP=1`
 - the configured runner path exists
 - `GEMINI.md` registration was refreshed if managed by the installer
 
@@ -89,7 +89,7 @@ Allowed verdicts:
 
 ## Operational Rule
 
-Do not claim the runtime is updated unless the installed runtime, MCP registration, and verification checks all pass.
+Do not claim the runtime is updated unless the installed runtime and verification checks pass. MCP registration is optional and must pass only when explicitly enabled.
 
 ## Command Surface References
 

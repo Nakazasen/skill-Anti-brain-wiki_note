@@ -24,6 +24,9 @@ MAX_QUERY_SUGGESTIONS = 5
 TEXT_EXTENSIONS = {".md", ".markdown", ".txt", ".rst", ".adoc"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tif", ".tiff"}
 SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS | IMAGE_EXTENSIONS | {".xlsx", ".pdf", ".pptx"}
+ENTERPRISE_PERCEPTION_EXTENSIONS = IMAGE_EXTENSIONS | {".xlsx", ".pdf", ".pptx"}
+LOW_CONFIDENCE_REVIEW_THRESHOLD = 0.45
+AUTO_PROMOTE_THRESHOLD = 0.8
 LOCAL_OCR_PROVIDERS = ("paddleocr", "tesseract", "binary_text_probe")
 VISION_PROVIDERS = ("openai_vision", "claude_vision", "gemini_vision")
 OCR_METADATA_MARKERS = {
@@ -147,12 +150,57 @@ def _dedupe_text(items: list[str], *, limit: int = 120) -> list[str]:
     return deduped
 
 
+def _strip_extraction_noise(text: str) -> str:
+    cleaned = html.unescape(str(text or ""))
+    cleaned = re.sub(r"<[^>\n]{1,120}>", " ", cleaned)
+    cleaned = re.sub(r"\b(?:xref|trailer|startxref|endobj|obj|stream|endstream|%%EOF)\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"/(?:Type|Page|Pages|Catalog|Resources|Subtype|Image|XObject|Font|Filter|Length|Count|Kids)\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(?:IHDR|IDAT|IEND|sRGB|gAMA|pHYs|PNG)\b", " ", cleaned)
+    cleaned = re.sub(r"\b[A-Za-z0-9+/]{48,}={0,2}\b", " ", cleaned)
+    cleaned = re.sub(r"\b([A-Za-z0-9])\1{5,}\b", " ", cleaned)
+    cleaned = re.sub(r"(?:\b[0-9]+\s+0\s+R\b\s*){2,}", " ", cleaned)
+    return cleaned
+
+
+def _clean_extracted_lines(items: list[str], *, limit: int = 120) -> list[str]:
+    cleaned = []
+    for item in items:
+        text = _strip_extraction_noise(str(item or ""))
+        text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]+", " ", text)
+        text = " ".join(text.split())
+        if not text:
+            continue
+        words = re.findall(r"[A-Za-z][A-Za-z0-9_-]{2,}", text)
+        marker_words = [word for word in words if word.lower().strip("_-") in OCR_METADATA_MARKERS]
+        if words and len(marker_words) / max(1, len(words)) >= 0.8:
+            continue
+        if len(text) > 180 and len(set(text)) < 12:
+            continue
+        cleaned.append(text)
+    return _dedupe_text(cleaned, limit=limit)
+
+
+def _clean_content_for_draft(content: str) -> str:
+    sections = []
+    for block in str(content or "").splitlines():
+        stripped = block.strip()
+        if not stripped:
+            sections.append("")
+            continue
+        cleaned = _clean_extracted_lines([stripped], limit=1)
+        if cleaned:
+            sections.append(cleaned[0])
+    compact = "\n".join(sections)
+    compact = re.sub(r"\n{3,}", "\n\n", compact).strip()
+    return compact
+
+
 def _binary_text_probe(data: bytes, *, min_len: int = 4) -> list[str]:
     decoded = data.decode("latin-1", errors="ignore")
     pattern = rf"[A-Za-z0-9][A-Za-z0-9 _.,:;#%()/\\+\-=]{{{min_len - 1},}}"
     candidates = re.findall(pattern, decoded)
     cleaned = [item.strip(" \t\r\n\x00") for item in candidates]
-    return _dedupe_text(cleaned, limit=80)
+    return _clean_extracted_lines(cleaned, limit=80)
 
 
 def _text_quality(text_lines: list[str]) -> dict:
@@ -281,16 +329,26 @@ def _calibrate_confidence(
     structured: bool,
     noisy: float,
     provider_success: bool = False,
+    method: str = "unknown",
 ) -> float:
-    confidence = base
-    if text_lines:
-        confidence += min(0.18, len(text_lines) * 0.015)
-    if structured:
-        confidence += 0.14
-    if provider_success:
-        confidence += 0.1
-    confidence -= noisy * 0.22
-    return _clamp(confidence, 0.08, 0.92)
+    lines = _clean_extracted_lines(text_lines)
+    quality = _text_quality(lines)
+    useful_count = len(lines) if quality["usable"] else 0
+    method_bonus = {
+        "native_text": 0.2,
+        "structured_native": 0.18,
+        "pdf_text_layer": 0.22,
+        "real_ocr": 0.12,
+        "binary_probe": 0.0,
+        "metadata_probe": -0.08,
+    }.get(method, 0.0)
+    confidence = base + min(0.24, useful_count * 0.025) + method_bonus
+    if structured and useful_count:
+        confidence += 0.12
+    if quality["metadata_only"] or not useful_count:
+        confidence = min(confidence, 0.18)
+    confidence -= noisy * 0.28
+    return _clamp(confidence, 0.05, 0.9)
 
 
 def _local_ocr_image(path: Path, *, embedded_bytes: bytes | None = None) -> dict:
@@ -335,6 +393,7 @@ def _local_ocr_image(path: Path, *, embedded_bytes: bytes | None = None) -> dict
             structured=False,
             noisy=noisy,
             provider_success=True,
+            method="real_ocr",
         )
     return {
         "text_lines": text_lines,
@@ -399,6 +458,105 @@ def _provenance(component: str, method: str, confidence: float, evidence: str, *
     if ref:
         row["ref"] = ref
     return row
+
+
+def _best_component_confidence(provenance: list[dict], components: set[str]) -> float:
+    scores = [
+        float(row.get("confidence") or 0.0)
+        for row in provenance or []
+        if str(row.get("component") or "") in components
+    ]
+    return max(scores, default=0.0)
+
+
+def _infer_document_type(format_name: str, content: str, provenance: list[dict]) -> dict:
+    lowered = str(content or "").lower()
+    fmt = str(format_name or "").lower()
+    signals = []
+    if fmt == "xlsx":
+        doc_type = "spreadsheet"
+        signals.append("xlsx_container")
+    elif fmt == "pptx":
+        doc_type = "presentation"
+        signals.append("pptx_container")
+    elif fmt == "pdf":
+        doc_type = "scanned_pdf" if "page image candidates: 0" not in lowered else "pdf_document"
+        signals.append("pdf_container")
+    elif fmt in IMAGE_EXTENSIONS or fmt in {ext.lstrip(".") for ext in IMAGE_EXTENSIONS}:
+        if "ui_screenshot" in lowered:
+            doc_type = "ui_screenshot"
+        elif "tables" in lowered:
+            doc_type = "table_screenshot"
+        elif "diagrams" in lowered:
+            doc_type = "diagram_image"
+        else:
+            doc_type = "image"
+        signals.append("image_file")
+    else:
+        doc_type = "text_document"
+        signals.append("text_file")
+
+    components = {str(row.get("component") or "") for row in provenance or []}
+    for component in sorted(components):
+        if component:
+            signals.append(component)
+    confidence = 0.62 if doc_type != "text_document" else 0.55
+    if components:
+        confidence += min(0.18, len(components) * 0.03)
+    return {"type": doc_type, "confidence": _clamp(confidence, 0.0, 0.9), "signals": signals[:12]}
+
+
+def _perception_stage_scores(extracted: dict, enriched: dict) -> dict:
+    provenance = extracted.get("provenance") or []
+    provider = enriched.get("provider") or {}
+    return {
+        "native_structured": round(
+            _best_component_confidence(provenance, {"text", "cells", "comments", "textboxes", "charts", "slides", "notes"}),
+            4,
+        ),
+        "ocr": round(_best_component_confidence(provenance, {"ocr_text", "embedded_images"}), 4),
+        "vision_layout": round(
+            _best_component_confidence(provenance, {"layout", "tables", "ui_screenshot", "diagrams", "labels_buttons", "page_images"}),
+            4,
+        ),
+        "document_classifier": round(float((extracted.get("document_type") or {}).get("confidence") or 0.0), 4),
+        "provider_semantic": round(0.8 if provider.get("used") else 0.0, 4),
+    }
+
+
+def _build_perception_report(extracted: dict, enriched: dict, confidence: float) -> dict:
+    doc_type = extracted.get("document_type") or _infer_document_type(
+        extracted.get("format"),
+        extracted.get("content", ""),
+        extracted.get("provenance", []),
+    )
+    extracted["document_type"] = doc_type
+    stage_scores = _perception_stage_scores(extracted, enriched)
+    stages = [
+        {"stage": "native_structured", "confidence": stage_scores["native_structured"]},
+        {"stage": "ocr", "confidence": stage_scores["ocr"]},
+        {"stage": "vision_layout", "confidence": stage_scores["vision_layout"]},
+        {"stage": "document_classifier", "confidence": stage_scores["document_classifier"]},
+        {"stage": "provider_semantic", "confidence": stage_scores["provider_semantic"]},
+    ]
+    return {
+        "version": "enterprise_ingest_perception_v2",
+        "document_type": doc_type,
+        "stage_scores": stage_scores,
+        "stages": stages,
+        "confidence": round(float(confidence), 4),
+    }
+
+
+def _review_decision(format_name: str, confidence: float, conflict_reports: list[str]) -> tuple[str, str]:
+    if conflict_reports:
+        return "review_needed", "conflict_detected"
+    if confidence >= AUTO_PROMOTE_THRESHOLD:
+        return "candidate_promoted", "high_confidence"
+    suffix = "." + str(format_name or "").lower().lstrip(".")
+    if suffix in ENTERPRISE_PERCEPTION_EXTENSIONS and confidence >= LOW_CONFIDENCE_REVIEW_THRESHOLD:
+        return "candidate_ready", "medium_confidence_enterprise_parse"
+    return "review_needed", "low_confidence"
 
 
 def candidate_path_tokens(task):
@@ -576,17 +734,19 @@ def _resolve_ingest_mode(workspace: str) -> str:
 
 
 def _extract_text_file(path: Path) -> dict:
-    content = path.read_text(encoding="utf-8-sig", errors="ignore")
+    content = _clean_content_for_draft(path.read_text(encoding="utf-8-sig", errors="ignore"))
+    lines = _clean_extracted_lines(content.splitlines())
+    confidence = _calibrate_confidence(base=0.42, text_lines=lines, structured=False, noisy=_ocr_noise_score(lines), method="native_text")
     return {
         "format": path.suffix.lower().lstrip("."),
         "content": content,
-        "confidence": 0.72,
+        "confidence": confidence,
         "provenance": [
             {
                 "component": "text",
                 "method": "local_decoder",
-                "confidence": 0.72,
-                "evidence": "direct UTF-8 text extraction",
+                "confidence": confidence,
+                "evidence": f"direct UTF-8 text extraction; {len(lines)} readable lines",
             }
         ],
     }
@@ -651,6 +811,7 @@ def _extract_xlsx(path: Path) -> dict:
         structured=structured,
         noisy=noisy if image_text_lines else 0.1,
         provider_success=bool(cells or textboxes or charts),
+        method="structured_native",
     )
     confidence = _clamp(confidence, 0.0, 0.82)
 
@@ -725,11 +886,75 @@ def _extract_pptx(path: Path) -> dict:
     }
 
 
+def _extract_pdf_text_layer(path: Path) -> tuple[list[dict], dict]:
+    reader_cls = None
+    backend = None
+    try:
+        from pypdf import PdfReader  # type: ignore
+
+        reader_cls = PdfReader
+        backend = "pypdf"
+    except Exception:  # noqa: BLE001
+        try:
+            from PyPDF2 import PdfReader  # type: ignore
+
+            reader_cls = PdfReader
+            backend = "PyPDF2"
+        except Exception as exc:  # noqa: BLE001
+            return [], {"backend": "none", "status": "unavailable", "reason": str(exc)}
+
+    try:
+        reader = reader_cls(str(path))
+        pages = []
+        for index, page in enumerate(reader.pages, start=1):
+            try:
+                page_text = page.extract_text() or ""
+            except Exception:  # noqa: BLE001
+                page_text = ""
+            lines = _clean_extracted_lines(page_text.splitlines(), limit=80)
+            if lines:
+                pages.append({"page": index, "lines": lines})
+        return pages, {"backend": backend, "status": "success" if pages else "empty", "pages": len(reader.pages)}
+    except Exception as exc:  # noqa: BLE001
+        return [], {"backend": backend or "unknown", "status": "failed", "reason": str(exc)}
+
+
 def _extract_pdf(path: Path) -> dict:
     raw = path.read_bytes()
     decoded = raw.decode("latin-1", errors="ignore")
     page_count = max(1, len(re.findall(r"/Type\s*/Page\b", decoded)) or len(re.findall(r"\bendobj\b", decoded)) // 8)
     image_refs = re.findall(r"/Subtype\s*/Image\b", decoded)
+    text_pages, text_status = _extract_pdf_text_layer(path)
+    if text_pages:
+        text_lines = [line for page in text_pages for line in page["lines"]]
+        noisy = _ocr_noise_score(text_lines)
+        confidence = _calibrate_confidence(
+            base=0.44,
+            text_lines=text_lines,
+            structured=False,
+            noisy=noisy,
+            method="pdf_text_layer",
+        )
+        content_parts = [
+            f"PDF pages detected: {max(page_count, int(text_status.get('pages') or 0))}",
+            f"PDF extraction mode: text_layer ({text_status.get('backend')})",
+            f"Page image candidates: {len(image_refs)}",
+            "Text layer blocks:",
+        ]
+        for page in text_pages:
+            for line in page["lines"][:40]:
+                content_parts.append(f"- page {page['page']}: {line}")
+        return {
+            "format": "pdf",
+            "content": "\n".join(content_parts),
+            "confidence": confidence,
+            "provenance": [
+                _provenance("text", "pdf_text_layer", confidence, f"{len(text_lines)} readable text lines via {text_status.get('backend')}; noise={noisy:.2f}", ref="pdf:/pages/*/text"),
+                _provenance("page_images", "pdf_xobject_scan", 0.35 if image_refs else 0.2, f"{len(image_refs)} image XObject candidates", ref="pdf:/pages/*/images"),
+                _provenance("layout", "pdf_text_page_blocks", confidence, f"{len(text_pages)} pages with readable text", ref="pdf:/pages/*/blocks"),
+            ],
+        }
+
     probe_snippets = _binary_text_probe(raw, min_len=8)
     quality = _text_quality(probe_snippets)
     snippets = probe_snippets if quality["usable"] else []
@@ -750,7 +975,13 @@ def _extract_pdf(path: Path) -> dict:
         content_parts.append("OCR/local text extraction did not recover readable PDF text.")
     content = "\n\n".join(content_parts)
     noisy = _ocr_noise_score(snippets)
-    confidence = 0.18 if quality["usable"] else 0.1
+    confidence = _calibrate_confidence(
+        base=0.18 if quality["usable"] else 0.1,
+        text_lines=snippets,
+        structured=False,
+        noisy=noisy,
+        method="binary_probe" if quality["usable"] else "metadata_probe",
+    )
     ocr_method = "pdf_binary_text_probe" if quality["usable"] else "pdf_metadata_probe"
     return {
         "format": "pdf",
@@ -785,6 +1016,7 @@ def _extract_image(path: Path) -> dict:
             structured=structured,
             noisy=float(ocr["noise"]),
             provider_success=True,
+            method="real_ocr",
         )
         if ocr["real_ocr_success"]
         else min(float(ocr["confidence"]), 0.1)
@@ -838,9 +1070,10 @@ def _extract_multimodal_content(raw_path: Path) -> dict:
 
 
 def _provider_semantic_enrichment(workspace: str, relative_raw_path: str, extracted: dict, ingest_mode: str) -> dict:
+    extracted_content = _clean_content_for_draft(extracted["content"])
     if ingest_mode == "local":
         return {
-            "content": extracted["content"],
+            "content": extracted_content,
             "confidence": float(extracted["confidence"]),
             "provider": {"used": False, "mode": "local", "status": "skipped", "fail_count": 0, "vision_adapters": list(VISION_PROVIDERS)},
         }
@@ -854,7 +1087,7 @@ def _provider_semantic_enrichment(workspace: str, relative_raw_path: str, extrac
             f"Supported vision adapters: {', '.join(VISION_PROVIDERS)}.",
             "Generate concise semantic summary, key findings, and possible ambiguities.",
             "Evidence follows:",
-            _shorten(extracted.get("content", ""), limit=3200),
+            _shorten(extracted_content, limit=3200),
         ]
     )
     execution = execute_provider_chain(
@@ -878,19 +1111,17 @@ def _provider_semantic_enrichment(workspace: str, relative_raw_path: str, extrac
 
     if execution.get("status") != "success":
         return {
-            "content": extracted["content"],
+            "content": extracted_content,
             "confidence": float(extracted["confidence"]),
             "provider": provider,
         }
 
     semantic = str(execution.get("draft") or "").strip()
-    merged = extracted["content"]
+    merged = extracted_content
     if semantic:
-        merged += "\n\nProvider semantic summary:\n" + semantic
+        merged += "\n\nProvider semantic summary:\n" + _clean_content_for_draft(semantic)
 
-    boost = 0.24 if ingest_mode == "ai" else 0.14
-    enriched_confidence = _clamp(float(extracted["confidence"]) + boost, 0.0, 0.97)
-    return {"content": merged, "confidence": enriched_confidence, "provider": provider}
+    return {"content": _clean_content_for_draft(merged), "confidence": float(extracted["confidence"]), "provider": provider}
 
 
 def write_draft(
@@ -906,6 +1137,8 @@ def write_draft(
     provenance,
     provider,
     promotion_status,
+    perception,
+    review_reason,
 ):
     relpath = draft_relpath(relative_raw_path)
     path = Path(workspace) / relpath
@@ -924,6 +1157,10 @@ def write_draft(
         f"fail_count={provider.get('fail_count', 0)}; latency_ms={provider.get('latency_ms', 0)}; "
         f"token_estimate={provider.get('token_estimate', 0)}"
     )
+    doc_type = perception.get("document_type") or {}
+    stage_lines = []
+    for row in perception.get("stages") or []:
+        stage_lines.append(f"- {row.get('stage')}: confidence={float(row.get('confidence') or 0.0):.2f}")
 
     content = "\n".join(
         [
@@ -935,6 +1172,9 @@ def write_draft(
             f"- ingest_mode: {ingest_mode}",
             f"- confidence: {confidence:.2f}",
             f"- promotion_status: {promotion_status}",
+            f"- review_reason: {review_reason}",
+            f"- perception_version: {perception.get('version')}",
+            f"- document_type: {doc_type.get('type', 'unknown')}",
             "",
             "## Summary",
             summary or "No summary could be extracted from the raw file.",
@@ -945,6 +1185,12 @@ def write_draft(
             "## Provenance",
             *(prov_lines or ["- none"]),
             "",
+            "## Perception Pipeline",
+            f"- document_type: {doc_type.get('type', 'unknown')}",
+            f"- document_type_confidence: {float(doc_type.get('confidence') or 0.0):.2f}",
+            f"- signals: {', '.join(str(item) for item in (doc_type.get('signals') or [])[:8]) or 'none'}",
+            *(stage_lines or ["- none"]),
+            "",
             "## Provider Assistance",
             f"- {provider_line}",
             "",
@@ -952,7 +1198,7 @@ def write_draft(
             *([f"- {query}" for query in possible_queries] or ["- none suggested"]),
             "",
             "## Trust Notice",
-            "This draft is review-needed and must not be treated as trusted wiki knowledge.",
+            "This draft is not trusted wiki knowledge until explicitly approved or promoted by governed workflow.",
             "",
         ]
     )
@@ -960,7 +1206,7 @@ def write_draft(
     return relpath
 
 
-def append_manifest_entry(workspace, source_id, relative_raw_path, *, format_name, confidence, ingest_mode):
+def append_manifest_entry(workspace, source_id, relative_raw_path, *, format_name, confidence, ingest_mode, perception, queue_status, review_reason):
     path = manifest_path(workspace)
     entry = {
         "id": source_id,
@@ -969,13 +1215,16 @@ def append_manifest_entry(workspace, source_id, relative_raw_path, *, format_nam
         "format": format_name,
         "confidence": round(float(confidence), 4),
         "ingest_mode": ingest_mode,
+        "perception": perception,
+        "queue_status": queue_status,
+        "review_reason": review_reason,
         "created_at": now_iso(),
     }
     append_jsonl(path, entry)
     return entry
 
 
-def update_ingest_queue(workspace, source_id, relative_raw_path, draft_file, *, queue_status, confidence):
+def update_ingest_queue(workspace, source_id, relative_raw_path, draft_file, *, queue_status, confidence, perception, review_reason):
     path = ingest_queue_path(workspace)
     payload = load_json(path, {"items": [], "updated_at": now_iso()})
     item = {
@@ -984,6 +1233,8 @@ def update_ingest_queue(workspace, source_id, relative_raw_path, draft_file, *, 
         "draft": draft_file,
         "status": queue_status,
         "confidence": round(float(confidence), 4),
+        "perception": perception,
+        "review_reason": review_reason,
     }
     payload.setdefault("items", []).append(item)
     payload["updated_at"] = now_iso()
@@ -1018,7 +1269,9 @@ def ingest_single_file(raw_path, relative_raw_path, workspace):
     ingest_mode = _resolve_ingest_mode(workspace)
     extracted = _extract_multimodal_content(raw_path)
     enriched = _provider_semantic_enrichment(workspace, relative_raw_path, extracted, ingest_mode)
-    content = str(enriched["content"])
+    extracted["content"] = _clean_content_for_draft(extracted.get("content", ""))
+    content = _clean_content_for_draft(str(enriched["content"]))
+    enriched["content"] = content
 
     source_id = deterministic_id(relative_raw_path, content)
     summary = summarize_text(content)
@@ -1030,7 +1283,8 @@ def ingest_single_file(raw_path, relative_raw_path, workspace):
     conflicts = detect_conflicts(relative_raw_path, content, workspace)
     conflict_reports = write_conflict_reports(conflicts, workspace) if conflicts else []
 
-    promotion_status = "candidate_promoted" if confidence >= 0.8 and not conflict_reports else "review_needed"
+    perception = _build_perception_report(extracted, enriched, confidence)
+    promotion_status, review_reason = _review_decision(extracted["format"], confidence, conflict_reports)
     queue_status = promotion_status
 
     append_manifest_entry(
@@ -1040,6 +1294,9 @@ def ingest_single_file(raw_path, relative_raw_path, workspace):
         format_name=extracted["format"],
         confidence=confidence,
         ingest_mode=ingest_mode,
+        perception=perception,
+        queue_status=queue_status,
+        review_reason=review_reason,
     )
     draft_file = write_draft(
         workspace,
@@ -1053,6 +1310,8 @@ def ingest_single_file(raw_path, relative_raw_path, workspace):
         provenance=extracted.get("provenance", []),
         provider=provider,
         promotion_status=promotion_status,
+        perception=perception,
+        review_reason=review_reason,
     )
     update_ingest_queue(
         workspace,
@@ -1061,6 +1320,8 @@ def ingest_single_file(raw_path, relative_raw_path, workspace):
         draft_file,
         queue_status=queue_status,
         confidence=confidence,
+        perception=perception,
+        review_reason=review_reason,
     )
     return {
         "status": "draft_created",
@@ -1073,6 +1334,8 @@ def ingest_single_file(raw_path, relative_raw_path, workspace):
         "provenance_count": len(extracted.get("provenance", [])),
         "provider": provider,
         "promotion_status": promotion_status,
+        "review_reason": review_reason,
+        "perception": perception,
         "conflict_count": len(conflict_reports),
         "conflict_reports": conflict_reports,
         "source_id": source_id,
@@ -1100,6 +1363,8 @@ def run(task: str, workspace: str) -> dict:
         "provenance_count": first["provenance_count"],
         "provider": first["provider"],
         "promotion_status": first["promotion_status"],
+        "review_reason": first["review_reason"],
+        "perception": first["perception"],
         "conflict_count": sum(item["conflict_count"] for item in items),
         "conflict_reports": [report for item in items for report in item.get("conflict_reports", [])],
         "ingested_count": len(items),

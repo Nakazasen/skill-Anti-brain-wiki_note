@@ -4,9 +4,9 @@ description: ABW wiki-first query path
 
 ## BINDING STRATEGY
 
-- First attempt: call the single AI entrypoint `py scripts/ai_runner.py`.
-- Any answer is only a DRAFT until `scripts/ai_runner.py` validates, executes, and renders it.
-- If MCP cannot be used, you MUST invoke `py scripts/ai_runner.py` with JSON stdin.
+- `/abw-query` is explicit ABW invocation and must run through the CLI runner.
+- Any answer is only a DRAFT until `py scripts/ai_runner.py` validates, executes, and renders it.
+- Invoke `py scripts/ai_runner.py` with JSON stdin.
 - Do not emit a raw knowledge answer.
 - Raw model answers are invalid.
 - If execution mode is not used, validation mode is mandatory.

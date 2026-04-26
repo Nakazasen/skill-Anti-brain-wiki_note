@@ -45,7 +45,7 @@ Use `/abw-update` when you need to refresh the installed ABW runtime in `~/.gemi
 
 - scripts: `abw_runner.py`, `finalization_check.py`, `abw_accept.py`, `continuation_gate.py`, `continuation_execute.py`
 - workflows: `abw-ask.md`, `abw-update.md`, `finalization.md`
-- MCP config: valid `abw_runner` entry pointing at the installed runtime script
+- MCP config: optional `abw_runner` entry only when `ABW_INSTALL_MCP=1`
 
 Final update verdicts:
 

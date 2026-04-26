@@ -5,6 +5,18 @@ All notable changes to the Hybrid ABW Command Surface system will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-04-26
+
+### Changed
+
+- Added clean ingest gating to suppress XML, PDF metadata, and binary extraction noise from generated drafts.
+- Updated PDF ingest to prefer real text-layer extraction before falling back to binary probes.
+- Improved ingest confidence honesty with perception stage scores, document type reporting, and explicit review reasons.
+
+### Security / Trust
+
+- No changes to proof, nonce, acceptance, finalization, rollback, or trusted wiki promotion semantics.
+
 ## [0.3.2] - 2026-04-25
 
 ### Changed

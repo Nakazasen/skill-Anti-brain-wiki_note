@@ -114,8 +114,8 @@ Minimum verification:
 - required scripts exist in the runtime scripts directory
 - required workflows exist in the runtime workflow directory
 - MCP config parses as valid JSON
-- MCP config contains a valid `abw_runner` entry
-- MCP config points to the installed runtime `abw_runner.py`
+- MCP config contains a valid `abw_runner` entry only when `ABW_INSTALL_MCP=1`
+- MCP config points to the installed runtime `abw_runner.py` only when MCP registration is explicitly enabled
 - `finalization_check.py` exists
 - `abw-update.md` exists
 - `GEMINI.md` still contains the Hybrid ABW registration block if the installer manages it

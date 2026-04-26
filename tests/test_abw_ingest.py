@@ -168,6 +168,35 @@ class AbwIngestTests(unittest.TestCase):
             self.assertIn("textboxes", draft)
             self.assertIn("charts", draft)
             self.assertIn("embedded_images", draft)
+            self.assertEqual(result["perception"]["version"], "enterprise_ingest_perception_v2")
+            self.assertEqual(result["perception"]["document_type"]["type"], "spreadsheet")
+            self.assertGreater(result["perception"]["stage_scores"]["native_structured"], 0.0)
+            self.assertIn("Perception Pipeline", draft)
+
+    def test_pptx_medium_confidence_is_candidate_ready_without_human_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            pptx_path = workspace / "raw" / "ops-review.pptx"
+            pptx_path.parent.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(pptx_path, "w") as archive:
+                archive.writestr("ppt/slides/slide1.xml", "<p:sld><a:t>Operations review</a:t><a:t>Station throughput</a:t></p:sld>")
+                archive.writestr("ppt/notesSlides/notesSlide1.xml", "<p:notes><a:t>Watch queue depth</a:t></p:notes>")
+
+            result = abw_ingest.run("ingest raw/ops-review.pptx", str(workspace))
+
+            self.assertEqual(result["format"], "pptx")
+            self.assertEqual(result["queue_status"], "candidate_ready")
+            self.assertEqual(result["review_reason"], "medium_confidence_enterprise_parse")
+            self.assertEqual(result["perception"]["document_type"]["type"], "presentation")
+            queue = json.loads((workspace / ".brain" / "ingest_queue.json").read_text(encoding="utf-8"))
+            self.assertEqual(queue["items"][0]["status"], "candidate_ready")
+            self.assertEqual(queue["items"][0]["perception"]["document_type"]["type"], "presentation")
+            manifest_row = json.loads((workspace / "processed" / "manifest.jsonl").read_text(encoding="utf-8").splitlines()[0])
+            self.assertEqual(manifest_row["queue_status"], "candidate_ready")
+            self.assertEqual(manifest_row["perception"]["stage_scores"]["native_structured"], 0.7)
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("review_reason: medium_confidence_enterprise_parse", draft)
+            self.assertIn("document_type: presentation", draft)
 
     def test_pdf_ingest_ai_mode_can_promote_candidate_with_provider_assist(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -202,6 +231,53 @@ class AbwIngestTests(unittest.TestCase):
             draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
             self.assertIn("Provider semantic summary", draft)
             self.assertIn("confidence", draft)
+
+    def test_text_pdf_prefers_real_text_layer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw_file = workspace / "raw" / "text-layer.pdf"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_bytes(
+                b"%PDF-1.4\n"
+                b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"
+                b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n"
+                b"3 0 obj << /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >> endobj\n"
+                b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n"
+                b"5 0 obj << /Length 74 >> stream\n"
+                b"BT /F1 12 Tf 72 720 Td (Factory station lead time improved) Tj ET\n"
+                b"endstream endobj\n"
+                b"xref\n0 6\n0000000000 65535 f \n"
+                b"trailer << /Root 1 0 R /Size 6 >>\nstartxref\n435\n%%EOF\n"
+            )
+
+            result = abw_ingest.run("ingest raw/text-layer.pdf", str(workspace))
+
+            self.assertEqual(result["format"], "pdf")
+            self.assertGreater(result["confidence"], 0.45)
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("pdf_text_layer", draft)
+            self.assertIn("Factory station lead time improved", draft)
+            self.assertNotIn("pdf_binary_text_probe", draft)
+
+    def test_clean_gate_suppresses_xml_pdf_and_binary_noise_in_draft(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw_file = workspace / "raw" / "noisy.md"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_text(
+                "<xml><tag>Useful machine label Save Status</tag></xml>\n"
+                "xref obj endobj trailer /Type /Catalog /Pages /Resources\n"
+                "IHDR IDAT IEND sRGB gAMA pHYs DDDDDDDDDDDDDDDDDDDD\n",
+                encoding="utf-8",
+            )
+
+            result = abw_ingest.run("ingest raw/noisy.md", str(workspace))
+
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("Useful machine label Save Status", draft)
+            self.assertNotIn("<xml>", draft)
+            self.assertNotIn("xref obj endobj trailer", draft)
+            self.assertNotIn("IHDR IDAT IEND", draft)
 
     def test_image_ingest_hybrid_falls_back_to_local_on_provider_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -279,6 +355,9 @@ class AbwIngestTests(unittest.TestCase):
             self.assertIn("visual_table_detector", draft)
             self.assertIn("visual_label_button_detector", draft)
             self.assertIn("ref=image:screen.png#ui", draft)
+            self.assertEqual(result["perception"]["document_type"]["type"], "ui_screenshot")
+            self.assertGreater(result["perception"]["stage_scores"]["ocr"], 0.0)
+            self.assertGreater(result["perception"]["stage_scores"]["vision_layout"], 0.0)
 
     def test_scanned_pdf_flow_adds_pages_layout_summary_and_low_noisy_confidence(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -366,6 +445,7 @@ class AbwIngestTests(unittest.TestCase):
             self.assertIn("pdf_metadata_probe", draft)
             self.assertIn("metadata_only=True", draft)
             self.assertIn("OCR/local text extraction did not recover readable PDF text.", draft)
+            self.assertEqual(result["review_reason"], "low_confidence")
 
 
 if __name__ == "__main__":

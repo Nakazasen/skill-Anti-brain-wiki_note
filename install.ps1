@@ -245,7 +245,7 @@ function Write-GeminiRegistration {
         [string]$ModeReason
     )
 
-    $publicCommands = @("/abw-ask", "/abw-review", "/abw-doctor", "/abw-version", "/abw-migrate", "/help")
+    $publicCommands = @("/abw-ask", "/abw-review", "/abw-doctor", "/abw-version", "/abw-migrate")
     $powerCommands = @("/abw-update", "/abw-rollback", "/abw-repair")
     $legacyAliases = @("/abw-health", "/abw-status", "/abw-ingest", "/abw-query", "/abw-query-deep")
     $devSurface = $env:ABW_INSTALL_DEV_SURFACE -eq "1"
@@ -265,9 +265,13 @@ function Write-GeminiRegistration {
 # Hybrid ABW - Antigravity IDE Command Surface
 
 ## CRITICAL: Command Recognition
-When the user types one of the registered commands below, treat it as a Hybrid ABW workflow command loaded from `~/.gemini/antigravity/global_workflows`.
+ABW is explicit-invocation only. Normal prompts, plain chat, and non-ABW slash workflows must bypass ABW.
+
+Invoke ABW only when the user explicitly types `/abw...` or runs an `abw` CLI command.
+
+When the user types one of the registered `/abw...` commands below, treat it as a Hybrid ABW workflow command loaded from `~/.gemini/antigravity/global_workflows`.
 Do not silently fall back to a stale local clone when the verified remote snapshot is newer.
-Hybrid ABW commands are authoritative. In particular, /help MUST load ~/.gemini/antigravity/global_workflows/help.md and should not be answered from memory or a short summary.
+Hybrid ABW commands are authoritative only for `/abw...` inputs.
 
 ## Public Commands
 $(Join-Commands -Commands $registeredPublic)
@@ -485,6 +489,24 @@ if not Path(args[0]).exists():
     }
 }
 
+function Remove-AbwMcpConfig {
+    if (-not (Test-Path $McpConfigPath)) {
+        return
+    }
+
+    try {
+        $raw = Get-Content -LiteralPath $McpConfigPath -Raw
+        $data = if ($raw.Trim()) { $raw | ConvertFrom-Json } else { [pscustomobject]@{} }
+        if ($data.PSObject.Properties.Name -contains "mcpServers" -and $data.mcpServers.PSObject.Properties.Name -contains "abw_runner") {
+            $data.mcpServers.PSObject.Properties.Remove("abw_runner")
+            $data | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $McpConfigPath -Encoding UTF8
+        }
+    }
+    catch {
+        $McpErrors.Add("failed to remove ABW MCP config: $($_.Exception.Message)")
+    }
+}
+
 function Verify-RuntimeArtifacts {
     param(
         [string]$PythonExe
@@ -535,7 +557,9 @@ function Verify-RuntimeArtifacts {
         $VerificationLimitations.Add("py_compile skipped because no python executable was available on this host")
     }
 
-    Verify-McpConfig -PythonExe $PythonExe
+    if ($env:ABW_INSTALL_MCP -eq "1") {
+        Verify-McpConfig -PythonExe $PythonExe
+    }
 }
 
 function Get-WorkspaceSyncState {
@@ -734,7 +758,12 @@ Write-GeminiRegistration -Catalog $Catalog -SourceMode $InstallMode -ModeReason 
 
 $PythonCommand = Resolve-PythonCommand
 $PythonCommandForReport = $PythonCommand
-if (-not $PythonCommand) {
+$McpOptIn = $env:ABW_INSTALL_MCP -eq "1"
+if (-not $McpOptIn) {
+    Remove-AbwMcpConfig
+    $McpSyncResult = "SKIPPED"
+}
+elseif (-not $PythonCommand) {
     $McpErrors.Add("python executable could not be resolved; MCP registration cannot be completed")
 }
 elseif (-not (Patch-McpConfig -PythonExe $PythonCommand)) {
@@ -748,7 +777,10 @@ else {
     $RuntimeSyncResult = "PASS"
 }
 
-if ($McpErrors.Count -gt 0) {
+if (-not $McpOptIn) {
+    $McpSyncResult = "SKIPPED"
+}
+elseif ($McpErrors.Count -gt 0) {
     $McpSyncResult = "FAIL"
 }
 else {
