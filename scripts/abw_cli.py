@@ -108,7 +108,8 @@ def parse_args(argv=None):
     upgrade_parser.add_argument("--rollback", action="store_true")
     upgrade_parser.add_argument("--channel", choices=("stable", "beta"), default="stable")
     add_hidden_parser(sub, "rollback")
-    add_hidden_parser(sub, "repair")
+    repair_parser = add_hidden_parser(sub, "repair")
+    repair_parser.add_argument("--dry-run", action="store_true")
     add_hidden_parser(sub, "self-check")
     add_hidden_parser(sub, "research")
     add_public_parser(sub, "init")
@@ -243,7 +244,8 @@ def main(argv=None) -> int:
         return run_entry_command("/abw-rollback", debug=args.debug, level=level)
 
     if args.command == "repair":
-        return run_entry_command("/abw-repair", debug=args.debug, level=level)
+        task = "--dry-run" if getattr(args, "dry_run", False) else None
+        return run_entry_command("/abw-repair", task=task, debug=args.debug, level=level)
 
     if args.command == "self-check":
         print(render_self_check_report(build_self_check_report(".")))

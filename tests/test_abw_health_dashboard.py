@@ -275,3 +275,65 @@ class AbwHealthDashboardTests(unittest.TestCase):
             trend = abw_health.compute_health_trend(log_path)
             self.assertEqual(trend["mojibake_rate"], 1.0)
             self.assertEqual(trend["stability_score"], 100)
+
+    def test_corpus_readiness_supported_mixed_corpus(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            raw = workspace / "raw"
+            raw.mkdir(parents=True)
+            (raw / "policy.md").write_text("policy\n", encoding="utf-8")
+            (raw / "sheet.xlsx").write_bytes(b"PK\x03\x04")
+            (raw / "table.csv").write_text("a,b\n", encoding="utf-8")
+
+            corpus = abw_health.analyze_corpus_readiness(workspace)
+
+            self.assertEqual(corpus["classification"], "healthy_supported_corpus")
+            self.assertEqual(corpus["supported_source_counts"]["xlsx"], 1)
+            self.assertEqual(corpus["supported_source_counts"]["csv"], 1)
+            self.assertEqual(corpus["unsupported_source_counts"], {})
+
+    def test_corpus_readiness_mp2027_like_partial_spreadsheet_corpus(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            raw = workspace / "raw"
+            raw.mkdir(parents=True)
+            (workspace / "abw_config.json").write_text(
+                json.dumps({"workspace_schema": 1, "abw_version": "0.2.3"}),
+                encoding="utf-8",
+            )
+            (raw / "budget.xlsx").write_bytes(b"PK\x03\x04")
+            (raw / "simulation.csv").write_text("month,total\n", encoding="utf-8")
+            (raw / "legacy.db").write_bytes(b"sqlite")
+
+            corpus = abw_health.analyze_corpus_readiness(workspace)
+
+            self.assertEqual(corpus["classification"], "partial_supported_corpus")
+            self.assertIn("old_abw_state", corpus["flags"])
+            self.assertEqual(corpus["supported_source_counts"], {"csv": 1, "xlsx": 1})
+            self.assertEqual(corpus["unsupported_source_counts"], {"db": 1})
+
+    def test_corpus_readiness_empty_workspace(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            (workspace / "raw").mkdir(parents=True)
+            (workspace / "wiki").mkdir()
+            (workspace / "drafts").mkdir()
+
+            corpus = abw_health.analyze_corpus_readiness(workspace)
+
+            self.assertEqual(corpus["classification"], "empty_corpus")
+            self.assertEqual(corpus["raw_files"], 0)
+
+    def test_corpus_readiness_docx_heavy_unsupported_corpus(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            raw = workspace / "raw"
+            raw.mkdir(parents=True)
+            (raw / "chapter-1.docx").write_bytes(b"PK\x03\x04")
+            (raw / "chapter-2.docx").write_bytes(b"PK\x03\x04")
+
+            corpus = abw_health.analyze_corpus_readiness(workspace)
+
+            self.assertEqual(corpus["classification"], "unsupported_corpus")
+            self.assertEqual(corpus["unsupported_source_counts"], {"docx": 2})
+            self.assertEqual(corpus["visible_extension_counts"], {"docx": 2})

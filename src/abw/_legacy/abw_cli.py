@@ -14,6 +14,10 @@ from abw.overview import build_overview
 from abw.save import save_candidate
 from abw.self_check import build_self_check_report, render_self_check_report
 from abw.upgrade import build_upgrade_report, render_upgrade_report
+try:
+    from abw.upgrade import perform_upgrade
+except ImportError:  # pragma: no cover - allows script CLI to run with older installed package
+    perform_upgrade = None
 from abw.workspace import ensure_workspace
 from abw.commands import DEPRECATED_ALIASES, PUBLIC_HELP
 
@@ -98,9 +102,14 @@ def parse_args(argv=None):
     save.add_argument("text", nargs="?")
     save.add_argument("--stdin", action="store_true")
     add_public_parser(sub, "doctor")
-    add_hidden_parser(sub, "upgrade")
+    upgrade_parser = add_hidden_parser(sub, "upgrade")
+    upgrade_parser.add_argument("--check", action="store_true")
+    upgrade_parser.add_argument("--to", dest="to_version")
+    upgrade_parser.add_argument("--rollback", action="store_true")
+    upgrade_parser.add_argument("--channel", choices=("stable", "beta"), default="stable")
     add_hidden_parser(sub, "rollback")
-    add_hidden_parser(sub, "repair")
+    repair_parser = add_hidden_parser(sub, "repair")
+    repair_parser.add_argument("--dry-run", action="store_true")
     add_hidden_parser(sub, "self-check")
     add_hidden_parser(sub, "research")
     add_public_parser(sub, "init")
@@ -205,14 +214,38 @@ def main(argv=None) -> int:
         return run_entry_command("/abw-doctor", debug=args.debug, level=level)
 
     if args.command == "upgrade":
-        print(render_upgrade_report(build_upgrade_report(".")))
-        return 0
+        if getattr(args, "check", False):
+            report = build_upgrade_report(
+                ".",
+                channel=getattr(args, "channel", "stable"),
+                to_version=getattr(args, "to_version", None),
+                rollback=getattr(args, "rollback", False),
+            )
+        else:
+            if perform_upgrade is None:
+                report = build_upgrade_report(
+                    ".",
+                    channel=getattr(args, "channel", "stable"),
+                    to_version=getattr(args, "to_version", None),
+                    rollback=getattr(args, "rollback", False),
+                )
+            else:
+                report = perform_upgrade(
+                    ".",
+                    check=False,
+                    to_version=getattr(args, "to_version", None),
+                    rollback=getattr(args, "rollback", False),
+                    channel=getattr(args, "channel", "stable"),
+                )
+        print(render_upgrade_report(report))
+        return 0 if str(report.get("status") or "check") in {"check", "success"} else 2
 
     if args.command == "rollback":
         return run_entry_command("/abw-rollback", debug=args.debug, level=level)
 
     if args.command == "repair":
-        return run_entry_command("/abw-repair", debug=args.debug, level=level)
+        task = "--dry-run" if getattr(args, "dry_run", False) else None
+        return run_entry_command("/abw-repair", task=task, debug=args.debug, level=level)
 
     if args.command == "self-check":
         print(render_self_check_report(build_self_check_report(".")))

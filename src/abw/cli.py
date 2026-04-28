@@ -113,7 +113,8 @@ def parse_args(argv=None):
     upgrade_parser.add_argument("--rollback", action="store_true")
     upgrade_parser.add_argument("--channel", choices=("stable", "beta"), default="stable")
     add_hidden_parser(sub, "rollback")
-    add_hidden_parser(sub, "repair")
+    repair_parser = add_hidden_parser(sub, "repair")
+    repair_parser.add_argument("--dry-run", action="store_true")
     add_hidden_parser(sub, "self-check")
     add_hidden_parser(sub, "research")
     add_public_parser(sub, "init")
@@ -191,8 +192,9 @@ def _rollback_result(workspace: str):
     return _legacy_entry.execute_command("/abw-rollback", workspace=workspace)
 
 
-def _repair_result(workspace: str):
-    return _legacy_entry.execute_command("/abw-repair", workspace=workspace)
+def _repair_result(workspace: str, *, dry_run: bool = False):
+    task = "--dry-run" if dry_run else ""
+    return _legacy_entry.execute_command("/abw-repair", task=task, workspace=workspace)
 
 
 def main(argv=None) -> int:
@@ -332,7 +334,7 @@ def main(argv=None) -> int:
             return _render_and_exit(_rollback_result(str(workspace)), debug=debug, level=level)
 
         if args.command == "repair":
-            return _render_and_exit(_repair_result(str(workspace)), debug=debug, level=level)
+            return _render_and_exit(_repair_result(str(workspace), dry_run=getattr(args, "dry_run", False)), debug=debug, level=level)
 
         if args.command == "self-check":
             print(render_self_check_report(build_self_check_report(workspace)))

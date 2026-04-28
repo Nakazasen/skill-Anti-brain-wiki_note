@@ -184,10 +184,15 @@ def build_version_report(workspace: str | Path = ".") -> dict:
     workspace_schema = None
     if config_status == "ok" and isinstance(config, dict):
         workspace_schema = config.get("workspace_schema") or config.get("workspace_version")
+    release_verification_status = current_release_match_state
+    if current_release_match_state == "unknown" and install["install_mode"] == "pip package":
+        release_verification_status = "unverified_wheel_release"
     if current_release_match_state == "matched":
         note = "Package version matches the current tagged source."
     elif current_release_match_state == "mismatched":
         note = "Package version does not match the current tagged source."
+    elif release_verification_status == "unverified_wheel_release":
+        note = "Wheel install detected. Package version is primary truth; git tag verification is unavailable."
     else:
         note = "Release match could not be verified because the current source is not exactly tagged."
     report = {
@@ -195,6 +200,7 @@ def build_version_report(workspace: str | Path = ".") -> dict:
         "git_tag": current_git_tag or "unknown",
         "git_commit": current_git_commit or "unknown",
         "release_match_state": current_release_match_state,
+        "release_verification_status": release_verification_status,
         "workspace": str(root),
         "workspace_schema": workspace_schema or "unknown",
         "install_mode": install["install_mode"],
@@ -229,10 +235,13 @@ def stale_install_suspected(report: dict) -> bool:
     mirror_status = str(report.get("mirror_status") or "not_checked").strip().lower()
     runtime_source = str(report.get("runtime_source") or "unknown").strip().lower()
     install_mode = str(report.get("install_mode") or "unknown").strip().lower()
+    release_verification = str(report.get("release_verification_status") or "").strip().lower()
     if release_match == "mismatched":
         return True
     if mirror_status == "mismatch":
         return True
+    if install_mode == "pip package" and release_verification == "unverified_wheel_release":
+        return False
     if install_mode == "pip package" and runtime_source == "packaged_legacy" and release_match != "matched":
         return True
     return False
@@ -249,6 +258,7 @@ def render_version_report(report: dict) -> str:
         f"- git_tag: {report['git_tag']}",
         f"- git_commit: {report['git_commit']}",
         f"- release_match: {report['release_match_state']}",
+        f"- release_verification: {report.get('release_verification_status', report['release_match_state'])}",
         f"- workspace: {report['workspace']}",
         f"- install_mode: {report['install_mode']}",
         f"- workspace_schema: {report['workspace_schema']}",

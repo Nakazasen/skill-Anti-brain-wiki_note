@@ -19,6 +19,28 @@ DRIFT_GLOBS = {
 EPS = 1e-9
 MOJIBAKE_CHARS = ("Ã", "Ä", "å", "æ", "â")
 MOJIBAKE_THRESHOLD = 0.02
+SUPPORTED_SOURCE_EXTENSIONS = {
+    "md",
+    "markdown",
+    "txt",
+    "rst",
+    "adoc",
+    "csv",
+    "html",
+    "htm",
+    "png",
+    "jpg",
+    "jpeg",
+    "bmp",
+    "gif",
+    "webp",
+    "tif",
+    "tiff",
+    "xlsx",
+    "pdf",
+    "pptx",
+}
+VISIBLE_EXTENSIONS = ("docx", "xlsx", "csv", "pdf", "html", "htm", "txt")
 
 
 def now_iso():
@@ -192,6 +214,144 @@ def check_mojibake(workspace="."):
                 }
             )
     return issues
+
+
+def _file_count(path):
+    path = Path(path)
+    if not path.exists():
+        return 0
+    return sum(1 for item in path.rglob("*") if item.is_file())
+
+
+def _raw_extension_counts(workspace="."):
+    raw = Path(workspace) / "raw"
+    counts = {}
+    if not raw.exists():
+        return counts
+    for path in raw.rglob("*"):
+        if not path.is_file():
+            continue
+        suffix = path.suffix.lower().lstrip(".") or "unknown"
+        counts[suffix] = counts.get(suffix, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _workspace_abw_version(workspace="."):
+    path = Path(workspace) / "abw_config.json"
+    if not path.exists():
+        return "unknown"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception:  # noqa: BLE001
+        return "unknown"
+    if not isinstance(payload, dict):
+        return "unknown"
+    return str(payload.get("abw_version") or "unknown")
+
+
+def _is_old_abw_state(version_value):
+    if version_value in {"", "unknown"}:
+        return False
+    try:
+        parts = tuple(int(part) for part in str(version_value).split(".")[:2])
+    except ValueError:
+        return False
+    return parts < (0, 4)
+
+
+def analyze_corpus_readiness(workspace="."):
+    root = Path(workspace)
+    raw_count = _file_count(root / "raw")
+    wiki_count = _file_count(root / "wiki")
+    draft_count = _file_count(root / "drafts")
+    processed_count = _file_count(root / "processed")
+    corpus_dirs_present = any((root / name).exists() for name in ("raw", "wiki", "drafts"))
+    extension_counts = _raw_extension_counts(root)
+    supported_counts = {ext: count for ext, count in extension_counts.items() if ext in SUPPORTED_SOURCE_EXTENSIONS}
+    unsupported_counts = {ext: count for ext, count in extension_counts.items() if ext not in SUPPORTED_SOURCE_EXTENSIONS}
+    supported_total = sum(supported_counts.values())
+    unsupported_total = sum(unsupported_counts.values())
+    total_raw = supported_total + unsupported_total
+    if corpus_dirs_present and raw_count == 0 and wiki_count == 0 and draft_count == 0:
+        classification = "empty_corpus"
+    elif raw_count > 0 and supported_total == 0:
+        classification = "unsupported_corpus"
+    elif raw_count > 0 and unsupported_total > 0:
+        classification = "partial_supported_corpus"
+    else:
+        classification = "healthy_supported_corpus"
+    config_version = _workspace_abw_version(root)
+    flags = []
+    if _is_old_abw_state(config_version):
+        flags.append("old_abw_state")
+    visible_counts = {ext: extension_counts.get(ext, 0) for ext in VISIBLE_EXTENSIONS if extension_counts.get(ext, 0)}
+    return {
+        "classification": classification,
+        "flags": flags,
+        "raw_files": raw_count,
+        "wiki_files": wiki_count,
+        "draft_files": draft_count,
+        "processed_files": processed_count,
+        "corpus_dirs_present": corpus_dirs_present,
+        "extension_counts": extension_counts,
+        "visible_extension_counts": visible_counts,
+        "supported_source_counts": supported_counts,
+        "unsupported_source_counts": unsupported_counts,
+        "supported_total": supported_total,
+        "unsupported_total": unsupported_total,
+        "unsupported_ratio": round((unsupported_total / total_raw), 4) if total_raw else 0.0,
+        "workspace_abw_version": config_version,
+    }
+
+
+def workspace_metadata_status(workspace="."):
+    path = Path(workspace) / "abw_config.json"
+    if not path.exists():
+        return {"status": "missing", "path": str(path), "hard_block": False, "reason": "abw_config.json missing"}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "invalid", "path": str(path), "hard_block": True, "reason": f"abw_config.json unreadable: {exc}"}
+    if not isinstance(payload, dict):
+        return {"status": "invalid", "path": str(path), "hard_block": True, "reason": "abw_config.json is not a JSON object"}
+    return {"status": "ok", "path": str(path), "hard_block": False, "reason": "ok"}
+
+
+def recovery_suggestions(corpus, summary):
+    suggestions = []
+    if "old_abw_state" in corpus.get("flags", []):
+        suggestions.append("backup .brain, then run repair dry-run before changing workspace state")
+    if summary.get("drift_remaining", 0):
+        suggestions.append("run abw repair --dry-run")
+    if corpus.get("classification") == "partial_supported_corpus":
+        suggestions.extend(["rebuild processed state", "reindex corpus", "continue ingest"])
+    if corpus.get("classification") == "empty_corpus":
+        suggestions.append("add raw files or trusted wiki notes before retrieval benchmarking")
+    if corpus.get("classification") == "unsupported_corpus":
+        suggestions.append("unsupported corpus: export docx sources to pdf or txt before ingest")
+    if corpus.get("unsupported_source_counts", {}).get("docx"):
+        suggestions.append("docx is not parsed yet; export docx to pdf/txt")
+    return suggestions or ["none"]
+
+
+def classify_health_state(summary, corpus, metadata, health_dashboard):
+    hard_reasons = []
+    if metadata.get("hard_block"):
+        hard_reasons.append(metadata.get("reason") or "workspace metadata is unreadable")
+    if health_dashboard.get("invariant_violation"):
+        hard_reasons.append("health trend invariant violation")
+    if hard_reasons:
+        return "blocked", hard_reasons
+    sparse_old_state = bool("old_abw_state" in corpus.get("flags", []) and not corpus.get("wiki_files") and not corpus.get("draft_files"))
+    soft = bool(
+        summary.get("drift_remaining", 0)
+        or summary.get("encoding_remaining", 0)
+        or corpus.get("classification") in {"empty_corpus", "unsupported_corpus"}
+        or sparse_old_state
+    )
+    if soft:
+        return "recoverable", []
+    return "verified", []
 
 
 def fix_encoding(workspace="."):
@@ -375,23 +535,25 @@ def run_health(
     validation_source=None,
     mode="audit",
     persist_log=None,
+    dry_run=False,
 ):
     mode = normalize_mode(mode)
     initial_drift = check_drift(workspace=workspace, runtime_root=runtime_root)
     drift_fixes = []
-    if mode == "repair" and initial_drift:
+    if mode == "repair" and initial_drift and not dry_run:
         drift_fixes = fix_drift(workspace=workspace, runtime_root=runtime_root)
 
     initial_encoding = check_encoding(workspace=workspace)
     initial_mojibake = check_mojibake(workspace=workspace)
     encoding_fixes = []
-    if mode == "repair" and initial_encoding:
+    if mode == "repair" and initial_encoding and not dry_run:
         encoding_fixes = fix_encoding(workspace=workspace)
 
     final_drift = check_drift(workspace=workspace, runtime_root=runtime_root)
     final_encoding = check_encoding(workspace=workspace)
     final_mojibake = check_mojibake(workspace=workspace)
-    healthy = not final_drift and not final_encoding
+    corpus = analyze_corpus_readiness(workspace)
+    metadata = workspace_metadata_status(workspace)
 
     summary = {
         "drift_detected": len(initial_drift),
@@ -403,8 +565,8 @@ def run_health(
         "encoding_remaining": len(final_encoding),
         "mojibake_remaining": 1 if final_mojibake else 0,
     }
-    current_state = "verified" if healthy else "blocked"
-    clean_pass = 1 if (current_state == "verified" and summary["drift_detected"] == 0 and summary["encoding_detected"] == 0) else 0
+    provisional_log_state = "verified" if not final_drift and not final_encoding else "recoverable"
+    clean_pass = 1 if (provisional_log_state == "verified" and summary["drift_detected"] == 0 and summary["encoding_detected"] == 0) else 0
     used_validation = 1 if binding_status == "runner_checked" else 0
     if used_validation:
         normalized_validation_source = validation_source if validation_source in {"fallback", "policy"} else "fallback"
@@ -420,7 +582,7 @@ def run_health(
         "clean_pass": clean_pass,
         "used_validation": used_validation,
         "validation_source": normalized_validation_source,
-        "status": current_state,
+        "status": provisional_log_state,
     }
     log_path = health_log_path(workspace)
     if health_log_enabled(persist_log=persist_log):
@@ -432,24 +594,52 @@ def run_health(
     health_dashboard["anomaly"] = detect_anomaly(health_dashboard["recent_runs"])
     if health_dashboard.get("invariant_violation"):
         health_dashboard["anomaly_override_reason"] = "invariant_violation"
+    current_state, hard_reasons = classify_health_state(summary, corpus, metadata, health_dashboard)
     evidence = json.dumps(summary, ensure_ascii=False, sort_keys=True)
+    suggestions = recovery_suggestions(corpus, summary)
+    if hard_reasons:
+        next_steps_text = "; ".join(hard_reasons)
+    elif current_state == "verified":
+        next_steps_text = "none"
+    elif mode == "audit":
+        next_steps_text = "; ".join(suggestions)
+    else:
+        next_steps_text = "dry-run only; no files changed" if dry_run else "; ".join(suggestions)
     finalization_block = _finalization_block(
         current_state=current_state,
         evidence=evidence,
         gaps=(
-            "read-only audit; no drift or encoding repair was attempted"
+            "read-only audit; soft findings are recoverable onboarding state"
             if mode == "audit"
-            else "repair covers runtime drift and UTF-8/replacement-char cleanup only"
+            else ("dry-run only; no repair was attempted" if dry_run else "repair covers runtime drift and UTF-8/replacement-char cleanup only")
         ),
-        next_steps=(
-            "none"
-            if healthy
-            else ("run /abw-repair" if mode == "audit" else "inspect remaining health findings")
-        ),
+        next_steps=next_steps_text,
     )
     answer = "\n\n".join(
         [
             f"ABW health {mode} completed.",
+            "## Recovery Classification\n"
+            f"* state: {current_state}\n"
+            f"* hard_block_reasons: {json.dumps(hard_reasons, ensure_ascii=False)}\n"
+            f"* repair_suggestions: {json.dumps(suggestions, ensure_ascii=False)}\n"
+            f"* dry_run: {bool(dry_run)}",
+            "## Runtime/Package State\n"
+            f"* runtime_drift_detected: {summary['drift_detected']}\n"
+            f"* runtime_drift_remaining: {summary['drift_remaining']}",
+            "## Corpus Readiness\n"
+            f"* classification: {corpus['classification']}\n"
+            f"* flags: {', '.join(corpus['flags']) or 'none'}\n"
+            f"* raw_files: {corpus['raw_files']}\n"
+            f"* wiki_files: {corpus['wiki_files']}\n"
+            f"* draft_files: {corpus['draft_files']}\n"
+            f"* processed_files: {corpus['processed_files']}\n"
+            f"* supported_source_counts: {json.dumps(corpus['supported_source_counts'], ensure_ascii=False, sort_keys=True)}\n"
+            f"* unsupported_source_counts: {json.dumps(corpus['unsupported_source_counts'], ensure_ascii=False, sort_keys=True)}\n"
+            f"* visible_extension_counts: {json.dumps(corpus['visible_extension_counts'], ensure_ascii=False, sort_keys=True)}\n"
+            f"* unsupported_ratio: {corpus['unsupported_ratio']}",
+            "## Encoding/Data Quality\n"
+            f"* encoding_detected: {summary['encoding_detected']}\n"
+            f"* mojibake_detected: {summary['mojibake_detected']}",
             "## Health Dashboard\n"
             f"* stability_score: {health_dashboard['stability_score']}/100\n"
             f"* drift_rate: {health_dashboard['drift_rate'] * 100:.0f}%\n"
@@ -480,8 +670,9 @@ def run_health(
         "binding_status": binding_status,
         "binding_source": binding_source,
         "current_state": current_state,
-        "runner_status": "completed" if healthy else "blocked",
+        "runner_status": "blocked" if current_state == "blocked" else "completed",
         "mode": mode,
+        "dry_run": bool(dry_run),
         "nonce": nonce,
         "runtime_id": runtime_id,
         "health": {
@@ -495,6 +686,10 @@ def run_health(
             "mojibake_after": final_mojibake,
         },
         "health_dashboard": health_dashboard,
+        "corpus_readiness": corpus,
+        "workspace_metadata": metadata,
+        "hard_block_reasons": hard_reasons,
+        "repair_suggestions": suggestions,
         "finalization_block": finalization_block,
         "validation_proof": abw_proof.generate_proof(
             answer,
@@ -514,6 +709,7 @@ def main(argv=None):
     parser.add_argument("--validation-source")
     parser.add_argument("--mode", default="audit", help="audit or repair")
     parser.add_argument("--persist-log", action="store_true", help="Persist health trend log to .brain/cache/health_log.jsonl")
+    parser.add_argument("--dry-run", action="store_true", help="Report planned repair actions without modifying files")
     args = parser.parse_args(argv)
 
     result = run_health(
@@ -524,9 +720,10 @@ def main(argv=None):
         validation_source=args.validation_source,
         mode=args.mode,
         persist_log=args.persist_log,
+        dry_run=args.dry_run,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
-    return 0 if result.get("current_state") == "verified" else 3
+    return 3 if result.get("current_state") == "blocked" else 0
 
 
 if __name__ == "__main__":

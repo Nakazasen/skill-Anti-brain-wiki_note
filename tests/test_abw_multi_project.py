@@ -79,6 +79,28 @@ class AbwMultiProjectTests(unittest.TestCase):
         self.assertIn("abw self-check", rendered)
         self.assertIn("py -m pip install -U .", rendered)
 
+    def test_wheel_unknown_release_match_is_not_stale_by_default(self):
+        report = {
+            "package_version": "0.4.0",
+            "git_tag": "unknown",
+            "git_commit": "unknown",
+            "release_match_state": "unknown",
+            "release_verification_status": "unverified_wheel_release",
+            "workspace": "D:/w",
+            "install_mode": "pip package",
+            "workspace_schema": "unknown",
+            "python": "3.13",
+            "runtime_source": "packaged_legacy",
+            "runtime_source_path": "site-packages/abw/_legacy",
+            "mirror_status": "not_checked",
+            "mirror_mismatches": [],
+            "note": "Wheel install detected. Package version is primary truth; git tag verification is unavailable.",
+            "stale_install_suspected": False,
+        }
+        rendered = render_version_report(report)
+        self.assertIn("release_verification: unverified_wheel_release", rendered)
+        self.assertNotIn("abw self-check", rendered)
+
     def test_release_match_state_is_explicit(self):
         self.assertEqual(release_match_state("0.2.2", "v0.2.2"), "matched")
         self.assertEqual(release_match_state("0.2.2", "v0.2.1"), "mismatched")
@@ -99,6 +121,22 @@ class AbwMultiProjectTests(unittest.TestCase):
             self.assertIn("Engine checks:", rendered)
             self.assertIn("runtime mirror status", rendered)
             self.assertNotIn("validation_proof", rendered)
+
+    def test_doctor_reports_partial_supported_corpus(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ensure_workspace(root)
+            (root / "raw" / "budget.xlsx").write_bytes(b"PK\x03\x04")
+            (root / "raw" / "notes.docx").write_bytes(b"PK\x03\x04")
+
+            report = build_doctor_report(root)
+            rendered = render_doctor_report(report)
+
+            self.assertEqual(report["corpus"]["classification"], "partial_supported_corpus")
+            self.assertEqual(report["corpus"]["supported_source_counts"], {"xlsx": 1})
+            self.assertEqual(report["corpus"]["unsupported_source_counts"], {"docx": 1})
+            self.assertIn("corpus_readiness: partial_supported_corpus", rendered)
+            self.assertIn("visible_extension_counts:", rendered)
 
     def test_doctor_detects_legacy_local_abw_folder(self):
         with tempfile.TemporaryDirectory() as tmp:

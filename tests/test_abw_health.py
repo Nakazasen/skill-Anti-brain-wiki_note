@@ -120,7 +120,44 @@ class AbwHealthTests(unittest.TestCase):
             result = abw_health.run_health(workspace=workspace, runtime_root=runtime, mode="audit")
 
             self.assertEqual(result["mode"], "audit")
+            self.assertEqual(result["current_state"], "recoverable")
+            self.assertTrue(abw_health.check_drift(workspace=workspace, runtime_root=runtime))
+            self.assertIn("run abw repair --dry-run", result["repair_suggestions"])
+
+    def test_run_health_blocks_unreadable_workspace_metadata(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            (workspace / "abw_config.json").write_text("{not-json", encoding="utf-8")
+            result = abw_health.run_health(workspace=workspace, runtime_root=runtime, mode="audit")
+
             self.assertEqual(result["current_state"], "blocked")
+            self.assertTrue(result["hard_block_reasons"])
+
+    def test_run_health_unsupported_corpus_is_recoverable(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            raw = workspace / "raw"
+            raw.mkdir(parents=True)
+            (raw / "chapter.docx").write_bytes(b"PK\x03\x04")
+            result = abw_health.run_health(workspace=workspace, runtime_root=runtime, mode="audit")
+
+            self.assertEqual(result["current_state"], "recoverable")
+            self.assertEqual(result["corpus_readiness"]["classification"], "unsupported_corpus")
+            self.assertIn("docx is not parsed yet; export docx to pdf/txt", result["repair_suggestions"])
+
+    def test_run_health_repair_dry_run_does_not_fix_drift(self):
+        tmp, workspace, runtime = self.make_layout()
+        with tmp:
+            (workspace / "scripts" / "abw_runner.py").write_text("print('workspace')\n", encoding="utf-8")
+            (workspace / "workflows" / "abw-ask.md").write_text("# ask\n", encoding="utf-8")
+            (runtime / "scripts" / "abw_runner.py").write_text("print('runtime')\n", encoding="utf-8")
+            (runtime / "global_workflows" / "abw-ask.md").write_text("# stale\n", encoding="utf-8")
+
+            result = abw_health.run_health(workspace=workspace, runtime_root=runtime, mode="repair", dry_run=True)
+
+            self.assertEqual(result["mode"], "repair")
+            self.assertTrue(result["dry_run"])
+            self.assertEqual(result["current_state"], "recoverable")
             self.assertTrue(abw_health.check_drift(workspace=workspace, runtime_root=runtime))
 
     def test_run_health_repair_fixes_drift(self):

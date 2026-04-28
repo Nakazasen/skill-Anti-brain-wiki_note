@@ -210,6 +210,11 @@ def execute_command(
             mode="audit",
         )
         version_report = build_version_report(workspace)
+        if version_report.get("release_verification_status") == "unverified_wheel_release":
+            result = _append_hint_to_result(
+                result,
+                "Release verification: unverified_wheel_release. Wheel package version is primary truth; git tag metadata is unavailable.",
+            )
         if stale_install_suspected(version_report):
             result = _append_hint_to_result(
                 result,
@@ -252,11 +257,13 @@ def execute_command(
             result.setdefault("workspace", workspace)
         return result
 
+    dry_run = "--dry-run" in str(task or "").split()
     result = abw_health.run_health(
         workspace=workspace,
         runtime_root=effective_health_runtime_root,
         binding_status="runner_enforced",
         mode="repair",
+        dry_run=dry_run,
     )
     if isinstance(result, dict):
         result.setdefault("workspace", workspace)
@@ -274,6 +281,7 @@ def parse_args(argv=None):
     parser.add_argument("--runtime-root")
     parser.add_argument("--task-kind", default="execution")
     parser.add_argument("--candidate-answer")
+    parser.add_argument("--dry-run", action="store_true", help="For /abw-repair, report repair actions without changing files.")
     parser.add_argument("--input-json", action="store_true", help="Read JSON payload from stdin.")
     return parser.parse_args(argv)
 
@@ -298,6 +306,7 @@ def _read_payload(args):
         "runtime_root": payload.get("runtime_root", args.runtime_root),
         "task_kind": payload.get("task_kind", args.task_kind),
         "candidate_answer": payload.get("candidate_answer", args.candidate_answer),
+        "dry_run": bool(payload.get("dry_run", args.dry_run)),
     }
 
 
@@ -308,9 +317,12 @@ def main(argv=None):
     try:
         args = parse_args(argv)
         payload = _read_payload(args)
+        task = payload["task"]
+        if args.command == "/abw-repair" and payload["dry_run"] and "--dry-run" not in str(task or "").split():
+            task = f"{task} --dry-run".strip()
         result = execute_command(
             args.command,
-            task=payload["task"],
+            task=task,
             workspace=payload["workspace"],
             runtime_root=payload["runtime_root"],
             task_kind=payload["task_kind"],

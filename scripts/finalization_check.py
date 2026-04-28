@@ -7,6 +7,7 @@ from pathlib import Path
 
 STATE_ORDER = {
     "blocked": 0,
+    "recoverable": 1,
     "code_changed_only": 1,
     "runs_one_case": 2,
     "checked_only": 3,
