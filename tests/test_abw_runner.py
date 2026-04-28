@@ -1319,6 +1319,41 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertEqual(action_commands(result["next_actions"]), ["help", "audit system"])
             self.assertTrue(result["guidance"])
 
+    def test_broad_summary_returns_bounded_partial(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki" / "concepts"
+            wiki.mkdir(parents=True, exist_ok=True)
+            (wiki / "mom-wms-flow.md").write_text(
+                "# MOM WMS Flow\n\n"
+                "MOM WMS workflow constraints require approved station handoff, bounded warehouse release, "
+                "and exception review before shipment.\n",
+                encoding="utf-8",
+            )
+            (wiki / "mom-wms-quality.md").write_text(
+                "# MOM WMS Quality\n\n"
+                "Quality holds constrain WMS movement until MOM inspection status is complete.\n",
+                encoding="utf-8",
+            )
+
+            result = abw_runner.dispatch_request(
+                task="Summarize MOM WMS workflow constraints",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["route"]["lane"], "query")
+            self.assertEqual(result["runner_status"], "completed")
+            self.assertEqual(result["summary_status"], "bounded_partial")
+            self.assertEqual(result["knowledge"]["summary_status"], "bounded_partial")
+            self.assertIn("This request is too broad for a fully grounded answer", result["answer"])
+            self.assertIn("Scope limit:", result["answer"])
+            self.assertIn("Sources used:", result["answer"])
+            self.assertIn("Unknowns / not covered:", result["answer"])
+            self.assertIn("Next narrower questions:", result["answer"])
+            self.assertNotIn("runner does not implement a bounded execution path", result["answer"])
+
     def test_next_actions_menu_displays_indexed_actions(self):
         menu = abw_runner.render_action_menu(["help", {"label": "Tự audit", "command": "audit system"}])
 

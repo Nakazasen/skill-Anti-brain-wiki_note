@@ -193,6 +193,8 @@ DEEP_QUERY_PATTERNS = [
 QUERY_PATTERNS = [
     "what is",
     "explain",
+    "summarize",
+    "summary",
     "why",
     "how",
     "which",

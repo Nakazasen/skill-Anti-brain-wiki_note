@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 
-from .version import DISTRIBUTION_NAME, REPO_URL, build_version_report, install_mode_details, package_root, package_version
+from .version import DISTRIBUTION_NAME, REPO_URL, build_version_report, install_mode_details, package_root, package_version, release_metadata_path
 
 try:
     from packaging.version import InvalidVersion, Version
@@ -337,6 +337,19 @@ def _write_backup(
     return backup_dir
 
 
+def _write_release_metadata(workspace: str | Path, *, package_version_value: str, previous_version: str, operation: str) -> Path:
+    path = release_metadata_path(workspace)
+    payload = {
+        "package_version": package_version_value,
+        "install_timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "previous_version": previous_version if previous_version != package_version_value else "",
+        "operation": operation,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
 def _latest_backup_manifest(workspace: str | Path) -> tuple[Path, dict] | tuple[None, None]:
     root = Path(workspace).resolve()
     backup_root = root / UPGRADE_BACKUP_ROOT
@@ -552,6 +565,14 @@ def perform_upgrade(
     after_version = _installed_distribution_version()
     base_report["package_version_after"] = after_version
     base_report["installed_change"] = after_version != current
+    if install_result["returncode"] == 0:
+        metadata_path = _write_release_metadata(
+            root,
+            package_version_value=after_version,
+            previous_version=current if after_version != current else "",
+            operation=str(base_report["operation"]),
+        )
+        base_report["release_metadata_path"] = str(metadata_path)
 
     after_snapshot = _snapshot_workspace_dirs(root)
     preservation = _compare_snapshots(before_snapshot, after_snapshot)
@@ -598,6 +619,8 @@ def render_upgrade_report(report: dict) -> str:
         lines.append(f"- package_version_after: {report['package_version_after']}")
     if report.get("backup_dir"):
         lines.append(f"- backup_dir: {report['backup_dir']}")
+    if report.get("release_metadata_path"):
+        lines.append(f"- release_metadata_path: {report['release_metadata_path']}")
     if "data_preserved" in report:
         lines.append(f"- data_preserved: {'yes' if report.get('data_preserved') else 'no'}")
     if "health_ok" in report:

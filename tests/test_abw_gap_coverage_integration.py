@@ -11,7 +11,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 import abw_knowledge  # noqa: E402
 import abw_runner  # noqa: E402
-from abw.doctor import build_doctor_report  # noqa: E402
+from abw.doctor import build_doctor_report, render_doctor_report  # noqa: E402
 from abw.workspace import ensure_workspace  # noqa: E402
 
 
@@ -151,6 +151,37 @@ class GapCoverageIntegrationTests(unittest.TestCase):
 
         messages = [item["message"] for item in report["engine_checks"]]
         self.assertTrue(any(message == "coverage gaps open=0" for message in messages))
+
+    def test_doctor_includes_ingest_operational_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ensure_workspace(root)
+            (root / ".brain").mkdir(parents=True, exist_ok=True)
+            (root / ".brain" / "ingest_state.json").write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "last_run": {
+                            "timestamp": "2026-04-27T10:00:00Z",
+                            "duration_seconds": 0.42,
+                            "skipped_count": 2,
+                            "skipped_unchanged_count": 1,
+                            "supported_source_counts": {"html": 1, "md": 2},
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with patch("abw.doctor.build_version_report", return_value=_version_report()):
+                report = build_doctor_report(root)
+                rendered = render_doctor_report(report)
+
+        self.assertEqual(report["ingest"]["last_ingest_time"], "2026-04-27T10:00:00Z")
+        self.assertEqual(report["ingest"]["skipped_unchanged_count"], 1)
+        self.assertIn("last_ingest_time: 2026-04-27T10:00:00Z", rendered)
+        self.assertIn("supported_source_counts:", rendered)
+        self.assertIn("top_warnings:", rendered)
 
 
 if __name__ == "__main__":

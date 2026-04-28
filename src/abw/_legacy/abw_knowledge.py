@@ -31,9 +31,14 @@ KNOWLEDGE_STOPWORDS = {
     "ve",
     "what",
     "why",
+    "summarize",
+    "summary",
+    "summarise",
+    "overview",
 }
 WIKI_SEARCH_DIRS = ("concepts", "entities", "timelines", "sources")
 WEAK_WIKI_CONFIDENCE_THRESHOLD = 0.45
+BOUNDED_SUMMARY_SOURCE_LIMIT = 5
 
 
 def now_iso():
@@ -143,16 +148,21 @@ def _read_explicit_local_source(task, workspace="."):
 
 
 def _search_wiki_context(task, workspace="."):
+    matches = _search_wiki_contexts(task, workspace=workspace, limit=1)
+    return matches[0] if matches else None
+
+
+def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMIT):
     workspace_root = Path(workspace).resolve()
     wiki_root = workspace_root / "wiki"
     if not wiki_root.exists():
-        return None
+        return []
 
     terms = _task_terms(task)
     if not terms:
-        return None
+        return []
 
-    best = None
+    candidates = []
     for directory in WIKI_SEARCH_DIRS:
         search_dir = wiki_root / directory
         if not search_dir.exists():
@@ -190,14 +200,61 @@ def _search_wiki_context(task, workspace="."):
                 "path": str(path.relative_to(workspace_root)),
                 "_score": score,
             }
-            if best is None or candidate["_score"] > best["_score"]:
-                best = candidate
+            candidates.append(candidate)
 
-    if not best:
-        return None
+    candidates.sort(key=lambda item: (-item["_score"], item["path"]))
+    selected = candidates[: max(1, int(limit or 1))]
+    for candidate in selected:
+        candidate.pop("_score", None)
+    return selected
 
-    best.pop("_score", None)
-    return best
+
+def is_broad_summary_query(task):
+    normalized = _normalize_text(task)
+    tokens = normalized.split()
+    if not tokens:
+        return False
+    return tokens[0] in {"summarize", "summary", "summarise", "overview"} and not _candidate_source_tokens(task)
+
+
+def _bounded_summary_context(task, workspace="."):
+    sources = _search_wiki_contexts(task, workspace=workspace, limit=BOUNDED_SUMMARY_SOURCE_LIMIT)
+    if not sources:
+        return {
+            "source": "none",
+            "content": "",
+            "confidence": 0.0,
+            "path": None,
+            "summary_status": "insufficient_sources",
+            "scope_limit": f"Bounded to the top {BOUNDED_SUMMARY_SOURCE_LIMIT} relevant trusted wiki chunks.",
+            "sources": [],
+            "unknowns": ["No trusted wiki chunks matched this broad summary request."],
+            "next_questions": [
+                "Which workflow constraint should ABW inspect first?",
+                "Which MOM WMS source should be ingested or reviewed next?",
+            ],
+        }
+
+    terms = _task_terms(task)
+    combined = " ".join(source["content"].lower() for source in sources)
+    missing_terms = [term for term in terms if term not in combined]
+    source_lines = [f"- {source['path']}: {source['content']}" for source in sources]
+    focus = " ".join(terms[:4]) or "this topic"
+    return {
+        "source": "wiki_summary",
+        "content": "\n".join(source_lines),
+        "confidence": min(0.85, max(float(source["confidence"]) for source in sources)),
+        "path": sources[0]["path"],
+        "summary_status": "bounded_partial",
+        "scope_limit": f"Bounded to {len(sources)} trusted wiki chunk(s), maximum {BOUNDED_SUMMARY_SOURCE_LIMIT}.",
+        "sources": [{"path": source["path"], "confidence": source["confidence"]} for source in sources],
+        "unknowns": missing_terms or ["Coverage outside the cited chunks was not inspected."],
+        "next_questions": [
+            f"What are the highest-risk constraints for {focus}?",
+            f"Which source defines exceptions or approvals for {focus}?",
+            f"What operational steps are covered by each cited {focus} source?",
+        ],
+    }
 
 
 def _knowledge_gap_path(workspace="."):
@@ -315,6 +372,9 @@ def _get_knowledge_context(task, workspace="."):
     if explicit:
         return explicit
 
+    if is_broad_summary_query(task):
+        return _bounded_summary_context(task, workspace=workspace)
+
     wiki_context = _search_wiki_context(task, workspace=workspace)
     if wiki_context:
         return wiki_context
@@ -335,7 +395,7 @@ def compute_knowledge_score(result):
     context = result.get("knowledge_context") or {}
     source = context.get("source")
     confidence = float(context.get("confidence") or 0.0)
-    if source == "wiki":
+    if source in {"wiki", "wiki_summary"}:
         return max(1, min(3, int(round(confidence * 3))))
     if source == "local":
         return max(2, min(3, int(round(confidence * 3))))
@@ -347,7 +407,7 @@ def compute_knowledge_tier(result):
     source = context.get("source")
     if source == "local":
         return "E3_grounded"
-    if source == "wiki":
+    if source in {"wiki", "wiki_summary"}:
         return "E2_wiki"
     return "E0_unknown"
 
@@ -355,7 +415,7 @@ def compute_knowledge_tier(result):
 def build_source_summary(result):
     context = result.get("knowledge_context") or {}
     source = context.get("source")
-    if source == "wiki":
+    if source in {"wiki", "wiki_summary"}:
         return "local_wiki"
     if source == "local":
         return "explicit_local"
@@ -373,7 +433,11 @@ def enrich_knowledge_result(task, workspace="."):
         "strategy_trace": {},
         "semantic_fix_applied": False,
     }
-    if context.get("source") == "wiki":
+    if context.get("source") == "wiki_summary":
+        result["evidence"] = f"bounded summary used {len(context.get('sources') or [])} trusted wiki source(s)"
+        result["gap_logged"] = context.get("summary_status") == "insufficient_sources"
+        result["summary_status"] = context.get("summary_status")
+    elif context.get("source") == "wiki":
         result["evidence"] = f"wiki retrieval matched {context.get('path')}"
         result["gap_logged"] = bool(gap.get("gap_detected"))
     elif context.get("source") == "local":
@@ -396,5 +460,10 @@ def attach_knowledge_output(result, answer_text=None):
         "source": context.get("source"),
         "content": context.get("content"),
         "confidence": context.get("confidence"),
+        "summary_status": context.get("summary_status"),
+        "scope_limit": context.get("scope_limit"),
+        "sources": context.get("sources") or [],
+        "unknowns": context.get("unknowns") or [],
+        "next_questions": context.get("next_questions") or [],
     }
     return result

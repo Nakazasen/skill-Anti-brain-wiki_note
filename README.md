@@ -167,6 +167,7 @@ Migration guidance for legacy projects:
 - [ABW Migration Playbook](docs/ABW_MIGRATION_PLAYBOOK.md)
 - [Command Surface Standard](docs/COMMAND_SURFACE.md)
 - [Command Surface Migration](docs/COMMAND_MIGRATION.md)
+- [Windows OCR Setup](docs/OCR_WINDOWS.md)
 
 ## Developer Notes
 

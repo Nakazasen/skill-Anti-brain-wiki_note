@@ -37,6 +37,53 @@ class ConflictFalsePositiveTests(unittest.TestCase):
             conflicts = detect_conflicts("raw/ops-supply.md", incoming, str(workspace))
             self.assertEqual(conflicts, [])
 
+    def test_numeric_mismatch_requires_same_context(self):
+        with self._workspace() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki" / "stations.md"
+            wiki.parent.mkdir(parents=True, exist_ok=True)
+            wiki.write_text("Line A station capacity 40", encoding="utf-8")
+
+            incoming = "Line B station capacity 25"
+            conflicts = detect_conflicts("raw/stations.md", incoming, str(workspace))
+            self.assertEqual(conflicts, [])
+
+    def test_low_confidence_ocr_is_ignored(self):
+        with self._workspace() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki" / "screen.md"
+            wiki.parent.mkdir(parents=True, exist_ok=True)
+            wiki.write_text("Factory approval is enabled for AGV", encoding="utf-8")
+
+            incoming = "OCR text confidence: 0.18\nFactory approval is disabled for AGV"
+            conflicts = detect_conflicts("raw/screen.png", incoming, str(workspace))
+            self.assertEqual(conflicts, [])
+
+    def test_yes_no_requires_same_subject_action_context(self):
+        with self._workspace() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki" / "controls.md"
+            wiki.parent.mkdir(parents=True, exist_ok=True)
+            wiki.write_text("AGV dispatch approval yes", encoding="utf-8")
+
+            unrelated = detect_conflicts("raw/controls.md", "Printer toner replacement no", str(workspace))
+            related = detect_conflicts("raw/controls.md", "AGV dispatch approval no", str(workspace))
+
+            self.assertEqual(unrelated, [])
+            self.assertEqual(len(related), 1)
+            self.assertGreaterEqual(related[0]["confidence"], 0.65)
+
+    def test_conflict_report_includes_confidence(self):
+        with self._workspace() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki" / "feature-flags.md"
+            wiki.parent.mkdir(parents=True, exist_ok=True)
+            wiki.write_text("Feature X approval is enabled", encoding="utf-8")
+
+            conflicts = detect_conflicts("raw/feature-flags.md", "Feature X approval is disabled", str(workspace))
+            self.assertEqual(len(conflicts), 1)
+            self.assertIn("confidence", conflicts[0])
+
     def test_metadata_numbers_do_not_create_conflicts(self):
         with self._workspace() as tmp:
             workspace = Path(tmp)
@@ -48,15 +95,21 @@ class ConflictFalsePositiveTests(unittest.TestCase):
             conflicts = detect_conflicts("raw/ops-minutes.md", incoming, str(workspace))
             self.assertEqual(conflicts, [])
 
-    def test_doc_class_mismatch_is_ignored(self):
+    def test_generated_and_non_source_wiki_files_are_ignored(self):
         with self._workspace() as tmp:
             workspace = Path(tmp)
             concept = workspace / "wiki" / "concepts" / "factory-flow.md"
             concept.parent.mkdir(parents=True, exist_ok=True)
             concept.write_text("Factory station enabled", encoding="utf-8")
-            entity = workspace / "wiki" / "entities" / "factory-flow.md"
-            entity.parent.mkdir(parents=True, exist_ok=True)
-            entity.write_text("Factory station disabled", encoding="utf-8")
+            index = workspace / "wiki" / "index.md"
+            index.write_text("Factory station enabled", encoding="utf-8")
+            health = workspace / "wiki" / "status" / "health-summary.md"
+            health.parent.mkdir(parents=True, exist_ok=True)
+            health.write_text("Factory station enabled", encoding="utf-8")
+            repair = workspace / "wiki" / "repair_report.md"
+            repair.write_text("Factory station enabled", encoding="utf-8")
+            source = workspace / "wiki" / "factory-flow.md"
+            source.write_text("Factory station enabled", encoding="utf-8")
 
             conflicts = detect_conflicts(
                 "raw/concepts/factory-flow.md",
@@ -64,7 +117,7 @@ class ConflictFalsePositiveTests(unittest.TestCase):
                 str(workspace),
             )
             self.assertEqual(len(conflicts), 1)
-            self.assertIn("wiki/concepts/factory-flow.md", conflicts[0]["conflicting_file"])
+            self.assertIn("wiki/factory-flow.md", conflicts[0]["conflicting_file"])
 
     def test_source_files_compare_without_domain_specific_type_rules(self):
         with self._workspace() as tmp:

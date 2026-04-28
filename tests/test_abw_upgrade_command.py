@@ -137,6 +137,10 @@ class AbwUpgradeCommandTests(unittest.TestCase):
         self.assertEqual(result["package_version_before"], "0.2.9")
         self.assertEqual(result["package_version_after"], "0.3.0")
         self.assertTrue(result["installed_change"])
+        metadata = json.loads((workspace / ".brain" / "release_metadata.json").read_text(encoding="utf-8"))
+        self.assertEqual(metadata["package_version"], "0.3.0")
+        self.assertEqual(metadata["previous_version"], "0.2.9")
+        self.assertIn("install_timestamp", metadata)
 
 
 if __name__ == "__main__":

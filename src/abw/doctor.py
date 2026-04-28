@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
+from .ocr import tesseract_status
 from .version import build_version_report
 from .workspace import CONFIG_FILENAME, REQUIRED_DIRS, read_workspace_config, resolve_workspace
 
@@ -32,6 +34,67 @@ def _short_text(value: object, limit: int = 80) -> str:
     if len(text) <= limit:
         return text
     return text[: limit - 3].rstrip() + "..."
+
+
+def _load_ingest_state(root: Path) -> dict:
+    path = root / ".brain" / "ingest_state.json"
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception:  # noqa: BLE001
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _supported_source_counts(root: Path) -> dict:
+    counts: dict[str, int] = {}
+    supported = {
+        "md",
+        "markdown",
+        "txt",
+        "rst",
+        "adoc",
+        "csv",
+        "html",
+        "htm",
+        "png",
+        "jpg",
+        "jpeg",
+        "bmp",
+        "gif",
+        "webp",
+        "tif",
+        "tiff",
+        "xlsx",
+        "pdf",
+        "pptx",
+    }
+    raw = root / "raw"
+    if not raw.exists():
+        return counts
+    for path in raw.rglob("*"):
+        if not path.is_file():
+            continue
+        suffix = path.suffix.lower().lstrip(".") or "unknown"
+        if suffix in supported:
+            counts[suffix] = counts.get(suffix, 0) + 1
+    return counts
+
+
+def _ingest_operational_summary(root: Path) -> dict:
+    state = _load_ingest_state(root)
+    last_run = state.get("last_run") if isinstance(state.get("last_run"), dict) else {}
+    counts = last_run.get("supported_source_counts") if isinstance(last_run.get("supported_source_counts"), dict) else {}
+    if not counts:
+        counts = _supported_source_counts(root)
+    return {
+        "last_ingest_time": str(last_run.get("timestamp") or "unknown"),
+        "last_ingest_duration": last_run.get("duration_seconds", "unknown"),
+        "skipped_files_count": int(last_run.get("skipped_count") or 0),
+        "skipped_unchanged_count": int(last_run.get("skipped_unchanged_count") or 0),
+        "supported_source_counts": counts,
+    }
 
 
 def build_doctor_report(workspace: str | Path = ".") -> dict:
@@ -126,6 +189,12 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
     if provider_mode in {"ai", "hybrid"} and provider_healthy_count == 0:
         next_steps.append("run `abw provider test`")
         next_steps.append("run `abw provider set-default mock`")
+    tess = tesseract_status()
+    if tess.get("status") == "available":
+        engine_checks.append(_status("OK", f"local OCR tesseract available at {tess.get('path')} ({tess.get('version')})"))
+    else:
+        engine_checks.append(_status("WARN", f"local OCR tesseract unavailable: {tess.get('reason', 'unknown')}"))
+        next_steps.append("install Tesseract OCR or set ABW_TESSERACT_CMD")
     open_gaps = _load_open_knowledge_gaps(root)
     if open_gaps:
         high_priority = sum(1 for gap in open_gaps if str(gap.get("priority") or "").lower() == "high")
@@ -141,6 +210,26 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
     else:
         engine_checks.append(_status("OK", "coverage gaps open=0"))
 
+    ingest_summary = _ingest_operational_summary(root)
+    engine_checks.append(
+        _status(
+            "OK" if ingest_summary["last_ingest_time"] != "unknown" else "WARN",
+            (
+                "ingest last_run="
+                f"{ingest_summary['last_ingest_time']} duration={ingest_summary['last_ingest_duration']}s "
+                f"skipped={ingest_summary['skipped_files_count']} "
+                f"skipped_unchanged={ingest_summary['skipped_unchanged_count']}"
+            ),
+        )
+    )
+    engine_checks.append(
+        _status(
+            "OK",
+            "supported sources by type: "
+            + (json.dumps(ingest_summary["supported_source_counts"], ensure_ascii=False, sort_keys=True) or "{}"),
+        )
+    )
+
     overall = "OK"
     checks = workspace_checks + engine_checks
     if any(item["level"] == "WARN" for item in checks):
@@ -148,6 +237,7 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
 
     workspace_health = "WARN" if any(item["level"] == "WARN" for item in workspace_checks) else "OK"
     engine_health = "WARN" if any(item["level"] == "WARN" for item in engine_checks) else "OK"
+    top_warnings = [item["message"] for item in checks if item["level"] == "WARN"][:5]
 
     deduped_steps = []
     seen = set()
@@ -167,6 +257,8 @@ def build_doctor_report(workspace: str | Path = ".") -> dict:
         "checks": checks,
         "next_steps": deduped_steps,
         "version": version,
+        "ingest": ingest_summary,
+        "top_warnings": top_warnings,
     }
 
 
@@ -177,6 +269,11 @@ def render_doctor_report(report: dict) -> str:
         f"- status: {report['overall']}",
         f"- workspace_health: {report['workspace_health']}",
         f"- engine_health: {report['engine_health']}",
+        f"- last_ingest_time: {report.get('ingest', {}).get('last_ingest_time', 'unknown')}",
+        f"- last_ingest_duration: {report.get('ingest', {}).get('last_ingest_duration', 'unknown')}",
+        f"- skipped_files_count: {report.get('ingest', {}).get('skipped_files_count', 0)}",
+        f"- supported_source_counts: {json.dumps(report.get('ingest', {}).get('supported_source_counts', {}), ensure_ascii=False, sort_keys=True)}",
+        f"- top_warnings: {', '.join(report.get('top_warnings') or []) or 'none'}",
         "Workspace checks:",
     ]
     for item in report["workspace_checks"]:

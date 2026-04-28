@@ -63,6 +63,32 @@ class AbwDashboardTests(unittest.TestCase):
                     }
                 ),
             )
+            write(
+                workspace / ".brain" / "ingest_state.json",
+                json.dumps(
+                    {
+                        "version": 1,
+                        "last_run": {
+                            "timestamp": "2026-04-27T10:00:00Z",
+                            "duration_seconds": 1.25,
+                            "skipped_count": 3,
+                            "skipped_unchanged_count": 2,
+                            "supported_source_counts": {"html": 1, "md": 1},
+                        },
+                        "sources": {},
+                    }
+                ),
+            )
+            write(
+                workspace / ".brain" / "release_metadata.json",
+                json.dumps(
+                    {
+                        "package_version": "0.3.11",
+                        "install_timestamp": "2026-04-27T10:01:00Z",
+                        "previous_version": "0.3.10",
+                    }
+                ),
+            )
 
             with patch.object(abw_version, "get_git_commit", return_value="file123"):
                 result = abw_dashboard.run_dashboard(tmp)
@@ -76,12 +102,18 @@ class AbwDashboardTests(unittest.TestCase):
             self.assertEqual(result["knowledge"]["wiki_files"], 1)
             self.assertEqual(result["knowledge"]["pending_drafts"], 1)
             self.assertEqual(result["knowledge"]["coverage_ratio"], 0.5)
+            self.assertEqual(result["ingest"]["last_ingest_time"], "2026-04-27T10:00:00Z")
+            self.assertEqual(result["ingest"]["last_skipped_unchanged_count"], 2)
+            self.assertEqual(result["version"]["package_version"], "0.3.11")
+            self.assertEqual(result["version"]["previous_version"], "0.3.10")
             self.assertEqual(result["top_gaps"], ["printer firmware", "network timeout"])
             self.assertEqual(result["next_actions"][0]["command"], "review drafts")
             self.assertIn("ABW Dashboard", result["rendered"])
             self.assertIn("Version:", result["rendered"])
             self.assertIn("deploy_status: ok", result["rendered"])
             self.assertIn("Next actions:", result["rendered"])
+            self.assertIn("last_ingest_time:", result["rendered"])
+            self.assertIn("supported_source_counts:", result["rendered"])
             self.assertIn("Guided wizard: wizard", result["rendered"])
             self.assertEqual(result["wizard"]["command"], "wizard")
 

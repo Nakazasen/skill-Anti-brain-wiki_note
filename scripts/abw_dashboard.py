@@ -21,6 +21,37 @@ def coverage_report(workspace):
     return load_json(Path(workspace) / ".brain" / "coverage_report.json", {}) or {}
 
 
+def ingest_state(workspace):
+    payload = load_json(Path(workspace) / ".brain" / "ingest_state.json", {}) or {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _supported_source_counts(workspace):
+    counts = {}
+    for path in (Path(workspace) / "raw").rglob("*"):
+        if not path.is_file():
+            continue
+        suffix = path.suffix.lower().lstrip(".") or "unknown"
+        if suffix in {"md", "markdown", "txt", "rst", "adoc", "csv", "html", "htm", "png", "jpg", "jpeg", "bmp", "gif", "webp", "tif", "tiff", "xlsx", "pdf", "pptx"}:
+            counts[suffix] = counts.get(suffix, 0) + 1
+    return counts
+
+
+def ingest_summary(workspace):
+    state = ingest_state(workspace)
+    last_run = state.get("last_run") if isinstance(state.get("last_run"), dict) else {}
+    supported_counts = last_run.get("supported_source_counts") if isinstance(last_run.get("supported_source_counts"), dict) else {}
+    if not supported_counts:
+        supported_counts = _supported_source_counts(workspace)
+    return {
+        "last_ingest_time": str(last_run.get("timestamp") or "unknown"),
+        "last_ingest_duration": last_run.get("duration_seconds", "unknown"),
+        "last_skipped_count": int(last_run.get("skipped_count") or 0),
+        "last_skipped_unchanged_count": int(last_run.get("skipped_unchanged_count") or 0),
+        "supported_source_counts": supported_counts,
+    }
+
+
 def health_from_audit(audit_result):
     system_map = audit_result.get("system_map", {})
     analysis = audit_result.get("analysis", {})
@@ -76,6 +107,9 @@ def render_dashboard(dashboard, workspace="."):
         f"- status: {dashboard['version']['status']}",
         f"- deploy_status: {dashboard['version']['deploy_status']}",
         f"- source: {dashboard['version']['source']}",
+        f"- package_version: {dashboard['version'].get('package_version', 'unknown')}",
+        f"- install_timestamp: {dashboard['version'].get('install_timestamp', 'unknown')}",
+        f"- previous_version: {dashboard['version'].get('previous_version', 'unknown')}",
         "",
         f"{abw_i18n.t('dashboard.health', workspace)}:",
         f"- modules: {dashboard['health']['modules']}",
@@ -89,6 +123,11 @@ def render_dashboard(dashboard, workspace="."):
         f"- wiki_files: {dashboard['knowledge']['wiki_files']}",
         f"- pending_drafts: {dashboard['knowledge']['pending_drafts']}",
         f"- coverage_ratio: {dashboard['knowledge']['coverage_ratio']}",
+        f"- last_ingest_time: {dashboard['ingest']['last_ingest_time']}",
+        f"- last_ingest_duration: {dashboard['ingest']['last_ingest_duration']}",
+        f"- skipped_files: {dashboard['ingest']['last_skipped_count']}",
+        f"- skipped_unchanged_files: {dashboard['ingest']['last_skipped_unchanged_count']}",
+        f"- supported_source_counts: {json.dumps(dashboard['ingest']['supported_source_counts'], ensure_ascii=False, sort_keys=True)}",
         "",
         f"{abw_i18n.t('dashboard.bottlenecks', workspace)}:",
     ]
@@ -128,6 +167,7 @@ def render_agent(dashboard, workspace="."):
         f"- Wiki files: {knowledge['wiki_files']}",
         f"- Pending drafts: {knowledge['pending_drafts']}",
         f"- Coverage: {knowledge['coverage_ratio']}",
+        f"- Last ingest: {dashboard['ingest']['last_ingest_time']}",
         "",
         "### Answer",
         f"- Raw files: {knowledge['raw_files']}",
@@ -135,6 +175,8 @@ def render_agent(dashboard, workspace="."):
         f"- Wiki files: {knowledge['wiki_files']}",
         f"- Pending drafts: {knowledge['pending_drafts']}",
         f"- Coverage: {knowledge['coverage_ratio']}",
+        f"- Skipped files: {dashboard['ingest']['last_skipped_count']}",
+        f"- Supported source counts: {json.dumps(dashboard['ingest']['supported_source_counts'], ensure_ascii=False, sort_keys=True)}",
         "",
         "### Next Actions",
     ]
@@ -151,6 +193,7 @@ def run_dashboard(workspace="."):
     version = abw_version.resolve_version(workspace)
     health = health_from_audit(audit_result)
     knowledge = knowledge_from_help(help_result, coverage)
+    ingest = ingest_summary(workspace)
     dashboard = {
         "header": build_header(health, knowledge, version, workspace=workspace),
         "version": version,
@@ -161,6 +204,7 @@ def run_dashboard(workspace="."):
         },
         "health": health,
         "knowledge": knowledge,
+        "ingest": ingest,
         "bottleneck": audit_result.get("analysis", {}).get("bottlenecks", []),
         "top_gaps": top_gaps_from_coverage(coverage),
         "wizard": {"command": "wizard", "label": "Guided wizard"},

@@ -3,12 +3,17 @@ from __future__ import annotations
 from .legacy import load
 
 
-_legacy_runner = load("abw_runner")
-_legacy_output = load("abw_output")
+def _legacy_runner():
+    return load("abw_runner")
+
+
+def _legacy_output():
+    return load("abw_output")
 
 
 def run_task(task: str, *, workspace: str, task_kind: str = "execution"):
-    result = _legacy_runner.dispatch_request(
+    legacy_runner = _legacy_runner()
+    result = legacy_runner.dispatch_request(
         task=task,
         workspace=workspace,
         task_kind=task_kind,
@@ -21,7 +26,8 @@ def run_task(task: str, *, workspace: str, task_kind: str = "execution"):
 
 
 def finalize(result, *, workspace: str):
+    legacy_runner = _legacy_runner()
     if isinstance(result, dict) and result.get("evaluation") is None:
-        result = _legacy_runner.apply_acceptance_validation(result, workspace=workspace)
-    result = _legacy_output.enforce_runner_output(result)
-    return _legacy_runner.enforce_output_acceptance(result, mode="STRICT")
+        result = legacy_runner.apply_acceptance_validation(result, workspace=workspace)
+    result = _legacy_output().enforce_runner_output(result)
+    return legacy_runner.enforce_output_acceptance(result, mode="STRICT")

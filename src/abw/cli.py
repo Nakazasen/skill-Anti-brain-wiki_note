@@ -29,7 +29,23 @@ from .workspace import ensure_workspace, init_workspace, resolve_workspace
 
 
 USER_LEVELS = ("beginner", "intermediate", "expert")
-_legacy_entry = load("abw_entry")
+
+
+class _LazyLegacyModule:
+    def __init__(self, name: str):
+        self._name = name
+        self._module = None
+
+    def _load(self):
+        if self._module is None:
+            self._module = load(self._name)
+        return self._module
+
+    def __getattr__(self, item):
+        return getattr(self._load(), item)
+
+
+_legacy_entry = _LazyLegacyModule("abw_entry")
 
 
 def add_common(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:

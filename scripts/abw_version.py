@@ -20,6 +20,17 @@ def load_version(workspace="."):
     return payload if isinstance(payload, dict) else None
 
 
+def load_release_metadata(workspace="."):
+    path = Path(workspace or ".") / ".brain" / "release_metadata.json"
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def get_git_commit(workspace="."):
     try:
         result = subprocess.run(
@@ -70,6 +81,7 @@ def detect_deploy_status(version_payload, git_commit):
 def resolve_version(workspace="."):
     workspace = str(workspace or ".")
     version_payload = load_version(workspace)
+    release_metadata = load_release_metadata(workspace)
     git_commit = get_git_commit(workspace)
     version_commit = str((version_payload or {}).get("commit") or "").strip() or None
     commit = version_commit or git_commit or "unknown"
@@ -83,6 +95,9 @@ def resolve_version(workspace="."):
         "deploy_status": deploy_status,
         "deploy_state": deploy_status,
         "updated_at": str((version_payload or {}).get("updated_at") or "unknown"),
+        "package_version": str(release_metadata.get("package_version") or "unknown"),
+        "install_timestamp": str(release_metadata.get("install_timestamp") or "unknown"),
+        "previous_version": str(release_metadata.get("previous_version") or "unknown"),
         "source": source,
         "version_file_present": version_payload is not None,
     }

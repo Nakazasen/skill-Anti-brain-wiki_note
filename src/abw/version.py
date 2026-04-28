@@ -63,6 +63,21 @@ def package_version() -> str:
     return package_version_details()["resolved_version"]
 
 
+def release_metadata_path(workspace: str | Path = ".") -> Path:
+    return resolve_workspace(workspace) / ".brain" / "release_metadata.json"
+
+
+def load_release_metadata(workspace: str | Path = ".") -> dict:
+    path = release_metadata_path(workspace)
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception:  # noqa: BLE001
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def _direct_url_payload(distribution) -> dict | None:
     if distribution is None:
         return None
@@ -165,6 +180,7 @@ def build_version_report(workspace: str | Path = ".") -> dict:
     runtime = runtime_source_details()
     provider_state = provider_state_summary(root)
     mirror = runtime_mirror_status()
+    release_metadata = load_release_metadata(root)
     workspace_schema = None
     if config_status == "ok" and isinstance(config, dict):
         workspace_schema = config.get("workspace_schema") or config.get("workspace_version")
@@ -198,6 +214,9 @@ def build_version_report(workspace: str | Path = ".") -> dict:
         "provider_ask_mode": provider_state["ask_mode"],
         "provider_healthy_count": provider_state["healthy_count"],
         "provider_cost_mode": provider_state["cost_mode"],
+        "release_metadata": release_metadata,
+        "install_timestamp": str(release_metadata.get("install_timestamp") or "unknown"),
+        "previous_version": str(release_metadata.get("previous_version") or "unknown"),
         "note": note,
     }
     report["stale_install_suspected"] = stale_install_suspected(report)
@@ -243,6 +262,8 @@ def render_version_report(report: dict) -> str:
         f"- provider_ask_mode: {report.get('provider_ask_mode', 'unknown')}",
         f"- provider_healthy_count: {report.get('provider_healthy_count', 'unknown')}",
         f"- provider_cost_mode: {report.get('provider_cost_mode', 'unknown')}",
+        f"- install_timestamp: {report.get('install_timestamp', 'unknown')}",
+        f"- previous_version: {report.get('previous_version', 'unknown')}",
     ]
     if report.get("source_path"):
         lines.append(f"- source_path: {report['source_path']}")

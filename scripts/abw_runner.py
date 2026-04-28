@@ -577,6 +577,7 @@ def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, 
         knowledge_source_score=result.get("knowledge_source_score"),
         refinement_history=result.get("refinement_history", []),
         semantic_fix_applied=result.get("semantic_fix_applied", False),
+        summary_status=result.get("summary_status"),
         strategy_trace={
             **(result.get("strategy_trace", {}) or {}),
             "lane": lane,
@@ -922,10 +923,20 @@ def system_trend_lane_result(task, workspace=".", route=None, binding_source="mc
 
 def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
     ingest_result = abw_ingest.run(task, workspace)
-    body = (
-        f"Ingest lane created a draft knowledge artifact for '{task}'. "
-        "The draft is review-needed and has not been promoted into trusted wiki."
-    )
+    skipped = ingest_result.get("skipped_files") or []
+    if ingest_result.get("ingested_count", 0) == 0:
+        body = f"Ingest lane did not create drafts for '{task}'."
+    else:
+        body = (
+            f"Ingest lane created a draft knowledge artifact for '{task}'. "
+            "The draft is review-needed and has not been promoted into trusted wiki."
+        )
+    if skipped:
+        skipped_lines = "\n".join(
+            f"- {item.get('path')}: {item.get('reason')} ({item.get('action')})"
+            for item in skipped
+        )
+        body += f"\nSkipped files:\n{skipped_lines}"
     if ingest_result.get("conflict_reports"):
         reports = "\n".join(f"- {report}" for report in ingest_result["conflict_reports"])
         body += (
@@ -937,7 +948,7 @@ def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
 
 ## Finalization
 - current_state: checked_only
-- evidence: ingest created draft_file={ingest_result['draft_file']} from raw_file={ingest_result['raw_file']}
+- evidence: ingest processed {ingest_result.get('ingested_count', 0)} file(s); skipped {ingest_result.get('skipped_count', 0)} file(s)
 - gaps_or_limitations: ingest lane creates processed manifest + draft + queue item only; trusted wiki is unchanged until explicit review; contradiction detection is heuristic and may produce false positives
 - next_steps: review the draft file and ingest queue item before any manual promotion into wiki
 """
@@ -954,13 +965,14 @@ def ingest_lane_result(task, workspace=".", route=None, binding_source="mcp"):
             route,
             ingest_result=ingest_result,
             ingest_draft={
-                "id": Path(ingest_result["draft_file"]).stem,
-                "raw": ingest_result["raw_file"],
-                "draft": ingest_result["draft_file"],
-                "status": ingest_result["queue_status"],
+                "id": Path(ingest_result.get("draft_file") or "drafts/none_draft.md").stem,
+                "raw": ingest_result.get("raw_file"),
+                "draft": ingest_result.get("draft_file"),
+                "status": ingest_result.get("queue_status") or ingest_result.get("status"),
                 "trusted_wiki_written": False,
             },
             ingest_queue=".brain/ingest_queue.json",
+            skipped_files=skipped,
             conflict_reports=ingest_result.get("conflict_reports", []),
             conflict_count=ingest_result.get("conflict_count", 0),
         ),
@@ -1666,6 +1678,29 @@ def knowledge_body(task, result):
     context = result.get("knowledge_context") or {}
     content = context.get("content") or ""
     gap_section = format_knowledge_gap(result.get("knowledge_gap"))
+    if context.get("source") == "wiki_summary":
+        sources = context.get("sources") or []
+        source_lines = [f"- {source.get('path')} (confidence {source.get('confidence')})" for source in sources]
+        unknowns = [str(item) for item in context.get("unknowns") or []]
+        next_questions = [str(item) for item in context.get("next_questions") or []]
+        lines = [
+            "This request is too broad for a fully grounded answer. ABW returned a bounded partial answer using available sources.",
+            "",
+            f"Scope limit: {context.get('scope_limit')}",
+            "",
+            "Bounded partial summary:",
+            content or "Insufficient matching source content was available for a grounded summary.",
+            "",
+            "Sources used:",
+            *(source_lines or ["- None"]),
+            "",
+            "Unknowns / not covered:",
+            *(f"- {item}" for item in (unknowns or ["No coverage outside the cited chunks was inspected."])),
+            "",
+            "Next narrower questions:",
+            *(f"- {item}" for item in (next_questions or ["Which specific workflow constraint should ABW inspect?"])),
+        ]
+        return "\n".join(lines)
     if result.get("knowledge_evidence_tier") == "E0_unknown":
         body = (
             f"Incomplete knowledge answer for '{task}'. "
