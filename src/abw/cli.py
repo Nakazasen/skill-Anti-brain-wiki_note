@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
 
 from . import entry, ingest as ingest_module, output, overview as overview_module, review, save as save_module
 from .doctor import build_doctor_report, render_doctor_report
+from .gaps import build_gap_report, render_gap_report
 from .inspect import build_inspect_report, render_inspect_report
 from .help import build_help_report, render_help_report
 from .migrate import build_migration_report, render_migration_report
@@ -24,6 +26,10 @@ from .providers import (
 from .self_check import build_self_check_report, render_self_check_report
 from .upgrade import build_upgrade_report, perform_upgrade, render_upgrade_report
 from .version import build_version_report, render_version_report
+from .recovery import build_recovery_report, render_recovery_report
+from .recovery_verify import build_verify_report, render_verify_report
+from .trend import build_trend_report, render_trend_report
+from .improve import build_improvement_plan, render_improvement_plan
 from .commands import DEPRECATED_ALIASES, PUBLIC_HELP
 from .legacy import load
 from .workspace import ensure_workspace, init_workspace, resolve_workspace
@@ -67,9 +73,10 @@ def add_public_parser(subparsers, name):
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(prog="abw")
-    parser.add_argument("--workspace", help="Workspace directory. Defaults to ABW_WORKSPACE or the current directory.")
+    parser.add_argument("--workspace", help="Path to workspace root")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--level", choices=USER_LEVELS)
+    parser.add_argument("--json", action="store_true", help="Output report in JSON format")
 
     sub = parser.add_subparsers(dest="command", metavar="command")
 
@@ -91,6 +98,11 @@ def parse_args(argv=None):
     save_parser.add_argument("--stdin", action="store_true")
     add_public_parser(sub, "doctor")
     add_public_parser(sub, "inspect")
+    add_public_parser(sub, "gaps")
+    add_public_parser(sub, "recover-plan")
+    add_public_parser(sub, "recover-verify")
+    add_public_parser(sub, "trend")
+    add_public_parser(sub, "improve")
     provider = add_public_parser(sub, "provider")
     provider_sub = provider.add_subparsers(dest="provider_command", metavar="provider-command")
 
@@ -284,6 +296,38 @@ def main(argv=None) -> int:
             print(render_inspect_report(report))
             return 0
 
+        if args.command == "gaps":
+            print(render_gap_report(build_gap_report(workspace)))
+            return 0
+
+        if args.command == "recover-plan":
+            print(render_recovery_report(build_recovery_report(workspace)))
+            return 0
+
+        if args.command == "recover-verify":
+            report = build_verify_report(workspace)
+            if args.json:
+                print(json.dumps(report, indent=2))
+            else:
+                print(render_verify_report(report))
+            return 0
+
+        if args.command == "trend":
+            report = build_trend_report(workspace)
+            if args.json:
+                print(json.dumps(report, indent=2))
+            else:
+                print(render_trend_report(report))
+            return 0
+
+        if args.command == "improve":
+            report = build_improvement_plan(workspace)
+            if args.json:
+                print(json.dumps(report, indent=2))
+            else:
+                print(render_improvement_plan(report))
+            return 0
+
         if args.command == "provider":
             if args.provider_command == "list":
                 print(render_provider_list(list_providers(workspace)))
@@ -389,7 +433,7 @@ def main(argv=None) -> int:
         if args.command == "eval":
             from .eval import EvalHarness
 
-            harness = EvalHarness(str(workspace), abw_version="0.6.2")
+            harness = EvalHarness(str(workspace), abw_version="0.7.1")
             questions = harness.load_questions(getattr(args, "questions", None))
             
             def runner(q_text):
