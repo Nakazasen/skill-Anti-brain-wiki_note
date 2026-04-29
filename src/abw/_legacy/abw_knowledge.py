@@ -1,5 +1,6 @@
 import json
 import re
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -39,6 +40,40 @@ KNOWLEDGE_STOPWORDS = {
 WIKI_SEARCH_DIRS = ("concepts", "entities", "timelines", "sources")
 WEAK_WIKI_CONFIDENCE_THRESHOLD = 0.45
 BOUNDED_SUMMARY_SOURCE_LIMIT = 5
+SEARCH_TEXT_EXTENSIONS = {".md", ".txt", ".json", ".jsonl", ".csv", ".html", ".htm"}
+RETRIEVAL_SEARCH_ROOTS = ("wiki", "raw", "drafts")
+TRUSTED_WIKI_STATUSES = {"grounded", "compiled", "trusted"}
+ABBREVIATION_ALIASES = {
+    "agv": ["automated", "guided", "vehicle"],
+    "mom": ["manufacturing", "operations", "management"],
+    "wms": ["warehouse", "management", "system"],
+    "qlsx": ["quan", "ly", "san", "xuat", "production", "order"],
+    "qllsx": ["quan", "ly", "lenh", "san", "xuat", "production", "order"],
+    "qllssx": ["quan", "ly", "lenh", "san", "xuat", "production", "order"],
+    "mp": ["master", "plan", "budget", "simulation"],
+}
+KEYWORD_ALIASES = {
+    "communication": ["comms", "interface", "protocol", "ket", "noi", "giao", "tiep"],
+    "communications": ["communication", "comms", "interface", "protocol", "ket", "noi", "giao", "tiep"],
+    "workflow": ["flow", "process", "procedure", "quy", "trinh"],
+    "constraints": ["constraint", "rule", "limit", "restriction", "rang", "buoc"],
+    "source": ["document", "file", "tai", "lieu"],
+    "sources": ["document", "documents", "file", "files", "tai", "lieu"],
+    "spreadsheet": ["csv", "xlsx", "xls", "excel"],
+    "budgeting": ["budget", "simulation", "forecast"],
+}
+GENERIC_SOURCE_TERMS = {
+    "available",
+    "document",
+    "documents",
+    "file",
+    "files",
+    "mention",
+    "mentions",
+    "source",
+    "sources",
+    "system",
+}
 
 
 def now_iso():
@@ -50,20 +85,86 @@ def new_runtime_id():
 
 
 def _normalize_text(text):
-    lowered = str(text or "").lower()
+    normalized = unicodedata.normalize("NFKD", str(text or ""))
+    without_marks = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    lowered = without_marks.lower()
     return re.sub(r"[^0-9a-z]+", " ", lowered, flags=re.IGNORECASE)
+
+
+def _split_compound_token(token):
+    raw = str(token or "").strip()
+    if not raw:
+        return []
+    parts = re.sub(r"([a-z])([A-Z])", r"\1 \2", raw)
+    parts = re.sub(r"([A-Za-z])([0-9])", r"\1 \2", parts)
+    parts = re.sub(r"([0-9])([A-Za-z])", r"\1 \2", parts)
+    return _normalize_text(parts).split()
 
 
 def _task_terms(task):
     tokens = []
     seen = set()
-    for token in _normalize_text(task).split():
+    raw_tokens = re.findall(r"[A-Za-z0-9À-ỹ_./\\-]+", str(task or ""))
+    expanded_tokens = []
+    for raw in raw_tokens:
+        normalized_raw = _normalize_text(raw).replace(" ", "")
+        if len(normalized_raw) >= 3:
+            expanded_tokens.append(normalized_raw)
+        expanded_tokens.extend(_split_compound_token(raw))
+    if not expanded_tokens:
+        expanded_tokens = _normalize_text(task).split()
+
+    for token in expanded_tokens:
         if len(token) < 3 or token in KNOWLEDGE_STOPWORDS:
             continue
         if token not in seen:
             seen.add(token)
             tokens.append(token)
+        for alias in ABBREVIATION_ALIASES.get(token, []) + KEYWORD_ALIASES.get(token, []):
+            if len(alias) >= 3 and alias not in KNOWLEDGE_STOPWORDS and alias not in seen:
+                seen.add(alias)
+                tokens.append(alias)
     return tokens
+
+
+def _original_query_terms(task):
+    terms = []
+    seen = set()
+    for raw in re.findall(r"[A-Za-z0-9À-ỹ_./\\-]+", str(task or "")):
+        normalized_raw = _normalize_text(raw).replace(" ", "")
+        candidates = [normalized_raw] + _split_compound_token(raw)
+        for token in candidates:
+            if len(token) < 3 or token in KNOWLEDGE_STOPWORDS or token in seen:
+                continue
+            seen.add(token)
+            terms.append(token)
+    return terms
+
+
+def _required_entity_terms(task):
+    return [
+        term
+        for term in _original_query_terms(task)
+        if re.search(r"[a-z]", term) and re.search(r"\d", term)
+    ]
+
+
+def _entity_term_variants(term):
+    variants = {str(term or "").lower()}
+    match = re.fullmatch(r"([a-z]+)(20\d{2})", str(term or "").lower())
+    if match and match.group(1) == "mp":
+        year = match.group(2)
+        variants.add(f"mpfy{year}")
+        variants.add(f"mpfiscalyear{year}")
+    return variants
+
+
+def _required_fact_terms(task):
+    terms = set(_original_query_terms(task))
+    required = []
+    if "cutover" in terms:
+        required.append("cutover")
+    return required
 
 
 def _summarize_document(text, limit=420):
@@ -88,6 +189,135 @@ def _summarize_document(text, limit=420):
     if len(summary) <= limit:
         return summary
     return summary[: limit - 3].rstrip() + "..."
+
+
+def _extract_title(text, path):
+    for raw in str(text or "").splitlines()[:30]:
+        stripped = raw.strip()
+        if stripped.startswith("#"):
+            return stripped.lstrip("#").strip()
+        match = re.match(r'^title:\s*"?(.*?)"?$', stripped, flags=re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    return Path(path).stem.replace("-", " ").replace("_", " ")
+
+
+def _extract_headings(text):
+    headings = []
+    for raw in str(text or "").splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("#"):
+            heading = stripped.lstrip("#").strip()
+            if heading:
+                headings.append(heading)
+    return headings
+
+
+def _extract_status(text):
+    match = re.search(r"^\s*status:\s*['\"]?([A-Za-z0-9_-]+)", str(text or ""), flags=re.IGNORECASE | re.MULTILINE)
+    return match.group(1).lower() if match else ""
+
+
+def _read_searchable_text(path):
+    if path.suffix.lower() not in SEARCH_TEXT_EXTENSIONS:
+        return ""
+    try:
+        return path.read_text(encoding="utf-8-sig", errors="ignore")
+    except OSError:
+        return ""
+
+
+def _source_kind(path, workspace_root):
+    try:
+        relative = path.relative_to(workspace_root)
+    except ValueError:
+        return "local"
+    root = relative.parts[0] if relative.parts else ""
+    if root == "wiki":
+        return "wiki"
+    if root == "raw":
+        return "raw"
+    if root == "processed":
+        return "processed"
+    if root == "drafts":
+        return "draft_metadata"
+    return "local"
+
+
+def _candidate_score(path, text, terms, task, workspace_root):
+    relative = str(path.relative_to(workspace_root))
+    title = _extract_title(text, path)
+    headings = _extract_headings(text)
+    filename = _normalize_text(path.stem)
+    title_norm = _normalize_text(title)
+    headings_norm = _normalize_text(" ".join(headings))
+    body_norm = _normalize_text(text)
+    relative_norm = _normalize_text(relative)
+    exact_entity_terms = [term for term in _task_terms(task) if re.search(rf"\b{re.escape(term)}\b", filename)]
+
+    score = 0.0
+    matched_terms = []
+    repeated_hits = 0
+    for term in terms:
+        term_re = re.compile(rf"\b{re.escape(term)}\b")
+        file_hits = len(term_re.findall(filename))
+        title_hits = len(term_re.findall(title_norm))
+        heading_hits = len(term_re.findall(headings_norm))
+        body_hits = len(term_re.findall(body_norm))
+        path_hits = len(term_re.findall(relative_norm))
+        if file_hits or title_hits or heading_hits or body_hits or path_hits:
+            matched_terms.append(term)
+        score += file_hits * 8
+        score += title_hits * 7
+        score += heading_hits * 5
+        score += min(body_hits, 6) * 2
+        score += path_hits * 2
+        repeated_hits += max(0, body_hits - 1)
+
+    if len(matched_terms) > 1:
+        score += len(matched_terms) * 3
+    if exact_entity_terms:
+        score += 8
+    score += min(repeated_hits, 8)
+
+    source_kind = _source_kind(path, workspace_root)
+    status = _extract_status(text)
+    if source_kind == "wiki":
+        score += 4
+        if status in TRUSTED_WIKI_STATUSES:
+            score += 5
+    elif source_kind == "processed":
+        score += 3
+    elif source_kind == "raw":
+        score += 1
+    elif source_kind == "draft_metadata":
+        score -= 2
+
+    # Prefer recently processed trusted wiki notes without letting age dominate relevance.
+    if source_kind == "wiki" and status in TRUSTED_WIKI_STATUSES:
+        try:
+            days_old = max(0, (datetime.now(timezone.utc).timestamp() - path.stat().st_mtime) / 86400)
+            score += max(0, 3 - min(days_old, 3))
+        except OSError:
+            pass
+
+    return score, matched_terms, title
+
+
+def _iter_retrieval_candidates(workspace_root):
+    for root_name in RETRIEVAL_SEARCH_ROOTS:
+        root = workspace_root / root_name
+        if not root.exists():
+            continue
+        if root_name == "wiki":
+            roots = [root / name for name in WIKI_SEARCH_DIRS if (root / name).exists()]
+        else:
+            roots = [root]
+        for search_root in roots:
+            for path in search_root.rglob("*"):
+                if not path.is_file() or path.name.startswith("."):
+                    continue
+                yield path
 
 
 def _safe_float(value, default=0.0):
@@ -154,53 +384,68 @@ def _search_wiki_context(task, workspace="."):
 
 def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMIT):
     workspace_root = Path(workspace).resolve()
-    wiki_root = workspace_root / "wiki"
-    if not wiki_root.exists():
-        return []
-
     terms = _task_terms(task)
     if not terms:
         return []
+    required_entities = _required_entity_terms(task)
+    required_fact_terms = _required_fact_terms(task)
 
     candidates = []
-    for directory in WIKI_SEARCH_DIRS:
-        search_dir = wiki_root / directory
-        if not search_dir.exists():
+    for path in _iter_retrieval_candidates(workspace_root):
+        source_kind = _source_kind(path, workspace_root)
+        text = _read_searchable_text(path)
+        if source_kind == "draft_metadata":
+            text_for_scoring = ""
+        else:
+            text_for_scoring = text
+
+        try:
+            relative = str(path.relative_to(workspace_root))
+        except ValueError:
+            relative = str(path)
+
+        score, matched_terms, title = _candidate_score(path, text_for_scoring, terms, task, workspace_root)
+        if not matched_terms:
             continue
-        for path in search_dir.glob("*.md"):
-            if path.name.startswith("."):
-                continue
-            try:
-                text = path.read_text(encoding="utf-8-sig", errors="ignore")
-            except OSError:
-                continue
+        normalized_candidate = _normalize_text(f"{relative} {title} {text_for_scoring}")
+        compact_candidate = normalized_candidate.replace(" ", "")
+        matched_entity_terms = []
+        for entity in required_entities:
+            if any(variant in compact_candidate for variant in _entity_term_variants(entity)):
+                matched_entity_terms.append(entity)
+        if required_entities and len(matched_entity_terms) != len(required_entities):
+            continue
+        if required_fact_terms and not all(term in matched_terms for term in required_fact_terms):
+            continue
+        for entity in matched_entity_terms:
+            if entity not in matched_terms:
+                matched_terms.append(entity)
+                score += 2
 
-            haystack = f"{path.stem} {text}".lower()
-            matches = sum(1 for term in terms if term in haystack)
-            if matches == 0:
-                continue
+        summary = _summarize_document(text)
+        if not summary and source_kind in {"raw", "processed"} and path.suffix.lower() in {".csv", ".xlsx", ".xls"}:
+            summary = f"Source metadata matched: {relative}"
+        elif not summary and source_kind == "draft_metadata":
+            summary = f"Draft metadata matched: {relative}"
+        elif not summary:
+            continue
 
-            score = matches
-            stem = path.stem.lower()
-            score += sum(2 for term in terms if term in stem)
-            title_match = re.search(r'^title:\s*"?(.*?)"?$', text, flags=re.IGNORECASE | re.MULTILINE)
-            if title_match:
-                title = title_match.group(1).lower()
-                score += sum(2 for term in terms if term in title)
+        confidence = min(0.95, 0.30 + (0.07 * min(score, 8)) + (0.05 * min(len(set(matched_terms)), 4)))
+        if source_kind == "draft_metadata":
+            confidence = min(confidence, 0.42)
+        elif source_kind == "raw" and path.suffix.lower() not in SEARCH_TEXT_EXTENSIONS:
+            confidence = min(confidence, 0.48)
 
-            summary = _summarize_document(text)
-            if not summary:
-                continue
-
-            confidence = min(0.9, 0.35 + (0.1 * matches) + (0.05 * min(score, 5)))
-            candidate = {
-                "source": "wiki",
-                "content": summary,
-                "confidence": round(confidence, 2),
-                "path": str(path.relative_to(workspace_root)),
-                "_score": score,
-            }
-            candidates.append(candidate)
+        candidate = {
+            "source": source_kind,
+            "content": summary,
+            "confidence": round(confidence, 2),
+            "path": relative,
+            "title": title,
+            "matched_terms": sorted(set(matched_terms)),
+            "_score": score,
+        }
+        candidates.append(candidate)
 
     candidates.sort(key=lambda item: (-item["_score"], item["path"]))
     selected = candidates[: max(1, int(limit or 1))]
@@ -339,24 +584,24 @@ def detect_knowledge_gap(query, context, workspace="."):
         )
         return result
 
-    if source == "wiki" and (not content or not path):
+    if source in {"wiki", "raw", "processed", "draft_metadata"} and (not content or not path):
         result.update(
             {
                 "gap_detected": True,
                 "gap_type": "weak_answer",
-                "reason": "Wiki evidence matched, but the answer lacks usable content or source path.",
+                "reason": "Local evidence matched, but the answer lacks usable content or source path.",
                 "suggested_sources": ["add a targeted wiki note", "ingest a raw source for this question"],
             }
         )
         return result
 
-    if source == "wiki" and confidence < WEAK_WIKI_CONFIDENCE_THRESHOLD:
+    if source in {"wiki", "raw", "processed", "draft_metadata"} and confidence < WEAK_WIKI_CONFIDENCE_THRESHOLD:
         result.update(
             {
                 "gap_detected": True,
                 "gap_type": "weak_answer",
                 "reason": (
-                    "Wiki evidence matched, but confidence is below the weak-answer threshold "
+                    "Local evidence matched, but confidence is below the weak-answer threshold "
                     f"({confidence:.2f} < {WEAK_WIKI_CONFIDENCE_THRESHOLD:.2f})."
                 ),
                 "suggested_sources": ["add a targeted wiki note", "ingest a raw source for this question"],
@@ -371,6 +616,15 @@ def _get_knowledge_context(task, workspace="."):
     explicit = _read_explicit_local_source(task, workspace=workspace)
     if explicit:
         return explicit
+
+    if "docx" in _original_query_terms(task):
+        return {
+            "source": "none",
+            "content": "",
+            "confidence": 0.0,
+            "path": None,
+            "unsupported_format": "docx",
+        }
 
     if is_broad_summary_query(task):
         return _bounded_summary_context(task, workspace=workspace)
@@ -395,7 +649,7 @@ def compute_knowledge_score(result):
     context = result.get("knowledge_context") or {}
     source = context.get("source")
     confidence = float(context.get("confidence") or 0.0)
-    if source in {"wiki", "wiki_summary"}:
+    if source in {"wiki", "wiki_summary", "raw", "processed"}:
         return max(1, min(3, int(round(confidence * 3))))
     if source == "local":
         return max(2, min(3, int(round(confidence * 3))))
@@ -407,6 +661,8 @@ def compute_knowledge_tier(result):
     source = context.get("source")
     if source == "local":
         return "E3_grounded"
+    if source in {"raw", "processed"}:
+        return "E3_grounded"
     if source in {"wiki", "wiki_summary"}:
         return "E2_wiki"
     return "E0_unknown"
@@ -417,6 +673,12 @@ def build_source_summary(result):
     source = context.get("source")
     if source in {"wiki", "wiki_summary"}:
         return "local_wiki"
+    if source == "raw":
+        return "raw_source"
+    if source == "processed":
+        return "processed_source"
+    if source == "draft_metadata":
+        return "draft_metadata"
     if source == "local":
         return "explicit_local"
     return "unknown"
@@ -437,8 +699,8 @@ def enrich_knowledge_result(task, workspace="."):
         result["evidence"] = f"bounded summary used {len(context.get('sources') or [])} trusted wiki source(s)"
         result["gap_logged"] = context.get("summary_status") == "insufficient_sources"
         result["summary_status"] = context.get("summary_status")
-    elif context.get("source") == "wiki":
-        result["evidence"] = f"wiki retrieval matched {context.get('path')}"
+    elif context.get("source") in {"wiki", "raw", "processed", "draft_metadata"}:
+        result["evidence"] = f"local retrieval matched {context.get('path')}"
         result["gap_logged"] = bool(gap.get("gap_detected"))
     elif context.get("source") == "local":
         result["evidence"] = f"explicit local retrieval matched {context.get('path')}"
@@ -460,6 +722,9 @@ def attach_knowledge_output(result, answer_text=None):
         "source": context.get("source"),
         "content": context.get("content"),
         "confidence": context.get("confidence"),
+        "path": context.get("path"),
+        "title": context.get("title"),
+        "matched_terms": context.get("matched_terms") or [],
         "summary_status": context.get("summary_status"),
         "scope_limit": context.get("scope_limit"),
         "sources": context.get("sources") or [],

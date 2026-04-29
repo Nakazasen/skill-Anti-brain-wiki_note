@@ -1354,6 +1354,123 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertIn("Next narrower questions:", result["answer"])
             self.assertNotIn("runner does not implement a bounded execution path", result["answer"])
 
+    def test_query_retrieves_raw_mom_source_with_mixed_vietnamese_english_terms(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw" / "MOM_WMS_AGV_interface.md"
+            raw.parent.mkdir(parents=True, exist_ok=True)
+            raw.write_text(
+                "# AGV Interface\n\n"
+                "MOM WMS uses AGV communication for warehouse handoff. "
+                "Tai lieu mo ta giao tiep xe tu hanh va rang buoc workflow.\n",
+                encoding="utf-8",
+            )
+
+            result = abw_runner.dispatch_request(
+                task="What is AGV giao tiep MOM WMS?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_answered")
+            self.assertEqual(result["knowledge"]["source"], "raw")
+            self.assertEqual(result["knowledge"]["source_summary"], "raw_source")
+            self.assertEqual(result["knowledge_evidence_tier"], "E3_grounded")
+            self.assertEqual(result["citations"][0]["path"], "raw\\MOM_WMS_AGV_interface.md")
+
+    def test_query_ranking_prefers_exact_trusted_wiki_title_over_noisy_raw_hits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki" / "concepts" / "mom-wms-workflow-constraints.md"
+            wiki.parent.mkdir(parents=True, exist_ok=True)
+            wiki.write_text(
+                "---\n"
+                "title: MOM WMS Workflow Constraints\n"
+                "status: grounded\n"
+                "---\n\n"
+                "# MOM WMS Workflow Constraints\n\n"
+                "Approved station handoff constrains MOM WMS workflow before shipment release.\n",
+                encoding="utf-8",
+            )
+            raw = workspace / "raw" / "agv-noise.md"
+            raw.parent.mkdir(parents=True, exist_ok=True)
+            raw.write_text(("AGV WMS workflow " * 20) + "unrelated note\n", encoding="utf-8")
+
+            result = abw_runner.dispatch_request(
+                task="Which sources mention MOM WMS workflow constraints?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["knowledge"]["source"], "wiki")
+            self.assertEqual(result["knowledge"]["path"], "wiki\\concepts\\mom-wms-workflow-constraints.md")
+            self.assertEqual(result["knowledge_evidence_tier"], "E2_wiki")
+
+    def test_query_returns_gap_for_unsupported_docx_content_even_when_filename_matches(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw" / "website-content.docx"
+            raw.parent.mkdir(parents=True, exist_ok=True)
+            raw.write_bytes(b"PK\x03\x04fake-docx")
+
+            result = abw_runner.dispatch_request(
+                task="What do the DOCX source files say about website content?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+            self.assertEqual(result["citations"], [])
+            self.assertIn("No grounded project evidence was found", result["answer"])
+
+    def test_query_can_report_available_spreadsheet_sources_from_metadata_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw" / "MP2027_budget_simulation.csv"
+            raw.parent.mkdir(parents=True, exist_ok=True)
+            raw.write_text("", encoding="utf-8")
+
+            result = abw_runner.dispatch_request(
+                task="What spreadsheet or CSV sources are available for MP2027 budgeting or simulation?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_answered")
+            self.assertEqual(result["knowledge"]["source"], "raw")
+            self.assertEqual(result["citations"][0]["path"], "raw\\MP2027_budget_simulation.csv")
+            self.assertIn("Source metadata matched", result["answer"])
+
+    def test_query_matches_mpfy2027_spreadsheet_index_as_mp2027(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw" / "source_file_order.csv"
+            raw.parent.mkdir(parents=True, exist_ok=True)
+            raw.write_text(
+                "order,category,filename,enabled,description\n"
+                "1,facility,MPFY2027.xlsx,1,Facility source\n"
+                "2,it_simulation,Simulation_FY2027.xls,1,IT simulation source\n",
+                encoding="utf-8",
+            )
+
+            result = abw_runner.dispatch_request(
+                task="What spreadsheet or CSV sources are available for MP2027 budgeting or simulation?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_answered")
+            self.assertEqual(result["knowledge"]["source"], "raw")
+            self.assertEqual(result["citations"][0]["path"], "raw\\source_file_order.csv")
+            self.assertIn("mp2027", result["citations"][0]["matched_terms"])
+            self.assertIn("xlsx", result["citations"][0]["matched_terms"])
+
     def test_next_actions_menu_displays_indexed_actions(self):
         menu = abw_runner.render_action_menu(["help", {"label": "Tự audit", "command": "audit system"}])
 

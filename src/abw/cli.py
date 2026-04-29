@@ -135,6 +135,9 @@ def parse_args(argv=None):
     query_deep_alt = add_hidden_parser(sub, "query_deep")
     query_deep_alt.add_argument("text")
 
+    eval_parser = add_hidden_parser(sub, "eval")
+    eval_parser.add_argument("--questions", help="Path to custom eval questions YAML/JSON.")
+
     return parser.parse_args(argv)
 
 
@@ -375,6 +378,26 @@ def main(argv=None) -> int:
             _print_deprecation("query-deep")
             result = entry.ask(args.text, workspace=str(workspace))
             return _render_and_exit(result, debug=debug, level=level)
+
+        if args.command == "eval":
+            from .eval import EvalHarness
+
+            harness = EvalHarness(str(workspace), abw_version="0.6.2")
+            questions = harness.load_questions(getattr(args, "questions", None))
+            
+            def runner(q_text):
+                ask_plan = prepare_ask_task(workspace, q_text)
+                res = _legacy_entry.final_output(
+                    _legacy_entry.execute_command("/abw-ask", task=ask_plan["task"], workspace=str(workspace))
+                )
+                # Res looks like {"content": "...", "citations": [...], "logs": [...]}
+                return res.get("content", ""), res.get("citations", []), res.get("logs", [])
+
+            harness.run_eval(questions, runner)
+            report = harness.generate_report()
+            report_path = harness.save_report(os.path.join(str(workspace), ".brain", "eval"))
+            print(f"Eval complete. Report saved to: {report_path}")
+            return _render_and_exit(report, debug=debug, level=level)
 
         print("Unknown command")
         return 2

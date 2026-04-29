@@ -1651,6 +1651,36 @@ def base_result(
     if knowledge is not None:
         result["knowledge"] = knowledge
         result["intent"] = "knowledge"
+        knowledge_source = knowledge.get("source") if isinstance(knowledge, dict) else None
+        if isinstance(knowledge, dict):
+            result["content"] = knowledge.get("answer") or answer
+            citation_path = knowledge.get("path")
+            citations = []
+            if citation_path:
+                citations.append(
+                    {
+                        "source": knowledge_source,
+                        "path": citation_path,
+                        "title": knowledge.get("title"),
+                        "text": knowledge.get("content"),
+                        "matched_terms": knowledge.get("matched_terms") or [],
+                        "confidence": knowledge.get("confidence"),
+                    }
+                )
+            for source in knowledge.get("sources") or []:
+                if isinstance(source, dict) and source.get("path"):
+                    citations.append(
+                        {
+                            "source": knowledge_source or "wiki_summary",
+                            "path": source.get("path"),
+                            "title": source.get("title"),
+                            "text": source.get("content"),
+                            "matched_terms": source.get("matched_terms") or [],
+                            "confidence": source.get("confidence"),
+                        }
+                    )
+            result["citations"] = citations
+            result["logs"] = []
     if extra:
         result.update(extra)
     result["guidance"] = str(result.get("guidance") or default_guidance(result))
@@ -1713,6 +1743,11 @@ def knowledge_body(task, result):
         )
         return f"{body}\n{gap_section}" if gap_section else body
     if result.get("knowledge_evidence_tier") == "E3_grounded":
+        source_summary = build_source_summary(result)
+        if source_summary in {"raw_source", "processed_source"}:
+            return (
+                f"Knowledge answer for '{task}' was retrieved from local source evidence: {content}"
+            )
         return (
             f"Knowledge answer for '{task}' was retrieved from an explicit local source: {content}"
         )

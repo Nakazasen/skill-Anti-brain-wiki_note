@@ -17,6 +17,7 @@ ADVANCED_COMMANDS = (
     ("upgrade", "Upgrade ABW package safely with backup and health checks."),
     ("rollback", "Restore the last runtime backup."),
     ("repair", "Repair runtime drift."),
+    ("eval", "Run retrieval evaluation harness."),
     ("research", "Reserved command. Not implemented yet."),
     ("help --advanced", "Show maintainer commands."),
 )
