@@ -296,7 +296,7 @@ class EvalResult:
 
 
 class EvalHarness:
-    def __init__(self, workspace_path: str, abw_version: str = "0.6.2"):
+    def __init__(self, workspace_path: str, abw_version: str = "0.7.0"):
         self.workspace_path = str(workspace_path)
         self.abw_version = abw_version
         self.results: List[EvalResult] = []

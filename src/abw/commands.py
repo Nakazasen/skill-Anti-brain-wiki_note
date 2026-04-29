@@ -8,6 +8,7 @@ PUBLIC_COMMANDS = (
     ("review", "Review pending drafts."),
     ("provider", "Manage multi-provider routing and health."),
     ("doctor", "Check system health."),
+    ("inspect", "Report corpus intelligence diagnostics."),
     ("version", "Show package and workspace version info."),
     ("migrate", "Normalize an older workspace safely."),
     ("help", "Show product help."),

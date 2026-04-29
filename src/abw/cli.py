@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import entry, ingest as ingest_module, output, overview as overview_module, review, save as save_module
 from .doctor import build_doctor_report, render_doctor_report
+from .inspect import build_inspect_report, render_inspect_report
 from .help import build_help_report, render_help_report
 from .migrate import build_migration_report, render_migration_report
 from .providers import (
@@ -89,6 +90,7 @@ def parse_args(argv=None):
     save_parser.add_argument("text", nargs="?")
     save_parser.add_argument("--stdin", action="store_true")
     add_public_parser(sub, "doctor")
+    add_public_parser(sub, "inspect")
     provider = add_public_parser(sub, "provider")
     provider_sub = provider.add_subparsers(dest="provider_command", metavar="provider-command")
 
@@ -276,6 +278,11 @@ def main(argv=None) -> int:
 
         if args.command == "doctor":
             return _render_and_exit(_doctor_result(str(workspace)), debug=debug, level=level)
+
+        if args.command == "inspect":
+            report = build_inspect_report(workspace)
+            print(render_inspect_report(report))
+            return 0
 
         if args.command == "provider":
             if args.provider_command == "list":
