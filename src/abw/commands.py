@@ -14,6 +14,7 @@ PUBLIC_COMMANDS = (
     ("recover-verify", "Measure improvement between the last two evaluation runs."),
     ("trend", "Analyze historical health and retrieval quality trends."),
     ("improve", "Turn diagnostics into prioritized action items."),
+    ("apply", "Safely execute or dry-run remediation actions."),
     ("version", "Show package and workspace version info."),
     ("migrate", "Normalize an older workspace safely."),
     ("help", "Show product help."),

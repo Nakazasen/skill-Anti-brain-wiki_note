@@ -86,3 +86,5 @@ __pycache__/
 # --- ABW session-specific artifacts ---
 scratch/
 tests/logs/
+.pytest_tmp/
+.tmp/

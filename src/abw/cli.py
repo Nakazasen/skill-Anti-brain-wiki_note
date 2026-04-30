@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import sys
 from pathlib import Path
 
-from . import entry, ingest as ingest_module, output, overview as overview_module, review, save as save_module
+from . import __version__, entry, ingest as ingest_module, output, overview as overview_module, review, save as save_module
 from .doctor import build_doctor_report, render_doctor_report
 from .gaps import build_gap_report, render_gap_report
 from .inspect import build_inspect_report, render_inspect_report
@@ -30,6 +31,7 @@ from .recovery import build_recovery_report, render_recovery_report
 from .recovery_verify import build_verify_report, render_verify_report
 from .trend import build_trend_report, render_trend_report
 from .improve import build_improvement_plan, render_improvement_plan
+from .apply import ACTIONS as APPLY_ACTIONS, render_apply_report, run_apply, run_rollback
 from .commands import DEPRECATED_ALIASES, PUBLIC_HELP
 from .legacy import load
 from .workspace import ensure_workspace, init_workspace, resolve_workspace
@@ -103,6 +105,11 @@ def parse_args(argv=None):
     add_public_parser(sub, "recover-verify")
     add_public_parser(sub, "trend")
     add_public_parser(sub, "improve")
+    apply_parser = add_public_parser(sub, "apply")
+    apply_parser.add_argument("--dry-run", action="store_true", help="Plan only. This is the default unless --yes is used.")
+    apply_parser.add_argument("--yes", action="store_true", help="Apply the planned remediation.")
+    apply_parser.add_argument("apply_action", choices=(*APPLY_ACTIONS, "rollback"))
+    apply_parser.add_argument("rollback_id", nargs="?")
     provider = add_public_parser(sub, "provider")
     provider_sub = provider.add_subparsers(dest="provider_command", metavar="provider-command")
 
@@ -166,6 +173,21 @@ def _result_exit_code(result) -> int:
 def _render_and_exit(result, *, debug: bool = False, level: str | None = None) -> int:
     print(output.render(result, debug=debug, level=level))
     return _result_exit_code(result)
+
+
+def _standardize_json(report: dict, command_name: str, workspace: Path | str, status: str = "success") -> dict:
+    standardized = {
+        "schema_version": __version__,
+        "command_name": command_name,
+        "workspace": str(workspace),
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
+        "status": status,
+    }
+    # Merge existing report fields, but don't overwrite standard ones
+    for k, v in report.items():
+        if k not in standardized:
+            standardized[k] = v
+    return standardized
 
 
 def _print_menu() -> int:
@@ -293,21 +315,32 @@ def main(argv=None) -> int:
 
         if args.command == "inspect":
             report = build_inspect_report(workspace)
-            print(render_inspect_report(report))
+            if args.json:
+                print(json.dumps(_standardize_json(report, "inspect", workspace), indent=2))
+            else:
+                print(render_inspect_report(report))
             return 0
 
         if args.command == "gaps":
-            print(render_gap_report(build_gap_report(workspace)))
+            report = build_gap_report(workspace)
+            if args.json:
+                print(json.dumps(_standardize_json(report, "gaps", workspace), indent=2))
+            else:
+                print(render_gap_report(report))
             return 0
 
         if args.command == "recover-plan":
-            print(render_recovery_report(build_recovery_report(workspace)))
+            report = build_recovery_report(workspace)
+            if args.json:
+                print(json.dumps(_standardize_json(report, "recover-plan", workspace), indent=2))
+            else:
+                print(render_recovery_report(report))
             return 0
 
         if args.command == "recover-verify":
             report = build_verify_report(workspace)
             if args.json:
-                print(json.dumps(report, indent=2))
+                print(json.dumps(_standardize_json(report, "recover-verify", workspace), indent=2))
             else:
                 print(render_verify_report(report))
             return 0
@@ -315,7 +348,7 @@ def main(argv=None) -> int:
         if args.command == "trend":
             report = build_trend_report(workspace)
             if args.json:
-                print(json.dumps(report, indent=2))
+                print(json.dumps(_standardize_json(report, "trend", workspace), indent=2))
             else:
                 print(render_trend_report(report))
             return 0
@@ -323,9 +356,27 @@ def main(argv=None) -> int:
         if args.command == "improve":
             report = build_improvement_plan(workspace)
             if args.json:
-                print(json.dumps(report, indent=2))
+                print(json.dumps(_standardize_json(report, "improve", workspace), indent=2))
             else:
                 print(render_improvement_plan(report))
+            return 0
+
+        if args.command == "apply":
+            try:
+                if args.apply_action == "rollback":
+                    if not args.rollback_id:
+                        print("Missing action id. Use: abw apply rollback <action-id> --yes")
+                        return 2
+                    report = run_rollback(workspace, args.rollback_id, yes=getattr(args, "yes", False))
+                else:
+                    report = run_apply(workspace, args.apply_action, yes=getattr(args, "yes", False))
+            except ValueError as exc:
+                print(str(exc))
+                return 2
+            if args.json:
+                print(json.dumps(_standardize_json(report, "apply", workspace), indent=2))
+            else:
+                print(render_apply_report(report))
             return 0
 
         if args.command == "provider":
@@ -433,7 +484,7 @@ def main(argv=None) -> int:
         if args.command == "eval":
             from .eval import EvalHarness
 
-            harness = EvalHarness(str(workspace), abw_version="0.7.1")
+            harness = EvalHarness(str(workspace), abw_version=__version__)
             questions = harness.load_questions(getattr(args, "questions", None))
             
             def runner(q_text):

@@ -14,6 +14,7 @@ KNOWLEDGE_TIER_RANK = {
 KNOWLEDGE_STOPWORDS = {
     "a",
     "an",
+    "ai",
     "and",
     "are",
     "cho",
@@ -31,13 +32,14 @@ KNOWLEDGE_STOPWORDS = {
     "this",
     "ve",
     "what",
+    "who",
     "why",
     "summarize",
     "summary",
     "summarise",
     "overview",
 }
-WIKI_SEARCH_DIRS = ("concepts", "entities", "timelines", "sources")
+WIKI_SEARCH_DIRS = ("concepts", "entities", "timelines", "sources", "auto_promoted", "manual")
 WEAK_WIKI_CONFIDENCE_THRESHOLD = 0.45
 BOUNDED_SUMMARY_SOURCE_LIMIT = 5
 SEARCH_TEXT_EXTENSIONS = {".md", ".txt", ".json", ".jsonl", ".csv", ".html", ".htm"}
@@ -149,6 +151,31 @@ def _required_entity_terms(task):
     ]
 
 
+def _required_named_entity_phrases(task):
+    text = str(task or "").strip()
+    patterns = [
+        r"^\s*(?P<entity>.+?)\s+(?:là|la)\s+ai\s*\??\s*$",
+        r"^\s*who\s+is\s+(?P<entity>.+?)\s*\??\s*$",
+    ]
+    phrases = []
+    seen = set()
+    for pattern in patterns:
+        match = re.match(pattern, text, flags=re.IGNORECASE)
+        if not match:
+            continue
+        entity = re.sub(r"[?!.。]+$", "", match.group("entity").strip())
+        normalized_terms = [term for term in _normalize_text(entity).split() if len(term) >= 2 and term not in KNOWLEDGE_STOPWORDS]
+        if len(normalized_terms) < 2:
+            continue
+        normalized = " ".join(normalized_terms)
+        compact = normalized.replace(" ", "")
+        if compact in seen:
+            continue
+        seen.add(compact)
+        phrases.append({"text": entity, "normalized": normalized, "compact": compact})
+    return phrases
+
+
 def _entity_term_variants(term):
     variants = {str(term or "").lower()}
     match = re.fullmatch(r"([a-z]+)(20\d{2})", str(term or "").lower())
@@ -165,6 +192,25 @@ def _required_fact_terms(task):
     if "cutover" in terms:
         required.append("cutover")
     return required
+
+
+def _strict_chapter_number(task):
+    match = re.search(r"\bch(?:uong|ương)\s+(\d+)\b", str(task or ""), flags=re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def _required_domain_terms(task):
+    normalized_terms = set(_original_query_terms(task))
+    required = []
+    for term in ("agv", "mom", "wms"):
+        if term in normalized_terms:
+            required.append(term)
+    return required
+
+
+def _high_specificity_query_terms(task):
+    generic_terms = GENERIC_SOURCE_TERMS.union({"agv", "mom", "wms"})
+    return [term for term in _original_query_terms(task) if len(term) >= 4 and term not in generic_terms]
 
 
 def _summarize_document(text, limit=420):
@@ -285,13 +331,13 @@ def _candidate_score(path, text, terms, task, workspace_root):
     if source_kind == "wiki":
         score += 4
         if status in TRUSTED_WIKI_STATUSES:
-            score += 5
+            score += 60
     elif source_kind == "processed":
         score += 3
     elif source_kind == "raw":
         score += 1
     elif source_kind == "draft_metadata":
-        score -= 2
+        score -= 20
 
     # Prefer recently processed trusted wiki notes without letting age dominate relevance.
     if source_kind == "wiki" and status in TRUSTED_WIKI_STATUSES:
@@ -304,19 +350,71 @@ def _candidate_score(path, text, terms, task, workspace_root):
     return score, matched_terms, title
 
 
+def _strict_exact_match(task, relative, title, matched_terms, filename_norm, title_norm, normalized_candidate, compact_candidate):
+    required_named_entities = _required_named_entity_phrases(task)
+    if required_named_entities and all(
+        entity["normalized"] in normalized_candidate or entity["compact"] in compact_candidate
+        for entity in required_named_entities
+    ):
+        return True
+
+    strict_chapter_number = _strict_chapter_number(task)
+    if strict_chapter_number:
+        chapter_re = re.compile(rf"\b{re.escape(strict_chapter_number)}\b")
+        if chapter_re.search(filename_norm) or chapter_re.search(title_norm):
+            return True
+
+    normalized_query = _normalize_text(task).strip()
+    relative_norm = _normalize_text(relative)
+    if normalized_query and (normalized_query in title_norm or normalized_query in relative_norm):
+        return True
+
+    specific_terms = _high_specificity_query_terms(task)
+    if len(specific_terms) >= 2 and all(term in matched_terms for term in specific_terms):
+        return True
+
+    return False
+
+
+def _is_search_excluded(path, text):
+    """
+    Checks if a file should be excluded from knowledge retrieval.
+    Excludes:
+    - Paths containing 'quarantine'
+    - Filenames containing 'README'
+    - Files with frontmatter type: 'meta'
+    """
+    path_str = str(path).lower().replace("\\", "/")
+    if "quarantine" in path_str:
+        return True
+    if "readme" in path.name.lower():
+        return True
+
+    if re.search(r"^\s*type:\s*['\"]?meta['\"]?\s*$", str(text or ""), flags=re.IGNORECASE | re.MULTILINE):
+        return True
+
+    return False
+
+
 def _iter_retrieval_candidates(workspace_root):
+    seen: set[Path] = set()
     for root_name in RETRIEVAL_SEARCH_ROOTS:
         root = workspace_root / root_name
         if not root.exists():
             continue
         if root_name == "wiki":
-            roots = [root / name for name in WIKI_SEARCH_DIRS if (root / name).exists()]
+            roots = [root]
+            roots.extend(root / name for name in WIKI_SEARCH_DIRS if (root / name).exists())
         else:
             roots = [root]
         for search_root in roots:
             for path in search_root.rglob("*"):
                 if not path.is_file() or path.name.startswith("."):
                     continue
+                resolved = path.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
                 yield path
 
 
@@ -388,16 +486,20 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
     if not terms:
         return []
     required_entities = _required_entity_terms(task)
+    required_named_entities = _required_named_entity_phrases(task)
     required_fact_terms = _required_fact_terms(task)
+    strict_chapter_number = _strict_chapter_number(task)
+    required_domain_terms = _required_domain_terms(task)
 
     candidates = []
     for path in _iter_retrieval_candidates(workspace_root):
         source_kind = _source_kind(path, workspace_root)
         text = _read_searchable_text(path)
-        if source_kind == "draft_metadata":
-            text_for_scoring = ""
-        else:
-            text_for_scoring = text
+
+        if _is_search_excluded(path, text):
+            continue
+
+        text_for_scoring = text
 
         try:
             relative = str(path.relative_to(workspace_root))
@@ -407,8 +509,31 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
         score, matched_terms, title = _candidate_score(path, text_for_scoring, terms, task, workspace_root)
         if not matched_terms:
             continue
-        normalized_candidate = _normalize_text(f"{relative} {title} {text_for_scoring}")
+        headings = _extract_headings(text_for_scoring)
+        title_norm = _normalize_text(title)
+        headings_norm = _normalize_text(" ".join(headings))
+        body_norm = _normalize_text(text_for_scoring)
+        filename_norm = _normalize_text(path.stem)
+        normalized_candidate = _normalize_text(f"{relative} {title} {' '.join(headings)} {text_for_scoring}")
         compact_candidate = normalized_candidate.replace(" ", "")
+        if strict_chapter_number:
+            chapter_re = re.compile(rf"\b{re.escape(strict_chapter_number)}\b")
+            if not (
+                chapter_re.search(filename_norm)
+                or chapter_re.search(title_norm)
+                or chapter_re.search(headings_norm)
+            ):
+                continue
+        if required_domain_terms:
+            title_and_body = f"{title_norm} {headings_norm} {body_norm}"
+            if not all(re.search(rf"\b{re.escape(term)}\b", title_and_body) for term in required_domain_terms):
+                continue
+        matched_named_entities = []
+        for entity in required_named_entities:
+            if entity["normalized"] in normalized_candidate or entity["compact"] in compact_candidate:
+                matched_named_entities.append(entity["compact"])
+        if required_named_entities and len(matched_named_entities) != len(required_named_entities):
+            continue
         matched_entity_terms = []
         for entity in required_entities:
             if any(variant in compact_candidate for variant in _entity_term_variants(entity)):
@@ -443,6 +568,24 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
             "path": relative,
             "title": title,
             "matched_terms": sorted(set(matched_terms)),
+            "retrieval_status": (
+                "grounded"
+                if source_kind == "wiki" and _extract_status(text) == "grounded"
+                else (
+                    "exact_match"
+                    if _strict_exact_match(
+                        task,
+                        relative,
+                        title,
+                        set(matched_terms),
+                        filename_norm,
+                        title_norm,
+                        normalized_candidate,
+                        compact_candidate,
+                    )
+                    else "fuzzy_match"
+                )
+            ),
             "_score": score,
         }
         candidates.append(candidate)
@@ -574,11 +717,16 @@ def detect_knowledge_gap(query, context, workspace="."):
     }
 
     if source in (None, "none"):
+        named_entities = context.get("required_named_entities") or _required_named_entity_phrases(query)
         result.update(
             {
                 "gap_detected": True,
                 "gap_type": "missing_evidence",
-                "reason": "No local wiki or explicit source matched the question.",
+                "reason": (
+                    f"No source contained the required named entity: {named_entities[0]['text']}."
+                    if named_entities
+                    else "No local wiki or explicit source matched the question."
+                ),
                 "suggested_sources": ["wiki/", "raw/"],
             }
         )
@@ -612,19 +760,24 @@ def detect_knowledge_gap(query, context, workspace="."):
     return result
 
 
+def _no_match_context(task):
+    named_entities = _required_named_entity_phrases(task)
+    context = {
+        "source": "none",
+        "content": "",
+        "confidence": 0.0,
+        "path": None,
+        "retrieval_status": "no_match",
+    }
+    if named_entities:
+        context["required_named_entities"] = named_entities
+    return context
+
+
 def _get_knowledge_context(task, workspace="."):
     explicit = _read_explicit_local_source(task, workspace=workspace)
     if explicit:
         return explicit
-
-    if "docx" in _original_query_terms(task):
-        return {
-            "source": "none",
-            "content": "",
-            "confidence": 0.0,
-            "path": None,
-            "unsupported_format": "docx",
-        }
 
     if is_broad_summary_query(task):
         return _bounded_summary_context(task, workspace=workspace)
@@ -633,12 +786,7 @@ def _get_knowledge_context(task, workspace="."):
     if wiki_context:
         return wiki_context
 
-    return {
-        "source": "none",
-        "content": "",
-        "confidence": 0.0,
-        "path": None,
-    }
+    return _no_match_context(task)
 
 
 def get_knowledge_context(task: str) -> dict:
@@ -725,6 +873,8 @@ def attach_knowledge_output(result, answer_text=None):
         "path": context.get("path"),
         "title": context.get("title"),
         "matched_terms": context.get("matched_terms") or [],
+        "retrieval_status": context.get("retrieval_status") or ("no_match" if context.get("source") in {None, "none"} else "fuzzy_match"),
+        "required_named_entities": context.get("required_named_entities") or [],
         "summary_status": context.get("summary_status"),
         "scope_limit": context.get("scope_limit"),
         "sources": context.get("sources") or [],

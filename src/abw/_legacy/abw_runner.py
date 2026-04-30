@@ -1732,10 +1732,11 @@ def knowledge_body(task, result):
         ]
         return "\n".join(lines)
     if result.get("knowledge_evidence_tier") == "E0_unknown":
-        body = (
-            f"Incomplete knowledge answer for '{task}'. "
-            "No grounded project evidence was found, so the request is surfaced as a visible gap."
-        )
+        named_entities = context.get("required_named_entities") or []
+        if named_entities:
+            body = f"Không tìm thấy thông tin đáng tin cậy về {named_entities[0].get('text')}."
+            return f"{body}\n{gap_section}" if gap_section else body
+        body = "Không tìm thấy thông tin đáng tin cậy."
         return f"{body}\n{gap_section}" if gap_section else body
     if result.get("knowledge_evidence_tier") == "E2_wiki":
         body = (
