@@ -11,7 +11,6 @@ from .inspect import build_inspect_report
 
 READABLE_EXTENSIONS = {".md", ".txt", ".json", ".jsonl", ".csv", ".html", ".htm"}
 UNSUPPORTED_FORMAT_ACTIONS = {
-    ".docx": "convert docx to pdf/txt",
     ".xls": "convert xls to xlsx/csv or add a text index",
 }
 STALE_DRAFT_THRESHOLD = 10
@@ -164,10 +163,10 @@ def _make_gap(
     }
 
 
-def _has_failed_docx_question(failed_details: list[dict[str, Any]]) -> bool:
+def _has_failed_unsupported_format_question(failed_details: list[dict[str, Any]]) -> bool:
     for detail in failed_details:
         text = f"{detail.get('id', '')} {detail.get('question', '')} {detail.get('reason', '')}".lower()
-        if "docx" in text:
+        if any(ext.lstrip(".") in text for ext in UNSUPPORTED_FORMAT_ACTIONS):
             return True
     return False
 
@@ -233,32 +232,36 @@ def build_gap_report(workspace: str | Path = ".") -> dict[str, Any]:
 
     gaps.extend(_classify_identity_gaps(root, failed_details, corpus_index))
 
-    docx_count = int(by_ext.get(".docx", 0) or 0)
     unsupported_count = int(raw_stats.get("unsupported", 0) or 0)
-    if docx_count and (failed_details or raw_stats.get("total", 0)):
-        affected = [_question_label(detail) for detail in failed_details if "docx" in str(detail.get("question", "")).lower()]
-        if affected or docx_count >= max(1, int(raw_stats.get("total", 0) or 0) // 2):
+    xls_count = int(by_ext.get(".xls", 0) or 0)
+    if xls_count and (failed_details or raw_stats.get("total", 0)):
+        affected = [_question_label(detail) for detail in failed_details if "xls" in str(detail.get("question", "")).lower()]
+        if affected or xls_count >= max(1, int(raw_stats.get("total", 0) or 0) // 2):
             gaps.append(
                 _make_gap(
                     "format_block",
                     affected_questions=affected,
-                    suspected_cause=f"Unsupported DOCX files dominate or block retrievable local evidence.",
+                    suspected_cause=f"Unsupported XLS files dominate or block retrievable local evidence.",
                     evidence={
-                        "docx_count": docx_count,
+                        "xls_count": xls_count,
                         "unsupported_count": unsupported_count,
                         "raw_total": raw_stats.get("total", 0),
-                        "sample_files": _sample_files_by_ext(root, ".docx"),
+                        "sample_files": _sample_files_by_ext(root, ".xls"),
                     },
-                    suggested_next_actions=["convert docx to pdf/txt", "run eval again after supported sources exist"],
+                    suggested_next_actions=["convert xls to xlsx/csv or add a text index", "run eval again after supported sources exist"],
                     severity="fail" if affected else "warn",
                 )
             )
 
-    if unsupported_count and _has_failed_docx_question(failed_details):
+    if unsupported_count and _has_failed_unsupported_format_question(failed_details):
         gaps.append(
             _make_gap(
                 "unsupported_source_gap",
-                affected_questions=[_question_label(detail) for detail in failed_details if "docx" in str(detail.get("question", "")).lower()],
+                affected_questions=[
+                    _question_label(detail)
+                    for detail in failed_details
+                    if any(ext.lstrip(".") in str(detail.get("question", "")).lower() for ext in UNSUPPORTED_FORMAT_ACTIONS)
+                ],
                 suspected_cause="The failed question asks about source formats ABW does not parse as grounded text.",
                 evidence={"unsupported_count": unsupported_count, "by_ext": by_ext},
                 suggested_next_actions=["convert unsupported source files to supported text, PDF, CSV, XLSX, or HTML"],

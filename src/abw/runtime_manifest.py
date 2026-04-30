@@ -54,6 +54,7 @@ MIRRORED_RUNTIME_MODULES = (
 )
 
 SCRIPT_ONLY_MODULES = (
+    "desktop_smoke.py",
     "release_smoke.py",
 )
 

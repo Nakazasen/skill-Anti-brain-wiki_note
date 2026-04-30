@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Set
 
 SUPPORTED_EXTENSIONS = {
-    ".pdf", ".txt", ".md", ".py", ".js", ".json", ".csv", ".xlsx", ".html", ".htm", ".ts"
+    ".pdf", ".txt", ".md", ".py", ".js", ".json", ".csv", ".docx", ".xlsx", ".html", ".htm", ".ts"
 }
 
 def build_inspect_report(workspace: str) -> Dict[str, Any]:
@@ -57,11 +57,6 @@ def build_inspect_report(workspace: str) -> Dict[str, Any]:
         report["processed_stats"]["total"] = len([f for f in proc_files if f.is_file()])
 
     # 5. Suggestions logic
-    docx_count = report["raw_stats"]["by_ext"].get(".docx", 0)
-    if docx_count > 0:
-        report["suggestions"].append(f"convert {docx_count} docx to pdf/txt")
-        report["weak_areas"].append(f"unsupported format: {docx_count} docx files")
-
     if report["raw_stats"]["total"] > 0 and report["wiki_stats"]["total"] == 0:
         report["suggestions"].append("add wiki notes for key topics")
         report["weak_areas"].append("zero wiki coverage")
