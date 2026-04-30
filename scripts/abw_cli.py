@@ -11,9 +11,11 @@ if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
 from abw.overview import build_overview
+from abw.gaps import build_gap_report, render_gap_report
 from abw.save import save_candidate
 from abw.self_check import build_self_check_report, render_self_check_report
 from abw.upgrade import build_upgrade_report, render_upgrade_report
+from abw.apply import ACTIONS as APPLY_ACTIONS, render_apply_report, run_apply, run_rollback
 try:
     from abw.upgrade import perform_upgrade
 except ImportError:  # pragma: no cover - allows script CLI to run with older installed package
@@ -102,6 +104,12 @@ def parse_args(argv=None):
     save.add_argument("text", nargs="?")
     save.add_argument("--stdin", action="store_true")
     add_public_parser(sub, "doctor")
+    add_public_parser(sub, "gaps")
+    apply_parser = add_public_parser(sub, "apply")
+    apply_parser.add_argument("--dry-run", action="store_true")
+    apply_parser.add_argument("--yes", action="store_true")
+    apply_parser.add_argument("apply_action", choices=(*APPLY_ACTIONS, "rollback"))
+    apply_parser.add_argument("rollback_id", nargs="?")
     upgrade_parser = add_hidden_parser(sub, "upgrade")
     upgrade_parser.add_argument("--check", action="store_true")
     upgrade_parser.add_argument("--to", dest="to_version")
@@ -212,6 +220,25 @@ def main(argv=None) -> int:
 
     if args.command == "doctor":
         return run_entry_command("/abw-doctor", debug=args.debug, level=level)
+
+    if args.command == "gaps":
+        print(render_gap_report(build_gap_report(".")))
+        return 0
+
+    if args.command == "apply":
+        try:
+            if args.apply_action == "rollback":
+                if not args.rollback_id:
+                    print("Missing action id. Use: abw apply rollback <action-id> --yes")
+                    return 2
+                report = run_rollback(".", args.rollback_id, yes=getattr(args, "yes", False))
+            else:
+                report = run_apply(".", args.apply_action, yes=getattr(args, "yes", False))
+        except ValueError as exc:
+            print(str(exc))
+            return 2
+        print(render_apply_report(report))
+        return 0
 
     if args.command == "upgrade":
         if getattr(args, "check", False):

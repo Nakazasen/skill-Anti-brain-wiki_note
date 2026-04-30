@@ -36,6 +36,7 @@ SUPPORTED_SOURCE_EXTENSIONS = {
     "webp",
     "tif",
     "tiff",
+    "docx",
     "xlsx",
     "pdf",
     "pptx",
@@ -328,9 +329,7 @@ def recovery_suggestions(corpus, summary):
     if corpus.get("classification") == "empty_corpus":
         suggestions.append("add raw files or trusted wiki notes before retrieval benchmarking")
     if corpus.get("classification") == "unsupported_corpus":
-        suggestions.append("unsupported corpus: export docx sources to pdf or txt before ingest")
-    if corpus.get("unsupported_source_counts", {}).get("docx"):
-        suggestions.append("docx is not parsed yet; export docx to pdf/txt")
+        suggestions.append("unsupported corpus: convert unsupported sources to supported formats before ingest")
     return suggestions or ["none"]
 
 

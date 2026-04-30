@@ -38,8 +38,8 @@ TEXT_EXTENSIONS = {".md", ".markdown", ".txt", ".rst", ".adoc"}
 CSV_EXTENSIONS = {".csv"}
 HTML_EXTENSIONS = {".html", ".htm"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tif", ".tiff"}
-SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS | CSV_EXTENSIONS | HTML_EXTENSIONS | IMAGE_EXTENSIONS | {".xlsx", ".pdf", ".pptx"}
-ENTERPRISE_PERCEPTION_EXTENSIONS = IMAGE_EXTENSIONS | {".xlsx", ".pdf", ".pptx"}
+SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS | CSV_EXTENSIONS | HTML_EXTENSIONS | IMAGE_EXTENSIONS | {".docx", ".xlsx", ".pdf", ".pptx"}
+ENTERPRISE_PERCEPTION_EXTENSIONS = IMAGE_EXTENSIONS | {".docx", ".xlsx", ".pdf", ".pptx"}
 LOW_CONFIDENCE_REVIEW_THRESHOLD = 0.45
 AUTO_PROMOTE_THRESHOLD = 0.8
 MIN_USEFUL_OCR_TOKENS = 3
@@ -1539,6 +1539,183 @@ def _extract_xlsx(path: Path) -> dict:
     }
 
 
+def _docx_text_nodes(element) -> str:
+    parts = []
+    for node in element.iter():
+        if _xml_local_name(node.tag) == "t" and node.text:
+            text = _xlsx_safe_text(node.text)
+            if text:
+                parts.append(text)
+    return " ".join(parts).strip()
+
+
+def _docx_child(element, local_name: str):
+    for child in element:
+        if _xml_local_name(child.tag) == local_name:
+            return child
+    return None
+
+
+def _docx_paragraph_style(paragraph) -> str:
+    props = _docx_child(paragraph, "pPr")
+    if props is None:
+        return ""
+    for child in props:
+        if _xml_local_name(child.tag) == "pStyle":
+            return _xml_attr(child, "val")
+    return ""
+
+
+def _docx_is_list_paragraph(paragraph) -> bool:
+    props = _docx_child(paragraph, "pPr")
+    if props is None:
+        return False
+    style = _docx_paragraph_style(paragraph).lower()
+    if "list" in style:
+        return True
+    return any(_xml_local_name(child.tag) == "numPr" for child in props)
+
+
+def _docx_is_heading(text: str, style: str) -> bool:
+    normalized_style = re.sub(r"\s+", "", str(style or "").lower())
+    if normalized_style.startswith("heading") or normalized_style.startswith("title"):
+        return True
+    return bool(re.match(r"^(?:chapter|chuong|chương)\s+\d+\s*(?:$|[-:–])", str(text or "").strip(), flags=re.IGNORECASE))
+
+
+def _docx_table_rows(table) -> list[str]:
+    rows = []
+    for row in table.iter():
+        if _xml_local_name(row.tag) != "tr":
+            continue
+        cells = []
+        for cell in row:
+            if _xml_local_name(cell.tag) != "tc":
+                continue
+            text = _docx_text_nodes(cell)
+            cells.append(text or "")
+        cleaned = [cell for cell in cells if cell]
+        if cleaned:
+            rows.append(" | ".join(cleaned))
+    return rows
+
+
+def _docx_core_metadata(archive: zipfile.ZipFile) -> dict[str, str]:
+    root = _xml_root_from_zip(archive, "docProps/core.xml")
+    if root is None:
+        return {}
+    values = {}
+    for node in root.iter():
+        key = _xml_local_name(node.tag).lower()
+        if key in {"title", "subject", "creator", "description"} and node.text:
+            text = _xlsx_safe_text(node.text)
+            if text:
+                values[key] = text
+    return values
+
+
+def _extract_docx(path: Path) -> dict:
+    try:
+        with zipfile.ZipFile(path, "r") as archive:
+            document = _xml_root_from_zip(archive, "word/document.xml")
+            metadata = _docx_core_metadata(archive)
+    except zipfile.BadZipFile as exc:
+        raise ValueError(f"DOCX parser failed for {path.name}: invalid zip container") from exc
+
+    if document is None:
+        raise ValueError(f"DOCX parser failed for {path.name}: missing word/document.xml")
+
+    body = None
+    for child in document.iter():
+        if _xml_local_name(child.tag) == "body":
+            body = child
+            break
+    if body is None:
+        raise ValueError(f"DOCX parser failed for {path.name}: missing document body")
+
+    sections = []
+    headings = []
+    paragraphs = []
+    lists = []
+    tables = []
+    order = 0
+    table_index = 0
+    chapter_title = metadata.get("title") or path.stem
+
+    for child in body:
+        local_name = _xml_local_name(child.tag)
+        if local_name == "p":
+            text = _docx_text_nodes(child)
+            if not text:
+                continue
+            order += 1
+            style = _docx_paragraph_style(child)
+            if _docx_is_heading(text, style):
+                if not headings:
+                    chapter_title = text
+                headings.append({"order": order, "text": text, "style": style})
+                sections.append(f"Section order {order}: Heading: {text}")
+            elif _docx_is_list_paragraph(child):
+                lists.append({"order": order, "text": text})
+                sections.append(f"Section order {order}: List item: {text}")
+            else:
+                paragraphs.append({"order": order, "text": text})
+                sections.append(f"Section order {order}: Paragraph: {text}")
+        elif local_name == "tbl":
+            table_rows = _docx_table_rows(child)
+            if not table_rows:
+                continue
+            order += 1
+            table_index += 1
+            tables.append({"order": order, "rows": table_rows})
+            sections.append(f"Section order {order}: Table {table_index}:")
+            sections.extend(f"- Table {table_index} row {row_index}: {row_text}" for row_index, row_text in enumerate(table_rows, start=1))
+
+    value_lines = [item["text"] for item in headings + paragraphs + lists]
+    for table in tables:
+        value_lines.extend(table["rows"])
+    if not value_lines:
+        raise ValueError(f"DOCX parser failed for {path.name}: no readable text extracted")
+
+    content = "\n".join(
+        [
+            f"Filename: {path.name}",
+            f"Chapter title: {chapter_title}",
+            f"Section count: {order}",
+            "",
+            *sections,
+        ]
+    )
+    confidence = _calibrate_confidence(
+        base=0.56,
+        text_lines=value_lines,
+        structured=bool(headings or tables or lists),
+        noisy=0.02,
+        provider_success=True,
+        method="structured_native",
+    )
+    signals = ["docx_container", "paragraphs"]
+    if headings:
+        signals.append("headings")
+    if lists:
+        signals.append("lists")
+    if tables:
+        signals.append("tables")
+    return {
+        "format": "docx",
+        "content": content,
+        "confidence": _clamp(confidence, 0.0, 0.84),
+        "provenance": [
+            _provenance("metadata", "docx_core_metadata", 0.72 if metadata else 0.35, f"filename={path.name}; chapter_title={chapter_title}", ref="docProps/core.xml"),
+            _provenance("headings", "docx_heading_parse", 0.78 if headings else 0.22, f"{len(headings)} heading blocks", ref="word/document.xml#w:p"),
+            _provenance("text", "docx_paragraph_parse", 0.8 if paragraphs else 0.28, f"{len(paragraphs)} paragraph blocks", ref="word/document.xml#w:p"),
+            _provenance("lists", "docx_list_parse", 0.74 if lists else 0.22, f"{len(lists)} list items", ref="word/document.xml#w:numPr"),
+            _provenance("tables", "docx_table_parse", 0.76 if tables else 0.22, f"{sum(len(table['rows']) for table in tables)} table rows", ref="word/document.xml#w:tbl"),
+        ],
+        "document_type": {"type": "text_document", "confidence": 0.78, "signals": signals},
+    }
+
+
 def _extract_pptx(path: Path) -> dict:
     slide_text = []
     notes_text = []
@@ -2012,6 +2189,8 @@ def _extract_multimodal_content(raw_path: Path, *, workspace: str = ".", ingest_
         return _extract_csv(raw_path)
     if suffix in HTML_EXTENSIONS:
         return _extract_html(raw_path)
+    if suffix == ".docx":
+        return _extract_docx(raw_path)
     if suffix == ".xlsx":
         return _extract_xlsx(raw_path)
     if suffix == ".pptx":
@@ -2311,12 +2490,15 @@ def _relative_workspace_path(path: Path, workspace: str) -> str:
         return str(path).replace("\\", "/")
 
 
-def _skip_record(path: Path, workspace: str, reason: str, action: str = "skipped") -> dict:
-    return {
+def _skip_record(path: Path, workspace: str, reason: str, action: str = "skipped", message: str = "") -> dict:
+    record = {
         "path": _relative_workspace_path(path, workspace),
         "reason": reason,
         "action": action,
     }
+    if message:
+        record["message"] = _shorten(message, limit=240)
+    return record
 
 
 def _is_empty_skip_candidate(path: Path) -> bool:
@@ -2890,9 +3072,9 @@ def run(task: str, workspace: str) -> dict:
             )
             items.append(item)
             successful.append((fingerprints[relative_raw_path], item))
-        except Exception:  # noqa: BLE001 - directory ingest should report bad files and continue.
+        except Exception as exc:  # noqa: BLE001 - directory ingest should report bad files and continue.
             if target_path.is_dir():
-                skipped_files.append(_skip_record(raw_file, workspace, "skipped_parse_error"))
+                skipped_files.append(_skip_record(raw_file, workspace, "skipped_parse_error", message=str(exc)))
                 continue
             raise
 

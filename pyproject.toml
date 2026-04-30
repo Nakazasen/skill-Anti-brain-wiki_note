@@ -4,10 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "abw-skill"
-version = "0.8.1"
+version = "1.1.0"
 description = "ABW command-line workflow helper"
 readme = "README.md"
 requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.100",
+]
 license = {text = "MIT"}
 authors = [
   {name = "ABW maintainers"}
