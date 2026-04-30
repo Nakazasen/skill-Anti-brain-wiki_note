@@ -38,6 +38,7 @@
 .brain/ingest_runs.jsonl
 .brain/review_log.jsonl
 .brain/used_nonces.json
+.brain/workspaces.json
 
 # Bootstrap reasoning state (do not commit greenfield assumptions/plans)
 .brain/bootstrap/*.json
@@ -88,3 +89,5 @@ scratch/
 tests/logs/
 .pytest_tmp/
 .tmp/
+feedback/
+.pytest_cache/
