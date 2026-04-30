@@ -27,7 +27,6 @@ def test_inspect_mom_workspace(tmp_path):
     assert "add wiki notes" not in report["suggestions"]
 
 def test_inspect_docx_heavy_workspace(tmp_path):
-    # Setup DOCX-heavy workspace
     raw = tmp_path / "raw"
     raw.mkdir()
     for i in range(5):
@@ -35,9 +34,10 @@ def test_inspect_docx_heavy_workspace(tmp_path):
     
     report = build_inspect_report(tmp_path)
     assert report["raw_stats"]["total"] == 5
-    assert report["raw_stats"]["unsupported"] == 5
+    assert report["raw_stats"]["supported"] == 5
+    assert report["raw_stats"]["unsupported"] == 0
     assert ".docx" in report["raw_stats"]["by_ext"]
-    assert any("convert 5 docx" in s for s in report["suggestions"])
+    assert not any("convert 5 docx" in s for s in report["suggestions"])
 
 def test_inspect_mixed_stale_workspace(tmp_path):
     # Setup mixed workspace with many drafts

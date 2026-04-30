@@ -138,12 +138,12 @@ class AbwHealthTests(unittest.TestCase):
         with tmp:
             raw = workspace / "raw"
             raw.mkdir(parents=True)
-            (raw / "chapter.docx").write_bytes(b"PK\x03\x04")
+            (raw / "legacy.bin").write_bytes(b"\x00\x01")
             result = abw_health.run_health(workspace=workspace, runtime_root=runtime, mode="audit")
 
             self.assertEqual(result["current_state"], "recoverable")
             self.assertEqual(result["corpus_readiness"]["classification"], "unsupported_corpus")
-            self.assertIn("docx is not parsed yet; export docx to pdf/txt", result["repair_suggestions"])
+            self.assertIn("unsupported corpus: convert unsupported sources to supported formats before ingest", result["repair_suggestions"])
 
     def test_run_health_repair_dry_run_does_not_fix_drift(self):
         tmp, workspace, runtime = self.make_layout()

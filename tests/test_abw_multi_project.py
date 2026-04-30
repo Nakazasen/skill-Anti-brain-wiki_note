@@ -127,14 +127,14 @@ class AbwMultiProjectTests(unittest.TestCase):
             root = Path(tmp)
             ensure_workspace(root)
             (root / "raw" / "budget.xlsx").write_bytes(b"PK\x03\x04")
-            (root / "raw" / "notes.docx").write_bytes(b"PK\x03\x04")
+            (root / "raw" / "legacy.bin").write_bytes(b"\x00\x01")
 
             report = build_doctor_report(root)
             rendered = render_doctor_report(report)
 
             self.assertEqual(report["corpus"]["classification"], "partial_supported_corpus")
             self.assertEqual(report["corpus"]["supported_source_counts"], {"xlsx": 1})
-            self.assertEqual(report["corpus"]["unsupported_source_counts"], {"docx": 1})
+            self.assertEqual(report["corpus"]["unsupported_source_counts"], {"bin": 1})
             self.assertIn("corpus_readiness: partial_supported_corpus", rendered)
             self.assertIn("visible_extension_counts:", rendered)
 

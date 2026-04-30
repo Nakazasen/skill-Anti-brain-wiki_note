@@ -38,7 +38,7 @@ class AbwEntrypointParityTests(unittest.TestCase):
         return commands
 
     def test_supported_entrypoints_expose_same_public_help(self):
-        expected = ["init", "ask", "ingest", "review", "doctor", "version", "migrate", "help"]
+        expected = ["init", "ask", "ingest", "review", "doctor", "gaps", "version", "migrate", "help"]
         hidden = ["dashboard", "coverage", "wizard", "approve"]
         with tempfile.TemporaryDirectory() as tmp:
             for base in self.entrypoints():

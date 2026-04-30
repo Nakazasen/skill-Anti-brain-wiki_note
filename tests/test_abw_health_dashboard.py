@@ -324,7 +324,7 @@ class AbwHealthDashboardTests(unittest.TestCase):
             self.assertEqual(corpus["classification"], "empty_corpus")
             self.assertEqual(corpus["raw_files"], 0)
 
-    def test_corpus_readiness_docx_heavy_unsupported_corpus(self):
+    def test_corpus_readiness_docx_heavy_supported_corpus(self):
         tmp, workspace, runtime = self.make_layout()
         with tmp:
             raw = workspace / "raw"
@@ -334,6 +334,7 @@ class AbwHealthDashboardTests(unittest.TestCase):
 
             corpus = abw_health.analyze_corpus_readiness(workspace)
 
-            self.assertEqual(corpus["classification"], "unsupported_corpus")
-            self.assertEqual(corpus["unsupported_source_counts"], {"docx": 2})
+            self.assertEqual(corpus["classification"], "healthy_supported_corpus")
+            self.assertEqual(corpus["supported_source_counts"], {"docx": 2})
+            self.assertEqual(corpus["unsupported_source_counts"], {})
             self.assertEqual(corpus["visible_extension_counts"], {"docx": 2})

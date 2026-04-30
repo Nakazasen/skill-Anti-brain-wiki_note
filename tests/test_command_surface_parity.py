@@ -17,8 +17,10 @@ class CommandSurfaceParityTests(unittest.TestCase):
             "ask": ["ask", "ping"],
             "review": ["review"],
             "doctor": ["doctor"],
+            "gaps": ["gaps"],
             "version": ["version"],
             "migrate": ["migrate"],
+            "apply": ["apply", "--dry-run", "cleanup-drafts"],
         }.items():
             with self.subTest(command=command):
                 parsed = abw_cli.parse_args(argv)

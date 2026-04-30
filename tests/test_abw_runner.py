@@ -696,8 +696,8 @@ class AbwRunnerBindingTests(unittest.TestCase):
         )
 
         self.assertEqual(result["binding_status"], "runner_checked")
-        self.assertEqual(result["current_state"], "knowledge_gap_logged")
-        self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+        self.assertEqual(result["current_state"], "knowledge_answered")
+        self.assertEqual(result["knowledge"]["tier"], "E2_wiki")
 
     def test_modified_answer_is_rejected_when_proof_was_for_original_answer(self):
         finalization_block = "## Finalization\n- current_state: verified"
@@ -1425,7 +1425,88 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertEqual(result["current_state"], "knowledge_gap_logged")
             self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
             self.assertEqual(result["citations"], [])
-            self.assertIn("No grounded project evidence was found", result["answer"])
+            self.assertIn("Không tìm thấy thông tin đáng tin cậy.", result["answer"])
+
+    def test_query_strict_chapter_matching_rejects_wrong_chapter_numbers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            drafts = workspace / "drafts"
+            drafts.mkdir(parents=True, exist_ok=True)
+            (drafts / "ch-ng-133_draft.md").write_text(
+                "# Draft Knowledge: Chương 133\n\nSection order 1: Heading: Chương 133\n",
+                encoding="utf-8",
+            )
+            (drafts / "ch-ng-7_draft.md").write_text(
+                "# Draft Knowledge: Chương 7\n\nSection order 1: Heading: Chương 7\nParagraph: Nội dung chương 7.\n",
+                encoding="utf-8",
+            )
+
+            result = abw_runner.dispatch_request(
+                task="Chương 7 nói gì?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["knowledge"]["path"], "drafts\\ch-ng-7_draft.md")
+            self.assertNotIn("133", result["knowledge"]["path"])
+            self.assertEqual(result["knowledge"]["retrieval_status"], "exact_match")
+
+    def test_query_domain_terms_require_presence_in_candidate_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki" / "concepts"
+            wiki.mkdir(parents=True, exist_ok=True)
+            (wiki / "game-system.md").write_text(
+                "---\n"
+                "title: Game System\n"
+                "status: grounded\n"
+                "---\n\n"
+                "# Game System\n\n"
+                "Unrelated RPG mechanics.\n",
+                encoding="utf-8",
+            )
+
+            result = abw_runner.dispatch_request(
+                task="MOM WMS hoạt động thế nào?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(result["citations"], [])
+            self.assertIn("Không tìm thấy thông tin đáng tin cậy.", result["answer"])
+
+    def test_named_entity_query_abstains_when_topical_source_lacks_entity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki" / "sources" / "han-phong.md"
+            wiki.parent.mkdir(parents=True, exist_ok=True)
+            wiki.write_text(
+                "---\n"
+                "title: Han Phong\n"
+                "status: grounded\n"
+                "---\n\n"
+                "# Han Phong\n\n"
+                "Han Phong là nhân sự phụ trách kế hoạch vận hành kho.\n",
+                encoding="utf-8",
+            )
+
+            result = abw_runner.dispatch_request(
+                task="Chu Vấn là ai?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(result["citations"], [])
+            self.assertIn("Không tìm thấy thông tin đáng tin cậy về Chu Vấn.", result["answer"])
+            self.assertNotIn("Han Phong là nhân sự", result["answer"])
 
     def test_query_can_report_available_spreadsheet_sources_from_metadata_only(self):
         with tempfile.TemporaryDirectory() as tmp:

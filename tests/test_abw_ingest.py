@@ -9,8 +9,62 @@ from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "src"))
 
 import abw_ingest  # noqa: E402
+from abw._legacy import abw_knowledge  # noqa: E402
+
+
+def _write_sample_docx(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    document_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:pPr><w:pStyle w:val="Heading1"/></w:pPr>
+      <w:r><w:t>Chương 7 - Vận hành MOM WMS</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:r><w:t>Chương 7 nói về luồng giao tiếp AGV, WMS và MOM trong vận hành kho.</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr>
+      <w:r><w:t>MOM gửi lệnh cho AGV trước khi WMS xác nhận hoàn tất.</w:t></w:r>
+    </w:p>
+    <w:tbl>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>Trường</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>Ý nghĩa</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>AGV</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>Giao tiếp vận chuyển</w:t></w:r></w:p></w:tc>
+      </w:tr>
+    </w:tbl>
+  </w:body>
+</w:document>
+"""
+    core_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Chương 7 - Vận hành MOM WMS</dc:title>
+  <dc:creator>ABW Test</dc:creator>
+</cp:coreProperties>
+"""
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("[Content_Types].xml", """<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+</Types>""")
+        archive.writestr("_rels/.rels", """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>""")
+        archive.writestr("word/document.xml", document_xml)
+        archive.writestr("docProps/core.xml", core_xml)
 
 
 class AbwIngestTests(unittest.TestCase):
@@ -138,6 +192,48 @@ class AbwIngestTests(unittest.TestCase):
             self.assertIn("Interface Spec", draft)
             self.assertNotIn("window.secret", draft)
             self.assertNotIn("<table>", draft)
+
+    def test_docx_ingest_extracts_structured_content_and_search_hits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            source = workspace / "raw" / "Chương 7.docx"
+            _write_sample_docx(source)
+
+            result = abw_ingest.run("ingest raw", str(workspace))
+
+            self.assertEqual(result["status"], "draft_created")
+            self.assertEqual(result["format"], "docx")
+            self.assertEqual(result["supported_source_counts"], {"docx": 1})
+            self.assertGreaterEqual(result["provenance_count"], 5)
+            draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
+            self.assertIn("Filename: Chương 7.docx", draft)
+            self.assertIn("Chapter title: Chương 7 - Vận hành MOM WMS", draft)
+            self.assertIn("Section order 1: Heading: Chương 7", draft)
+            self.assertIn("Paragraph: Chương 7 nói về luồng giao tiếp AGV", draft)
+            self.assertIn("List item: MOM gửi lệnh cho AGV", draft)
+            self.assertIn("Table 1 row 2: AGV | Giao tiếp vận chuyển", draft)
+
+            matches = abw_knowledge._search_wiki_contexts("Chương 7 nói gì", workspace=str(workspace), limit=3)
+
+            self.assertTrue(matches)
+            self.assertTrue(any(str(match["path"]).replace("\\", "/") == result["draft_file"] for match in matches))
+            self.assertIn("Chương 7", matches[0]["content"])
+            self.assertIn("draft", matches[0]["source"])
+
+    def test_directory_ingest_logs_broken_docx_safely(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "valid.md").write_text("Readable source.\n", encoding="utf-8")
+            (raw / "broken.docx").write_bytes(b"not a docx")
+
+            result = abw_ingest.run("ingest raw", str(workspace))
+
+            skipped = {item["path"]: item for item in result["skipped_files"]}
+            self.assertEqual(result["ingested_count"], 1)
+            self.assertEqual(skipped["raw/broken.docx"]["reason"], "skipped_parse_error")
+            self.assertIn("DOCX parser failed", skipped["raw/broken.docx"]["message"])
 
     def test_junk_skips_do_not_change_dedup_or_conflict_counts(self):
         with tempfile.TemporaryDirectory() as tmp:

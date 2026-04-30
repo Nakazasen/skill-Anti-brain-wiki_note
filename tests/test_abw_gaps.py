@@ -13,7 +13,7 @@ def _write_eval(workspace: Path, detail: dict, *, summary: dict | None = None):
     eval_dir.mkdir(parents=True, exist_ok=True)
     payload = {
         "workspace_path": str(workspace),
-        "abw_version": "0.7.2",
+        "abw_version": "0.8.3",
         "summary": summary or {"total": 1, "passed": 0, "failed": 1, "warnings": 0},
         "details": [detail],
     }
@@ -108,18 +108,18 @@ def test_eval_pass_with_warnings_and_raw_or_drafts_reports_weak_retrieval_signal
     assert gap["evidence"]["warnings"] == 1
 
 
-def test_docx_heavy_workspace_reports_format_block(tmp_path):
+def test_xls_heavy_workspace_reports_format_block(tmp_path):
     raw = tmp_path / "raw"
     raw.mkdir()
     for index in range(5):
-        (raw / f"website_{index}.docx").write_bytes(b"PK\x03\x04")
-    _write_eval(tmp_path, _failed_detail("WEB-UNSUPPORTED-001", "What do the DOCX source files say about website content?"))
+        (raw / f"website_{index}.xls").write_bytes(b"\xd0\xcf\x11\xe0")
+    _write_eval(tmp_path, _failed_detail("WEB-UNSUPPORTED-001", "What do the XLS source files say about website content?"))
 
     report = build_gap_report(tmp_path)
 
     assert "format_block" in _gap_types(report)
     gap = next(gap for gap in report["gaps"] if gap["type"] == "format_block")
-    assert gap["evidence"]["docx_count"] == 5
+    assert gap["evidence"]["xls_count"] == 5
     assert gap["affected_questions"] == ["WEB-UNSUPPORTED-001"]
 
 
