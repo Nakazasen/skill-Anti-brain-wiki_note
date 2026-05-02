@@ -938,11 +938,37 @@ def _mark_draft_as_promoted(path: Path, text: str):
     path.write_text(new_text, encoding="utf-8")
 
 
+def _is_auto_promotion_allowed(workspace_root: Path) -> bool:
+    config_path = workspace_root / "abw_config.json"
+    if not config_path.exists():
+        return False
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    if not isinstance(config, dict):
+        return False
+    providers = config.get("providers", {})
+    if not isinstance(providers, dict):
+        return False
+    mode = str(providers.get("promotion_mode") or "").strip().lower()
+    return mode == "auto"
+
+
 def run_promote_drafts(workspace, limit=20, dry_run=False):
     workspace_root = Path(workspace).resolve()
     drafts_dir = workspace_root / "drafts"
     if not drafts_dir.exists():
         return {"ok": True, "promoted_count": 0, "message": "No drafts directory found."}
+
+    if not dry_run and not _is_auto_promotion_allowed(workspace_root):
+        return {
+            "ok": True,
+            "promoted_count": 0,
+            "promoted_paths": [],
+            "dry_run": dry_run,
+            "message": "Auto-promotion is disabled by default. Set providers.promotion_mode=auto in abw_config.json to enable.",
+        }
 
     candidates = []
     # Search in drafts/ for markdown files

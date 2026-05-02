@@ -721,7 +721,7 @@ class AbwIngestTests(unittest.TestCase):
 
             self.assertEqual(result["format"], "xlsx")
             self.assertGreaterEqual(result["provenance_count"], 5)
-            self.assertIn(result["queue_status"], {"review_needed", "candidate_promoted"})
+            self.assertEqual(result["queue_status"], "review_needed")
             draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
             self.assertIn("## Provenance", draft)
             self.assertIn("cells", draft)
@@ -744,7 +744,7 @@ class AbwIngestTests(unittest.TestCase):
             self.assertGreater(result["perception"]["stage_scores"]["native_structured"], 0.0)
             self.assertIn("Perception Pipeline", draft)
 
-    def test_pptx_medium_confidence_is_candidate_ready_without_human_review(self):
+    def test_pptx_medium_confidence_returns_review_needed(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
             pptx_path = workspace / "raw" / "ops-review.pptx"
@@ -756,20 +756,20 @@ class AbwIngestTests(unittest.TestCase):
             result = abw_ingest.run("ingest raw/ops-review.pptx", str(workspace))
 
             self.assertEqual(result["format"], "pptx")
-            self.assertEqual(result["queue_status"], "candidate_ready")
+            self.assertEqual(result["queue_status"], "review_needed")
             self.assertEqual(result["review_reason"], "medium_confidence_enterprise_parse")
             self.assertEqual(result["perception"]["document_type"]["type"], "presentation")
             queue = json.loads((workspace / ".brain" / "ingest_queue.json").read_text(encoding="utf-8"))
-            self.assertEqual(queue["items"][0]["status"], "candidate_ready")
+            self.assertEqual(queue["items"][0]["status"], "review_needed")
             self.assertEqual(queue["items"][0]["perception"]["document_type"]["type"], "presentation")
             manifest_row = json.loads((workspace / "processed" / "manifest.jsonl").read_text(encoding="utf-8").splitlines()[0])
-            self.assertEqual(manifest_row["queue_status"], "candidate_ready")
+            self.assertEqual(manifest_row["queue_status"], "review_needed")
             self.assertEqual(manifest_row["perception"]["stage_scores"]["native_structured"], 0.7)
             draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
             self.assertIn("review_reason: medium_confidence_enterprise_parse", draft)
             self.assertIn("document_type: presentation", draft)
 
-    def test_pdf_ingest_ai_mode_can_promote_candidate_with_provider_assist(self):
+    def test_pdf_ingest_ai_mode_returns_review_needed_with_provider_assist(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
             config = {
@@ -798,7 +798,7 @@ class AbwIngestTests(unittest.TestCase):
             self.assertEqual(result["format"], "pdf")
             self.assertTrue(result["provider"]["used"])
             self.assertEqual(result["provider"]["status"], "success")
-            self.assertIn(result["queue_status"], {"candidate_promoted", "review_needed"})
+            self.assertEqual(result["queue_status"], "review_needed")
             draft = (workspace / result["draft_file"]).read_text(encoding="utf-8")
             self.assertIn("Provider semantic summary", draft)
             self.assertIn("confidence", draft)

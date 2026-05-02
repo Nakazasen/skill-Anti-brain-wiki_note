@@ -735,11 +735,9 @@ def _build_perception_report(extracted: dict, enriched: dict, confidence: float)
 def _review_decision(format_name: str, confidence: float, conflict_reports: list[str]) -> tuple[str, str]:
     if conflict_reports:
         return "review_needed", "conflict_detected"
-    if confidence >= AUTO_PROMOTE_THRESHOLD:
-        return "candidate_promoted", "high_confidence"
     suffix = "." + str(format_name or "").lower().lstrip(".")
     if suffix in ENTERPRISE_PERCEPTION_EXTENSIONS and confidence >= LOW_CONFIDENCE_REVIEW_THRESHOLD:
-        return "candidate_ready", "medium_confidence_enterprise_parse"
+        return "review_needed", "medium_confidence_enterprise_parse"
     return "review_needed", "low_confidence"
 
 
