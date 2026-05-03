@@ -856,6 +856,292 @@ def ingest_state_path(workspace="."):
     return Path(workspace) / ".brain" / "ingest_state.json"
 
 
+def ingest_report_path(workspace="."):
+    return Path(workspace) / ".brain" / "ingest_report.json"
+
+
+def ingest_gaps_path(workspace="."):
+    return Path(workspace) / ".brain" / "ingest_gaps.json"
+
+
+def generate_run_id(workspace="."):
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    workspace_name = Path(workspace).resolve().name
+    return f"run-{workspace_name}-{timestamp}"
+
+
+def _resolve_promotion_mode(workspace):
+    try:
+        config, status = read_workspace_config(workspace)
+    except Exception:
+        return "NOT_RECORDED"
+    if status != "ok" or not isinstance(config, dict):
+        return "NOT_RECORDED"
+    providers = config.get("providers")
+    if not isinstance(providers, dict):
+        return "review_required"
+    mode = str(providers.get("promotion_mode") or "review_required").lower()
+    if mode not in {"auto", "review_required"}:
+        return "review_required"
+    return mode
+
+
+def _domain_guard_active(workspace):
+    try:
+        config, status = read_workspace_config(workspace)
+    except Exception:
+        return False
+    if status != "ok" or not isinstance(config, dict):
+        return False
+    guard = config.get("domain_guard")
+    if not isinstance(guard, dict):
+        return False
+    keywords = (guard.get("allowed_keywords") or []) + (guard.get("blocked_keywords") or []) + (guard.get("required_markers") or [])
+    return len(keywords) > 0
+
+
+def generate_ingest_report(workspace, result, task, run_id, created_at, fingerprints, skipped_files):
+    summary = {
+        "ingested_count": int(result.get("ingested_count", 0)),
+        "skipped_count": int(result.get("skipped_count", 0)),
+        "failed_count": sum(1 for f in (skipped_files or []) if f.get("action") in ("skipped_parse_error",)),
+        "quarantined_count": int(result.get("quarantined_count", 0)),
+        "draft_count": len(result.get("draft_files", [])),
+        "manifest_count": int(result.get("changed_count", 0)),
+        "queue_count": int(result.get("ingested_count", 0)),
+    }
+
+    items = []
+    seen_source_paths = set()
+    raw_items = result.get("items", [])
+    if not isinstance(raw_items, list):
+        raw_items = []
+
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        source_path = str(item.get("raw_file") or "UNKNOWN")
+        source_id = str(item.get("source_id") or "UNKNOWN")
+        content_hash = "UNKNOWN"
+        fp = fingerprints.get(source_path) if isinstance(fingerprints, dict) else None
+        if isinstance(fp, dict):
+            content_hash = str(fp.get("content_hash") or fp.get("hash") or "UNKNOWN")
+        items.append({
+            "source_path": source_path,
+            "source_id": source_id,
+            "content_hash": content_hash,
+            "status": str(item.get("status") or "UNKNOWN"),
+            "draft_path": str(item.get("draft_file") or "NOT_RECORDED"),
+            "manifest_status": str(item.get("queue_status") or "UNKNOWN"),
+            "queue_status": str(item.get("queue_status") or "UNKNOWN"),
+            "review_state": str(item.get("review_reason") or "UNKNOWN"),
+            "promotion_state": str(item.get("promotion_status") or "NOT_RECORDED"),
+            "domain_check": item.get("domain_check") if isinstance(item.get("domain_check"), dict) else {},
+            "skip_reason": None,
+            "failure_reason": None,
+        })
+        seen_source_paths.add(source_path)
+
+    for skip_file in (skipped_files or []):
+        if not isinstance(skip_file, dict):
+            continue
+        source_path = str(skip_file.get("raw") or skip_file.get("path") or "")
+        if not source_path:
+            continue
+        normalized_path = source_path.replace("\\", "/")
+        if normalized_path in seen_source_paths:
+            continue
+        seen_source_paths.add(normalized_path)
+        items.append({
+            "source_path": normalized_path,
+            "source_id": str(skip_file.get("source_id") or "UNKNOWN"),
+            "content_hash": "NOT_RECORDED",
+            "status": str(skip_file.get("action") or "skipped"),
+            "draft_path": "NOT_RECORDED",
+            "manifest_status": "NOT_RECORDED",
+            "queue_status": "NOT_RECORDED",
+            "review_state": "NOT_RECORDED",
+            "promotion_state": "NOT_RECORDED",
+            "domain_check": {},
+            "skip_reason": str(skip_file.get("message") or skip_file.get("action") or "skipped"),
+            "failure_reason": None,
+        })
+
+    promotion_mode = _resolve_promotion_mode(workspace)
+    safety = {
+        "auto_promote_default": False,
+        "promotion_mode": promotion_mode,
+        "domain_guard_active": _domain_guard_active(workspace),
+    }
+
+    report = {
+        "schema_version": "abw.ingest_report.v1",
+        "run_id": run_id,
+        "created_at": created_at,
+        "workspace": str(Path(workspace).resolve()),
+        "command": str(task or ""),
+        "summary": summary,
+        "items": items,
+        "safety": safety,
+        "limitations": [
+            "Machine-readable evidence only; not bridge-ready.",
+            "content_hash may be NOT_RECORDED for skipped/failed items.",
+            "promotion_state reflects ingest-time decision only; final promotion is managed separately.",
+        ],
+    }
+
+    path = ingest_report_path(workspace)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return report
+
+
+def _item_has_domain_issue(item):
+    if not isinstance(item, dict):
+        return False
+    dc = item.get("domain_check")
+    if not isinstance(dc, dict):
+        return False
+    return dc.get("domain_check_status") in ("BLOCKED", "WARN", "ERROR")
+
+
+def generate_ingest_gaps(workspace, result, task, run_id, created_at, skipped_files):
+    gaps = []
+    raw_items = result.get("items", [])
+    if not isinstance(raw_items, list):
+        raw_items = []
+
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        source_path = str(item.get("raw_file") or "UNKNOWN")
+        source_id = str(item.get("source_id") or "UNKNOWN")
+
+        status = str(item.get("status") or "")
+        if status == "quarantined":
+            gaps.append({
+                "source_path": source_path,
+                "source_id": source_id,
+                "gap_type": "quarantined_file",
+                "severity": "BLOCKING",
+                "reason": str(item.get("quarantine_reason") or "domain contamination detected"),
+                "evidence_ref": "domain_check",
+                "recommended_action": "Review file content; if safe, add allowed_keywords or remove blocked content.",
+            })
+            continue
+
+        if not item.get("source_id"):
+            gaps.append({
+                "source_path": source_path,
+                "source_id": source_id,
+                "gap_type": "missing_source_hash",
+                "severity": "WARNING",
+                "reason": "source_id not available for ingested item",
+                "evidence_ref": "ingest_item",
+                "recommended_action": "Verify file was successfully processed and hashed.",
+            })
+
+        if _item_has_domain_issue(item):
+            dc = item.get("domain_check", {})
+            status = dc.get("domain_check_status", "UNKNOWN")
+            severity = "WARNING" if status == "WARN" else "BLOCKING"
+            gaps.append({
+                "source_path": source_path,
+                "source_id": source_id,
+                "gap_type": "domain_check_warning" if status == "WARN" else "domain_check_error",
+                "severity": severity,
+                "reason": str(dc.get("domain_check_reason") or "domain check issue"),
+                "evidence_ref": "domain_check",
+                "recommended_action": "Review domain configuration or file content for domain compliance.",
+            })
+
+        promotion_state = str(item.get("promotion_status") or "")
+        if promotion_state not in ("approved", "promoted"):
+            gaps.append({
+                "source_path": source_path,
+                "source_id": source_id,
+                "gap_type": "promotion_not_performed",
+                "severity": "INFO",
+                "reason": f"promotion_state is {promotion_state}; item requires explicit approval.",
+                "evidence_ref": "promotion_status",
+                "recommended_action": "Review draft and explicitly approve/promote through governed workflow.",
+            })
+
+        review_reason = str(item.get("review_reason") or "")
+        if review_reason != "trusted":
+            gaps.append({
+                "source_path": source_path,
+                "source_id": source_id,
+                "gap_type": "review_required",
+                "severity": "INFO",
+                "reason": f"review_reason: {review_reason}",
+                "evidence_ref": "review_reason",
+                "recommended_action": "Review ingested content for accuracy and domain relevance before promotion.",
+            })
+
+    for skip_file in (skipped_files or []):
+        if not isinstance(skip_file, dict):
+            continue
+        source_path = str(skip_file.get("raw") or skip_file.get("path") or "")
+        if not source_path:
+            continue
+        action = str(skip_file.get("action") or "")
+        severity = "WARNING"
+        gap_type = "skipped_file"
+        if action == "quarantined" or skip_file.get("reason") == "skipped_domain_quarantine":
+            gap_type = "quarantined_file"
+            severity = "BLOCKING"
+        elif action == "skipped_parse_error" or skip_file.get("reason") == "skipped_parse_error":
+            gap_type = "failed_file"
+            severity = "BLOCKING"
+        gaps.append({
+            "source_path": source_path.replace("\\", "/"),
+            "source_id": str(skip_file.get("source_id") or "UNKNOWN"),
+            "gap_type": gap_type,
+            "severity": severity,
+            "reason": str(skip_file.get("message") or action),
+            "evidence_ref": "skip_record",
+            "recommended_action": "Check file format, content, or domain compliance.",
+        })
+
+    if not _domain_guard_active(workspace):
+        gaps.append({
+            "source_path": "N/A",
+            "source_id": "N/A",
+            "gap_type": "domain_guard_not_configured",
+            "severity": "INFO",
+            "reason": "domain_guard is not configured; no domain contamination protection active.",
+            "evidence_ref": "workspace_config",
+            "recommended_action": "Configure domain_guard in abw_config.json to enable domain contamination protection.",
+        })
+
+    gap_summary = {
+        "total_gaps": len(gaps),
+        "blocking_gaps": sum(1 for g in gaps if g["severity"] == "BLOCKING"),
+        "warning_gaps": sum(1 for g in gaps if g["severity"] == "WARNING"),
+    }
+
+    gap_report = {
+        "schema_version": "abw.ingest_gaps.v1",
+        "run_id": run_id,
+        "created_at": created_at,
+        "workspace": str(Path(workspace).resolve()),
+        "gap_summary": gap_summary,
+        "gaps": gaps,
+        "limitations": [
+            "Minimal deterministic gap classification; not semantic coverage.",
+            "Gap types bounded to ingest-relevant signals only.",
+            "Does not replace full eval/inspect gap pipeline.",
+            "No bridge-specific gap inference.",
+        ],
+    }
+
+    path = ingest_gaps_path(workspace)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(gap_report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return gap_report
+
+
 def append_jsonl(path, payload):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -3121,6 +3407,8 @@ def ingest_single_file(raw_path, relative_raw_path, workspace, source_identity: 
 
 def run(task: str, workspace: str) -> dict:
     started = datetime.now(timezone.utc)
+    run_id = generate_run_id(workspace)
+    created_at = now_iso()
     workspace = str(workspace or ".")
     relative_target, target_path = extract_ingest_target(task, workspace=workspace)
     raw_files, skipped_files = discover_ingest_files(target_path, workspace)
@@ -3285,6 +3573,8 @@ def run(task: str, workspace: str) -> dict:
                 "source_id": None,
             },
         )
+        generate_ingest_report(workspace, result, task, run_id, created_at, fingerprints, skipped_files)
+        generate_ingest_gaps(workspace, result, task, run_id, created_at, skipped_files)
         return result
 
     first = items[0]
@@ -3340,4 +3630,6 @@ def run(task: str, workspace: str) -> dict:
             "source_id": first["source_id"],
         },
     )
+    generate_ingest_report(workspace, result, task, run_id, created_at, fingerprints, skipped_files)
+    generate_ingest_gaps(workspace, result, task, run_id, created_at, skipped_files)
     return result
