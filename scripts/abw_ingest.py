@@ -2273,6 +2273,7 @@ def write_draft(
     semantic=None,
     source_excerpt="",
     draft_file=None,
+    domain_check=None,
 ):
     relpath = draft_file or draft_relpath(relative_raw_path)
     alias_candidates = _draft_alias_candidates(relative_raw_path)
@@ -2364,6 +2365,14 @@ def write_draft(
             "Raw extraction trace kept separate from business summary.",
             *(prov_lines or ["- none"]),
             "",
+            "## Domain Contamination Guard",
+            f"- domain_check_status: {domain_check.get('domain_check_status', 'NOT_CONFIGURED') if domain_check else 'NOT_CONFIGURED'}",
+            f"- domain_check_reason: {domain_check.get('domain_check_reason', 'not_checked') if domain_check else 'not_checked'}",
+            f"- matched_keywords: {', '.join(domain_check.get('matched_keywords', []) if domain_check else []) or 'none'}",
+            f"- blocked_keywords: {', '.join(domain_check.get('blocked_keywords', []) if domain_check else []) or 'none'}",
+            f"- required_markers_missing: {', '.join(domain_check.get('required_markers_missing', []) if domain_check else []) or 'none'}",
+            f"- action: {domain_check.get('action', 'accept') if domain_check else 'accept'}",
+            "",
             "## Trust Notice",
             "This draft is not trusted wiki knowledge until explicitly approved or promoted by governed workflow.",
             "",
@@ -2385,6 +2394,7 @@ def append_manifest_entry(
     queue_status,
     review_reason,
     source_identity=None,
+    domain_check=None,
 ):
     path = manifest_path(workspace)
     source_key = _manifest_source_key(relative_raw_path)
@@ -2401,6 +2411,8 @@ def append_manifest_entry(
         "review_reason": review_reason,
         "created_at": now_iso(),
     }
+    if domain_check:
+        entry["domain_check"] = domain_check
     aliases = _source_aliases(source_identity, relative_raw_path)
     lineage = [row for row in (source_identity.get("lineage") or []) if isinstance(row, dict)]
     if aliases:
@@ -2423,7 +2435,7 @@ def append_manifest_entry(
     return entry
 
 
-def update_ingest_queue(workspace, source_id, relative_raw_path, draft_file, *, queue_status, confidence, perception, review_reason):
+def update_ingest_queue(workspace, source_id, relative_raw_path, draft_file, *, queue_status, confidence, perception, review_reason, domain_check=None):
     path = ingest_queue_path(workspace)
     payload = load_json(path, {"items": [], "updated_at": now_iso()})
     item = {
@@ -2435,6 +2447,8 @@ def update_ingest_queue(workspace, source_id, relative_raw_path, draft_file, *, 
         "perception": perception,
         "review_reason": review_reason,
     }
+    if domain_check:
+        item["domain_check"] = domain_check
     existing = payload.setdefault("items", [])
     payload["items"] = [row for row in existing if row.get("id") != source_id and row.get("raw") != relative_raw_path]
     payload["items"].append(item)
@@ -2882,6 +2896,130 @@ def _merge_source_siblings(files: list[Path]) -> list[Path]:
     return sorted(merged)
 
 
+def check_domain_contamination(workspace, relative_raw_path, content):
+    try:
+        config, status = read_workspace_config(workspace)
+    except Exception as exc:
+        return {
+            "domain_check_status": "ERROR",
+            "domain_check_reason": f"config_read_error: {exc}",
+            "matched_keywords": [],
+            "blocked_keywords": [],
+            "required_markers_missing": [],
+            "action": "warn",
+        }
+
+    if status == "missing":
+        return {
+            "domain_check_status": "NOT_CONFIGURED",
+            "domain_check_reason": "no config file found",
+            "matched_keywords": [],
+            "blocked_keywords": [],
+            "required_markers_missing": [],
+            "action": "accept",
+        }
+
+    if status != "ok" or not isinstance(config, dict):
+        return {
+            "domain_check_status": "ERROR",
+            "domain_check_reason": "config_invalid_or_corrupt",
+            "matched_keywords": [],
+            "blocked_keywords": [],
+            "required_markers_missing": [],
+            "action": "warn",
+        }
+
+    guard = config.get("domain_guard")
+    if not isinstance(guard, dict):
+        return {
+            "domain_check_status": "NOT_CONFIGURED",
+            "domain_check_reason": "no domain_guard section in config",
+            "matched_keywords": [],
+            "blocked_keywords": [],
+            "required_markers_missing": [],
+            "action": "accept",
+        }
+
+    allowed_keywords = guard.get("allowed_keywords") or []
+    blocked_keywords = guard.get("blocked_keywords") or []
+    required_markers = guard.get("required_markers") or []
+
+    if not isinstance(allowed_keywords, list) or not isinstance(blocked_keywords, list) or not isinstance(required_markers, list):
+        return {
+            "domain_check_status": "ERROR",
+            "domain_check_reason": "domain_guard config has invalid keyword lists (expected arrays)",
+            "matched_keywords": [],
+            "blocked_keywords": [],
+            "required_markers_missing": [],
+            "action": "warn",
+        }
+
+    if not allowed_keywords and not blocked_keywords and not required_markers:
+        return {
+            "domain_check_status": "NOT_CONFIGURED",
+            "domain_check_reason": "domain_guard section present but no keywords/markers configured",
+            "matched_keywords": [],
+            "blocked_keywords": [],
+            "required_markers_missing": [],
+            "action": "accept",
+        }
+
+    search_text = f"{relative_raw_path} {content}" if relative_raw_path else str(content or "")
+    lowered = search_text.lower()
+
+    found_blocked = sorted({kw for kw in blocked_keywords if str(kw).lower() in lowered})
+    found_allowed = sorted({kw for kw in allowed_keywords if str(kw).lower() in lowered})
+    missing_markers = sorted({kw for kw in required_markers if str(kw).lower() not in lowered})
+
+    if found_blocked:
+        if len(found_blocked) >= 2 and len(found_allowed) < 2:
+            return {
+                "domain_check_status": "BLOCKED",
+                "domain_check_reason": "blocked_keywords_detected",
+                "matched_keywords": found_allowed,
+                "blocked_keywords": found_blocked,
+                "required_markers_missing": missing_markers,
+                "action": "quarantine",
+            }
+        return {
+            "domain_check_status": "WARN",
+            "domain_check_reason": "blocked_keywords_present_but_allowed_keywords_also_found",
+            "matched_keywords": found_allowed,
+            "blocked_keywords": found_blocked,
+            "required_markers_missing": missing_markers,
+            "action": "warn",
+        }
+
+    if missing_markers:
+        return {
+            "domain_check_status": "WARN",
+            "domain_check_reason": "required_markers_missing",
+            "matched_keywords": found_allowed,
+            "blocked_keywords": [],
+            "required_markers_missing": missing_markers,
+            "action": "warn",
+        }
+
+    if not found_allowed and allowed_keywords:
+        return {
+            "domain_check_status": "WARN",
+            "domain_check_reason": "no_allowed_keywords_matched",
+            "matched_keywords": [],
+            "blocked_keywords": [],
+            "required_markers_missing": missing_markers,
+            "action": "warn",
+        }
+
+    return {
+        "domain_check_status": "PASS",
+        "domain_check_reason": "domain_check_clean",
+        "matched_keywords": found_allowed,
+        "blocked_keywords": [],
+        "required_markers_missing": [],
+        "action": "accept",
+    }
+
+
 def ingest_single_file(raw_path, relative_raw_path, workspace, source_identity: dict | None = None):
     ingest_mode = _resolve_ingest_mode(workspace)
     extracted = _extract_multimodal_content(raw_path, workspace=workspace, ingest_mode=ingest_mode)
@@ -2889,6 +3027,17 @@ def ingest_single_file(raw_path, relative_raw_path, workspace, source_identity: 
     extracted["content"] = _clean_content_for_draft(extracted.get("content", ""))
     content = _clean_content_for_draft(str(enriched["content"]))
     enriched["content"] = content
+
+    domain_check = check_domain_contamination(workspace, relative_raw_path, content)
+
+    if domain_check["action"] == "quarantine":
+        return {
+            "status": "quarantined",
+            "raw_file": relative_raw_path,
+            "domain_check": domain_check,
+            "quarantine_reason": domain_check["domain_check_reason"],
+            "blocked_keywords": domain_check["blocked_keywords"],
+        }
 
     source_identity = source_identity or {}
     source_id = source_identity.get("source_id") or deterministic_id(relative_raw_path, content)
@@ -2917,6 +3066,7 @@ def ingest_single_file(raw_path, relative_raw_path, workspace, source_identity: 
         queue_status=queue_status,
         review_reason=review_reason,
         source_identity=source_identity,
+        domain_check=domain_check,
     )
     draft_file = write_draft(
         workspace,
@@ -2935,6 +3085,7 @@ def ingest_single_file(raw_path, relative_raw_path, workspace, source_identity: 
         semantic=semantic,
         source_excerpt=content,
         draft_file=source_identity.get("draft_file"),
+        domain_check=domain_check,
     )
     update_ingest_queue(
         workspace,
@@ -2945,6 +3096,7 @@ def ingest_single_file(raw_path, relative_raw_path, workspace, source_identity: 
         confidence=confidence,
         perception=perception,
         review_reason=review_reason,
+        domain_check=domain_check,
     )
     return {
         "status": "draft_created",
@@ -2963,6 +3115,7 @@ def ingest_single_file(raw_path, relative_raw_path, workspace, source_identity: 
         "conflict_reports": conflict_reports,
         "source_id": source_id,
         "source_identity": source_identity,
+        "domain_check": domain_check,
     }
 
 
@@ -3059,6 +3212,7 @@ def run(task: str, workspace: str) -> dict:
 
     items = []
     successful = []
+    quarantined_count = 0
     for raw_file in changed_files:
         relative_raw_path = str(raw_file.resolve().relative_to(Path(workspace).resolve())).replace("\\", "/")
         try:
@@ -3068,6 +3222,20 @@ def run(task: str, workspace: str) -> dict:
                 workspace,
                 source_identity=source_identity_by_path.get(relative_raw_path),
             )
+            if item.get("status") == "quarantined":
+                quarantined_count += 1
+                skipped_files.append(
+                    _skip_record(
+                        raw_file,
+                        workspace,
+                        "skipped_domain_quarantine",
+                        action="quarantined",
+                        message=f"domain_check={item.get('domain_check', {}).get('domain_check_status', 'UNKNOWN')}; "
+                        f"reason={item.get('quarantine_reason', 'unknown')}; "
+                        f"blocked_keywords={item.get('blocked_keywords', [])}",
+                    )
+                )
+                continue
             items.append(item)
             successful.append((fingerprints[relative_raw_path], item))
         except Exception as exc:  # noqa: BLE001 - directory ingest should report bad files and continue.
@@ -3086,6 +3254,7 @@ def run(task: str, workspace: str) -> dict:
             "draft_files": [],
             "conflict_count": 0,
             "conflict_reports": [],
+            "quarantined_count": quarantined_count,
             "skipped_count": len(skipped_files),
             "scanned_count": len(raw_files) + discovered_skipped_count,
             "changed_count": len(changed_files),
@@ -3132,11 +3301,13 @@ def run(task: str, workspace: str) -> dict:
         "promotion_status": first["promotion_status"],
         "review_reason": first["review_reason"],
         "perception": first["perception"],
+        "domain_check": first.get("domain_check"),
         "conflict_count": sum(item["conflict_count"] for item in items),
         "conflict_reports": [report for item in items for report in item.get("conflict_reports", [])],
         "ingested_count": len(items),
         "ingested_files": [item["raw_file"] for item in items],
         "draft_files": [item["draft_file"] for item in items],
+        "quarantined_count": quarantined_count,
         "skipped_count": len(skipped_files),
         "scanned_count": len(raw_files) + discovered_skipped_count,
         "changed_count": len(changed_files),
