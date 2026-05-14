@@ -6,8 +6,10 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 from . import __version__, entry, ingest as ingest_module, output, overview as overview_module, review, save as save_module
+from .api import _normalize_ask_result
 from .doctor import build_doctor_report, render_doctor_report
 from .gaps import build_gap_report, render_gap_report
 from .inspect import build_inspect_report, render_inspect_report
@@ -175,19 +177,147 @@ def _render_and_exit(result, *, debug: bool = False, level: str | None = None) -
     return _result_exit_code(result)
 
 
-def _standardize_json(report: dict, command_name: str, workspace: Path | str, status: str = "success") -> dict:
-    standardized = {
-        "schema_version": __version__,
+def _json_status(payload: dict[str, Any] | None) -> str:
+    if not isinstance(payload, dict):
+        return "success"
+    retrieval_status = str(payload.get("retrieval_status") or "").strip()
+    if retrieval_status in {"no_match", "wrong_workspace", "ambiguous", "no_confident_workspace", "blocked"}:
+        return retrieval_status
+    current_state = str(payload.get("current_state") or "").strip()
+    if current_state in {"knowledge_gap_logged", "blocked", "approval_required"}:
+        return current_state
+    runner_status = str(payload.get("runner_status") or "").strip()
+    if runner_status == "blocked":
+        return "blocked"
+    status = str(payload.get("status") or "").strip().lower()
+    if status in {"blocked", "warning", "error", "failed"}:
+        return status
+    overall = str(payload.get("overall") or "").strip().upper()
+    if overall == "WARN":
+        return "warning"
+    ok_value = payload.get("ok")
+    if ok_value is False:
+        return "warning"
+    return "success"
+
+
+def _standardize_json(data: dict, command_name: str, workspace: Path | str, status: str | None = None) -> dict:
+    return {
+        "schema_version": "1",
         "command_name": command_name,
         "workspace": str(workspace),
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
-        "status": status,
+        "status": status or _json_status(data),
+        "data": data,
     }
-    # Merge existing report fields, but don't overwrite standard ones
-    for k, v in report.items():
-        if k not in standardized:
-            standardized[k] = v
-    return standardized
+
+
+def _as_list(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if value in (None, ""):
+        return []
+    return [value]
+
+
+def _ask_json_data(result: Any, workspace: Path | str) -> dict[str, Any]:
+    normalized = _normalize_ask_result(result, workspace_root=Path(workspace))
+    if not isinstance(result, dict):
+        return {
+            "answer": normalized["answer"],
+            "retrieval_status": normalized["retrieval_status"],
+            "trust_score": normalized["trust_score"],
+            "sources": normalized["sources"],
+            "warnings": normalized["warnings"],
+            "gap_logged": False,
+            "gap_id": None,
+            "current_state": None,
+            "knowledge_evidence_tier": None,
+            "knowledge_source_score": None,
+            "source_summary": None,
+            "logs": normalized.get("logs", []),
+            "provider": None,
+        }
+    knowledge = (
+        result.get("knowledge_output")
+        if isinstance(result.get("knowledge_output"), dict)
+        else (result.get("knowledge") if isinstance(result.get("knowledge"), dict) else {})
+    )
+    gap_logged = bool(
+        result.get("gap_logged")
+        or knowledge.get("gap_logged")
+        or str(result.get("current_state") or "").strip() == "knowledge_gap_logged"
+    )
+    return {
+        "answer": normalized["answer"],
+        "retrieval_status": normalized["retrieval_status"],
+        "trust_score": normalized["trust_score"],
+        "sources": normalized["sources"],
+        "warnings": normalized["warnings"],
+        "gap_logged": gap_logged,
+        "gap_id": result.get("gap_id") or knowledge.get("gap_id"),
+        "current_state": result.get("current_state"),
+        "knowledge_evidence_tier": result.get("knowledge_evidence_tier") or knowledge.get("tier"),
+        "knowledge_source_score": result.get("knowledge_source_score") or knowledge.get("score"),
+        "source_summary": result.get("source_summary") or knowledge.get("source_summary"),
+        "logs": normalized.get("logs", []),
+        "provider": result.get("provider"),
+    }
+
+
+def _doctor_json_data(workspace: Path | str) -> dict[str, Any]:
+    report = build_doctor_report(workspace)
+    return {
+        "checks": report.get("checks", []),
+        "ok": str(report.get("overall") or "").upper() == "OK",
+        "warnings": report.get("top_warnings", []),
+        "workspace_health": report.get("workspace_health"),
+        "engine_health": report.get("engine_health"),
+    }
+
+
+def _version_json_data(workspace: Path | str) -> dict[str, Any]:
+    report = build_version_report(workspace)
+    return {
+        "version": report.get("package_version") or __version__,
+        "package": "abw_skill",
+        "python": report.get("python"),
+        "git_commit": report.get("git_commit"),
+        "git_tag": report.get("git_tag"),
+        "install_mode": report.get("install_mode"),
+        "runtime_source": report.get("runtime_source"),
+    }
+
+
+def _ingest_json_data(result: Any) -> dict[str, Any]:
+    payload = result if isinstance(result, dict) else {}
+    ingest_result = payload.get("ingest_result") if isinstance(payload.get("ingest_result"), dict) else {}
+    return {
+        "ingested": int(ingest_result.get("ingested_count") or 0),
+        "skipped": int(ingest_result.get("skipped_count") or 0),
+        "errors": _as_list(ingest_result.get("errors")),
+        "report_path": ingest_result.get("report_path"),
+        "gaps_path": ingest_result.get("gaps_path"),
+        "promotion_performed": bool(ingest_result.get("promotion_performed", False)),
+        "current_state": payload.get("current_state"),
+        "runner_status": payload.get("runner_status"),
+        "warnings": _as_list(payload.get("warnings")),
+    }
+
+
+def _review_json_data(result: Any) -> dict[str, Any]:
+    payload = result if isinstance(result, dict) else {}
+    batch = payload.get("draft_batch_review") if isinstance(payload.get("draft_batch_review"), dict) else {}
+    items = batch.get("items") if isinstance(batch.get("items"), list) else []
+    pending_drafts = payload.get("pending_drafts") if isinstance(payload.get("pending_drafts"), list) else []
+    return {
+        "pending": len(pending_drafts) if pending_drafts else len(items),
+        "reviewed": len(items),
+        "actions": payload.get("next_actions") if isinstance(payload.get("next_actions"), list) else [],
+        "warnings": _as_list(payload.get("warnings")),
+        "current_state": payload.get("current_state"),
+        "runner_status": payload.get("runner_status"),
+    }
 
 
 def _print_menu() -> int:
@@ -275,16 +405,25 @@ def main(argv=None) -> int:
             )
             if isinstance(result, dict):
                 result["provider"] = ask_plan["provider"]
+            if args.json:
+                print(json.dumps(_standardize_json(_ask_json_data(result, workspace), "ask", workspace), indent=2))
+                return _result_exit_code(result if isinstance(result, dict) else {})
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "ingest":
             result = ingest_module.ingest(args.path, workspace=str(workspace))
+            if args.json:
+                print(json.dumps(_standardize_json(_ingest_json_data(result), "ingest", workspace), indent=2))
+                return _result_exit_code(result if isinstance(result, dict) else {})
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "review":
             result = _legacy_entry.final_output(
                 _legacy_entry.execute_command("/abw-review", workspace=str(workspace))
             )
+            if args.json:
+                print(json.dumps(_standardize_json(_review_json_data(result), "review", workspace), indent=2))
+                return _result_exit_code(result if isinstance(result, dict) else {})
             return _render_and_exit(result, debug=debug, level=level)
 
         if args.command == "overview":
@@ -292,6 +431,9 @@ def main(argv=None) -> int:
             return 0
 
         if args.command == "version":
+            if args.json:
+                print(json.dumps(_standardize_json(_version_json_data(workspace), "version", workspace), indent=2))
+                return 0
             return _render_and_exit(_version_result(str(workspace)), debug=debug, level=level)
 
         if args.command == "migrate":
@@ -311,6 +453,9 @@ def main(argv=None) -> int:
             return 0
 
         if args.command == "doctor":
+            if args.json:
+                print(json.dumps(_standardize_json(_doctor_json_data(workspace), "doctor", workspace), indent=2))
+                return 0
             return _render_and_exit(_doctor_result(str(workspace)), debug=debug, level=level)
 
         if args.command == "inspect":
