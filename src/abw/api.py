@@ -236,9 +236,10 @@ def _is_allowed_source_path(path: str) -> bool:
 def _source_exists_in_workspace(path: str, workspace_root: Path | None) -> bool:
     if workspace_root is None:
         return True
-    candidate = (workspace_root / Path(path)).resolve()
+    root = workspace_root.expanduser().resolve()
+    candidate = (root / Path(path)).resolve()
     try:
-        candidate.relative_to(workspace_root)
+        candidate.relative_to(root)
     except ValueError:
         return False
     return candidate.exists() and candidate.is_file()
