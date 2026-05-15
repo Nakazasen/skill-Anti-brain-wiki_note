@@ -1556,6 +1556,37 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertEqual(result["citations"], [])
             self.assertIn("Không tìm thấy thông tin đáng tin cậy.", result["answer"])
 
+    def test_supplier_contract_query_abstains_when_only_agv_topic_matches(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki" / "agv.md"
+            wiki.parent.mkdir(parents=True, exist_ok=True)
+            wiki.write_text(
+                "# AGV Communication\nstatus: grounded\n\nAGV dispatch messages use MQTT.\nHeartbeat interval is 5 seconds.\n",
+                encoding="utf-8",
+            )
+
+            known_result = abw_runner.dispatch_request(
+                task="What protocol does the AGV use for dispatch messages?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+            supplier_result = abw_runner.dispatch_request(
+                task="Who approved the AGV supplier contract?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(known_result["current_state"], "knowledge_answered")
+            self.assertEqual(known_result["knowledge"]["retrieval_status"], "grounded")
+            self.assertGreater(known_result["knowledge"]["score"], 0)
+            self.assertEqual(supplier_result["current_state"], "knowledge_gap_logged")
+            self.assertEqual(supplier_result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(supplier_result["citations"], [])
+            self.assertEqual(supplier_result["knowledge"]["score"], 0)
+
     def test_named_entity_query_abstains_when_topical_source_lacks_entity(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)

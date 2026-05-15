@@ -76,6 +76,24 @@ GENERIC_SOURCE_TERMS = {
     "sources",
     "system",
 }
+FACT_SPECIFIC_TERMS = {
+    "approve",
+    "approved",
+    "approval",
+    "approver",
+    "authorizer",
+    "authorized",
+    "contract",
+    "owner",
+    "signoff",
+    "signed",
+    "signer",
+    "supplier",
+    "vendor",
+    "when",
+    "where",
+    "who",
+}
 
 
 def now_iso():
@@ -211,6 +229,14 @@ def _required_domain_terms(task):
 def _high_specificity_query_terms(task):
     generic_terms = GENERIC_SOURCE_TERMS.union({"agv", "mom", "wms"})
     return [term for term in _original_query_terms(task) if len(term) >= 4 and term not in generic_terms]
+
+
+def _minimum_specific_term_matches(task):
+    specific_terms = _high_specificity_query_terms(task)
+    if len(specific_terms) < 2:
+        return 0
+    original_terms = set(_original_query_terms(task))
+    return 1 if original_terms.intersection(FACT_SPECIFIC_TERMS) else 0
 
 
 def _summarize_document(text, limit=420):
@@ -490,6 +516,8 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
     required_fact_terms = _required_fact_terms(task)
     strict_chapter_number = _strict_chapter_number(task)
     required_domain_terms = _required_domain_terms(task)
+    high_specificity_terms = _high_specificity_query_terms(task)
+    minimum_specific_term_matches = _minimum_specific_term_matches(task)
 
     candidates = []
     for path in _iter_retrieval_candidates(workspace_root):
@@ -527,6 +555,10 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
         if required_domain_terms:
             title_and_body = f"{title_norm} {headings_norm} {body_norm}"
             if not all(re.search(rf"\b{re.escape(term)}\b", title_and_body) for term in required_domain_terms):
+                continue
+        if minimum_specific_term_matches:
+            matched_specific_terms = [term for term in high_specificity_terms if term in matched_terms]
+            if len(matched_specific_terms) < minimum_specific_term_matches:
                 continue
         matched_named_entities = []
         for entity in required_named_entities:

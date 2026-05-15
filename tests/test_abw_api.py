@@ -158,6 +158,31 @@ class AbwApiTests(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0]["path"], "wiki\\agv.md")
 
+    def test_specific_term_overlap_blocks_supplier_contract_overmatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_file = root / "wiki" / "agv.md"
+            wiki_file.parent.mkdir(parents=True)
+            wiki_file.write_text(
+                "# AGV Communication\nstatus: grounded\n\nAGV dispatch messages use MQTT.\nHeartbeat interval is 5 seconds.\n",
+                encoding="utf-8",
+            )
+
+            protocol_matches = _search_wiki_contexts(
+                "What protocol does the AGV use for dispatch messages?",
+                workspace=root,
+                limit=3,
+            )
+            supplier_matches = _search_wiki_contexts(
+                "Who approved the AGV supplier contract?",
+                workspace=root,
+                limit=3,
+            )
+
+        self.assertEqual(protocol_matches[0]["path"], "wiki\\agv.md")
+        self.assertEqual(protocol_matches[0]["retrieval_status"], "grounded")
+        self.assertEqual(supplier_matches, [])
+
     def test_missing_non_wiki_sources_do_not_get_medium_trust(self):
         result = {
             "answer": "noise",
