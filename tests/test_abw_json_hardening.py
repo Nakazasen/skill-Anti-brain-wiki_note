@@ -296,6 +296,47 @@ class TestAbwJsonHardening(unittest.TestCase):
         self.assertTrue(report["data"]["runtime_write_suppressed"])
 
     @patch("abw.cli.resolve_workspace")
+    @patch("abw.cli._legacy_entry.final_output")
+    @patch("abw.cli._legacy_entry.execute_command")
+    @patch("abw.cli.prepare_ask_task")
+    def test_ask_json_contract_raw_only_query_marks_weak_evidence(self, mock_prepare, mock_execute, mock_final, mock_resolve):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "raw").mkdir(parents=True, exist_ok=True)
+            (workspace / "raw" / "agv.md").write_text("AGV dispatch uses MQTT.", encoding="utf-8")
+            mock_resolve.return_value = workspace
+            mock_prepare.return_value = {"task": "raw query", "provider": "local"}
+            ask_result = {
+                "answer": "Raw note says AGV dispatch uses MQTT.",
+                "current_state": "knowledge_answered",
+                "knowledge_evidence_tier": "E1_fallback",
+                "knowledge_source_score": 1,
+                "confidence": 78,
+                "knowledge_output": {
+                    "retrieval_status": "fuzzy_match",
+                    "source_summary": "raw_source",
+                },
+                "citations": [{"path": "raw/agv.md"}],
+                "warnings": [],
+            }
+            mock_execute.return_value = ask_result
+            mock_final.return_value = ask_result
+
+            stdout = io.StringIO()
+            with patch("sys.stdout", stdout):
+                abw_cli.main(["--json", "ask", "What does the raw AGV note say?"])
+
+            report = json.loads(stdout.getvalue())
+            self.assertEqual(report["workspace"], str(workspace))
+            self.assertEqual(report["schema_version"], "1")
+            self.assertEqual(report["command_name"], "ask")
+            self.assertEqual(report["status"], "success")
+            self.assertEqual(report["data"]["retrieval_status"], "raw_or_draft_only")
+            self.assertEqual(report["data"]["knowledge_evidence_tier"], "E1_fallback")
+            self.assertLess(report["data"]["trust_score"], 50)
+            self.assertIn("raw or draft material", " ".join(report["data"]["warnings"]))
+
+    @patch("abw.cli.resolve_workspace")
     @patch("abw.cli.ingest_module.ingest")
     def test_ingest_json_contract(self, mock_ingest, mock_resolve):
         mock_resolve.return_value = self.workspace

@@ -1422,8 +1422,39 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertEqual(result["current_state"], "knowledge_answered")
             self.assertEqual(result["knowledge"]["source"], "raw")
             self.assertEqual(result["knowledge"]["source_summary"], "raw_source")
-            self.assertEqual(result["knowledge_evidence_tier"], "E3_grounded")
+            self.assertEqual(result["knowledge_evidence_tier"], "E1_fallback")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "raw_or_draft_only")
             self.assertEqual(result["citations"][0]["path"], "raw\\MOM_WMS_AGV_interface.md")
+
+    def test_query_prefers_grounded_wiki_and_preserves_vietnamese_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki" / "agv-giao-tiep.md"
+            wiki.parent.mkdir(parents=True, exist_ok=True)
+            wiki.write_text(
+                "---\n"
+                "title: AGV Giao Tiep\n"
+                "status: grounded\n"
+                "---\n\n"
+                "# AGV Giao Tiep\n\n"
+                "AGV giao tiếp dùng MQTT cho điều phối và heartbeat mỗi 5 giây.\n",
+                encoding="utf-8",
+            )
+
+            result = abw_runner.dispatch_request(
+                task="AGV giao tiếp dùng gì?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_answered")
+            self.assertEqual(result["knowledge"]["source"], "wiki")
+            self.assertEqual(result["knowledge_evidence_tier"], "E2_wiki")
+            self.assertIn(result["knowledge"]["retrieval_status"], {"grounded", "exact_match"})
+            self.assertEqual(result["knowledge"]["path"], "wiki\\agv-giao-tiep.md")
+            self.assertIn("giao tiếp", result["knowledge"]["content"])
+            self.assertNotIn("\ufffd", result["knowledge"]["content"])
 
     def test_query_ranking_prefers_exact_trusted_wiki_title_over_noisy_raw_hits(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1496,7 +1527,7 @@ class AbwRunnerBindingTests(unittest.TestCase):
 
             self.assertEqual(result["knowledge"]["path"], "drafts\\ch-ng-7_draft.md")
             self.assertNotIn("133", result["knowledge"]["path"])
-            self.assertEqual(result["knowledge"]["retrieval_status"], "exact_match")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "raw_or_draft_only")
 
     def test_query_domain_terms_require_presence_in_candidate_content(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1571,7 +1602,9 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertEqual(result["current_state"], "knowledge_answered")
             self.assertEqual(result["knowledge"]["source"], "raw")
             self.assertEqual(result["citations"][0]["path"], "raw\\MP2027_budget_simulation.csv")
-            self.assertIn("Source metadata matched", result["answer"])
+            self.assertEqual(result["knowledge_evidence_tier"], "E1_fallback")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "raw_or_draft_only")
+            self.assertEqual(result["knowledge"]["content"], "Source metadata matched: raw\\MP2027_budget_simulation.csv")
 
     def test_query_matches_mpfy2027_spreadsheet_index_as_mp2027(self):
         with tempfile.TemporaryDirectory() as tmp:

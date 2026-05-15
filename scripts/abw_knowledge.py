@@ -456,8 +456,13 @@ def _read_explicit_local_source(task, workspace="."):
 
 
 def _search_wiki_context(task, workspace="."):
-    matches = _search_wiki_contexts(task, workspace=workspace, limit=1)
-    return matches[0] if matches else None
+    matches = _search_wiki_contexts(task, workspace=workspace, limit=max(5, BOUNDED_SUMMARY_SOURCE_LIMIT))
+    if not matches:
+        return None
+    for candidate in matches:
+        if candidate.get("source") == "wiki":
+            return candidate
+    return matches[0]
 
 
 def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMIT):
@@ -773,8 +778,10 @@ def compute_knowledge_score(result):
     context = result.get("knowledge_context") or {}
     source = context.get("source")
     confidence = float(context.get("confidence") or 0.0)
-    if source in {"wiki", "wiki_summary", "raw", "processed"}:
+    if source in {"wiki", "wiki_summary"}:
         return max(1, min(3, int(round(confidence * 3))))
+    if source in {"raw", "processed", "draft_metadata"}:
+        return max(1, min(2, int(round(confidence * 2))))
     if source == "local":
         return max(2, min(3, int(round(confidence * 3))))
     return 0
@@ -785,10 +792,10 @@ def compute_knowledge_tier(result):
     source = context.get("source")
     if source == "local":
         return "E3_grounded"
-    if source in {"raw", "processed"}:
-        return "E3_grounded"
     if source in {"wiki", "wiki_summary"}:
         return "E2_wiki"
+    if source in {"raw", "processed", "draft_metadata"}:
+        return "E1_fallback"
     return "E0_unknown"
 
 
@@ -837,6 +844,9 @@ def enrich_knowledge_result(task, workspace="."):
 
 def attach_knowledge_output(result, answer_text=None):
     context = result.get("knowledge_context") or {}
+    retrieval_status = context.get("retrieval_status") or ("no_match" if context.get("source") in {None, "none"} else "fuzzy_match")
+    if context.get("source") in {"raw", "processed", "draft_metadata"} and retrieval_status != "no_match":
+        retrieval_status = "raw_or_draft_only"
     result["knowledge_output"] = {
         "answer": answer_text if answer_text is not None else result.get("answer") or result.get("execution_result"),
         "tier": result.get("knowledge_evidence_tier"),
@@ -849,7 +859,7 @@ def attach_knowledge_output(result, answer_text=None):
         "path": context.get("path"),
         "title": context.get("title"),
         "matched_terms": context.get("matched_terms") or [],
-        "retrieval_status": context.get("retrieval_status") or ("no_match" if context.get("source") in {None, "none"} else "fuzzy_match"),
+        "retrieval_status": retrieval_status,
         "required_named_entities": context.get("required_named_entities") or [],
         "summary_status": context.get("summary_status"),
         "scope_limit": context.get("scope_limit"),

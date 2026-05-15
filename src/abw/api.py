@@ -293,7 +293,10 @@ def _trust_score(result: dict[str, Any], sources: list[dict[str, Any]]) -> int:
     base = _confidence_value(result.get("confidence") or result.get("status"), default=50)
     if sources:
         source_score = max(source["confidence"] for source in sources)
-        return max(0, min(100, int((base + source_score) / 2)))
+        trust = max(0, min(100, int((base + source_score) / 2)))
+        if all(str(source.get("path") or "").replace("\\", "/").startswith(("raw/", "drafts/", "processed/")) for source in sources):
+            trust = min(trust, 45)
+        return trust
     return min(base, 35)
 
 
@@ -338,6 +341,13 @@ def _normalize_ask_result(result: Any, workspace_root: Path | None = None) -> di
         or knowledge_output.get("retrieval_status")
         or ("fuzzy_match" if sources else "no_match")
     )
+    evidence_tier = str(result.get("knowledge_evidence_tier") or knowledge_output.get("tier") or "").strip()
+    weak_local_only = bool(sources) and all(
+        str(source.get("path") or "").replace("\\", "/").startswith(("raw/", "drafts/", "processed/"))
+        for source in sources
+    )
+    if weak_local_only and retrieval_status != "no_match":
+        retrieval_status = "raw_or_draft_only"
     if not sources:
         retrieval_status = "no_match"
     if retrieval_status == "no_match":
@@ -350,6 +360,8 @@ def _normalize_ask_result(result: Any, workspace_root: Path | None = None) -> di
             answer = f"{prefix}\n\n{answer}".strip() if answer else prefix
     elif trust_score < 50:
         warnings.append("Weak evidence: trust score is below 50.")
+    if weak_local_only or evidence_tier == "E1_fallback":
+        warnings.append("Weak evidence: answer is based on raw or draft material, not grounded wiki.")
 
     meta = {
         "route": result.get("route"),

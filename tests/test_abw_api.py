@@ -96,6 +96,29 @@ class AbwApiTests(unittest.TestCase):
         self.assertTrue(payload["data"]["answer"])
         self.assertIn("No supporting sources", " ".join(payload["data"]["warnings"]))
 
+    def test_ask_marks_raw_only_sources_as_weak_evidence(self):
+        result = {
+            "answer": "Raw note says AGV dispatch uses MQTT.",
+            "confidence": "high",
+            "knowledge_evidence_tier": "E1_fallback",
+            "knowledge_output": {
+                "retrieval_status": "fuzzy_match",
+                "source_summary": "raw_source",
+            },
+            "citations": [{"path": "raw/agv.md"}],
+        }
+        with tempfile.TemporaryDirectory() as tmp, patch("abw.api.run_ask", return_value=result):
+            raw_file = Path(tmp) / "raw" / "agv.md"
+            raw_file.parent.mkdir(parents=True)
+            raw_file.write_text("AGV dispatch uses MQTT.", encoding="utf-8")
+            response = self.client.post("/ask", json={"workspace": tmp, "query": "AGV dispatch"})
+            payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["data"]["retrieval_status"], "raw_or_draft_only")
+        self.assertLess(payload["data"]["trust_score"], 50)
+        self.assertIn("raw or draft material", " ".join(payload["data"]["warnings"]))
+
     def test_ask_filters_synthetic_sources_and_guards_no_match_answer(self):
         result = {
             "answer": "noise",
