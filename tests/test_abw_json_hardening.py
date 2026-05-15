@@ -350,6 +350,15 @@ class TestAbwJsonHardening(unittest.TestCase):
                 "report_path": ".brain/ingest_report.json",
                 "gaps_path": ".brain/ingest_gaps.json",
                 "promotion_performed": False,
+                "review_required": True,
+                "unsupported_count": 1,
+                "parse_error_count": 0,
+                "duplicate_count": 0,
+                "generated_draft_count": 2,
+                "manifest_path": "processed/manifest.jsonl",
+                "unsupported_files": [{"path": "raw/bad.unsupported", "reason": "skipped_unsupported_extension"}],
+                "parse_errors": [],
+                "generated_drafts": ["drafts/manual_draft.md", "drafts/notes_draft.md"],
             },
         }
 
@@ -363,6 +372,10 @@ class TestAbwJsonHardening(unittest.TestCase):
         self.assertEqual(report["data"]["skipped"], 1)
         self.assertEqual(report["data"]["report_path"], ".brain/ingest_report.json")
         self.assertFalse(report["data"]["promotion_performed"])
+        self.assertTrue(report["data"]["review_required"])
+        self.assertEqual(report["data"]["unsupported_files"][0]["path"], "raw/bad.unsupported")
+        self.assertEqual(report["data"]["generated_drafts"], ["drafts/manual_draft.md", "drafts/notes_draft.md"])
+        self.assertEqual(report["data"]["manifest_path"], "processed/manifest.jsonl")
 
     @patch("abw.cli.resolve_workspace")
     @patch("abw.cli._legacy_entry.final_output")

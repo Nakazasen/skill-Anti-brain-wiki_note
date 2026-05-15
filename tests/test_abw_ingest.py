@@ -154,6 +154,65 @@ class AbwIngestTests(unittest.TestCase):
             self.assertEqual(skipped["raw/random.tmp"]["reason"], "skipped_unsupported_extension")
             self.assertTrue(all(item["action"] == "skipped" for item in skipped.values()))
 
+    def test_ingest_report_tracks_counts_paths_and_review_boundary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "manual.md").write_text("# Manual\nAGV dispatch uses MQTT.\n", encoding="utf-8")
+            (raw / "notes.txt").write_text("Heartbeat status logs every 5 seconds.\n", encoding="utf-8")
+            (raw / "broken.docx").write_bytes(b"not a docx")
+            (raw / "bad.unsupported").write_text("junk", encoding="utf-8")
+
+            result = abw_ingest.run("ingest raw", str(workspace))
+
+            self.assertEqual(result["ingested_count"], 2)
+            self.assertEqual(result["generated_draft_count"], 2)
+            self.assertEqual(result["unsupported_count"], 1)
+            self.assertEqual(result["parse_error_count"], 1)
+            self.assertEqual(result["duplicate_count"], 0)
+            self.assertFalse(result["promotion_performed"])
+            self.assertTrue(result["review_required"])
+            self.assertEqual(result["report_path"], ".brain/ingest_report.json")
+            self.assertEqual(result["gaps_path"], ".brain/ingest_gaps.json")
+            self.assertEqual(result["manifest_path"], "processed/manifest.jsonl")
+            self.assertEqual(len(result["unsupported_files"]), 1)
+            self.assertEqual(result["unsupported_files"][0]["path"], "raw/bad.unsupported")
+            self.assertEqual(len(result["parse_errors"]), 1)
+            self.assertEqual(result["parse_errors"][0]["path"], "raw/broken.docx")
+            self.assertIn("DOCX parser failed", result["parse_errors"][0]["message"])
+
+            report = json.loads((workspace / ".brain" / "ingest_report.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["summary"]["ingested_count"], 2)
+            self.assertEqual(report["summary"]["skipped_count"], 2)
+            self.assertEqual(report["summary"]["unsupported_count"], 1)
+            self.assertEqual(report["summary"]["parse_error_count"], 1)
+            self.assertEqual(report["summary"]["duplicate_count"], 0)
+            self.assertEqual(report["summary"]["generated_draft_count"], 2)
+            self.assertFalse(report["summary"]["promotion_performed"])
+            self.assertTrue(report["summary"]["review_required"])
+            self.assertEqual(report["manifest_path"], "processed/manifest.jsonl")
+
+    def test_repeated_ingest_reports_duplicates_without_fake_ingest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "manual.md").write_text("Station queue rule.\n", encoding="utf-8")
+
+            first = abw_ingest.run("ingest raw", str(workspace))
+            second = abw_ingest.run("ingest raw", str(workspace))
+
+            self.assertEqual(first["ingested_count"], 1)
+            self.assertEqual(first["duplicate_count"], 0)
+            self.assertEqual(second["ingested_count"], 0)
+            self.assertEqual(second["duplicate_count"], 1)
+            self.assertEqual(second["generated_draft_count"], 0)
+            self.assertFalse(second["promotion_performed"])
+            self.assertFalse(second["review_required"])
+            self.assertEqual(second["skipped_unchanged_count"], 1)
+            self.assertEqual(second["skipped_files"][0]["reason"], "skipped_unchanged")
+
     def test_html_ingest_supported_while_tmp_still_skips(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)

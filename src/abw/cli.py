@@ -300,16 +300,26 @@ def _version_json_data(workspace: Path | str) -> dict[str, Any]:
 def _ingest_json_data(result: Any) -> dict[str, Any]:
     payload = result if isinstance(result, dict) else {}
     ingest_result = payload.get("ingest_result") if isinstance(payload.get("ingest_result"), dict) else {}
+    parse_errors = _as_list(ingest_result.get("parse_errors"))
     return {
         "ingested": int(ingest_result.get("ingested_count") or 0),
         "skipped": int(ingest_result.get("skipped_count") or 0),
-        "errors": _as_list(ingest_result.get("errors")),
+        "errors": _as_list(ingest_result.get("errors")) or parse_errors,
         "report_path": ingest_result.get("report_path"),
         "gaps_path": ingest_result.get("gaps_path"),
         "promotion_performed": bool(ingest_result.get("promotion_performed", False)),
+        "review_required": bool(ingest_result.get("review_required", False)),
+        "unsupported_files": _as_list(ingest_result.get("unsupported_files")),
+        "parse_errors": parse_errors,
+        "generated_drafts": _as_list(ingest_result.get("generated_drafts")),
+        "generated_draft_count": int(ingest_result.get("generated_draft_count") or 0),
+        "unsupported_count": int(ingest_result.get("unsupported_count") or 0),
+        "parse_error_count": int(ingest_result.get("parse_error_count") or 0),
+        "duplicate_count": int(ingest_result.get("duplicate_count") or 0),
+        "manifest_path": ingest_result.get("manifest_path"),
         "current_state": payload.get("current_state"),
         "runner_status": payload.get("runner_status"),
-        "warnings": _as_list(payload.get("warnings")),
+        "warnings": _as_list(payload.get("warnings")) + _as_list(ingest_result.get("warnings")),
     }
 
 

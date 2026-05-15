@@ -901,14 +901,21 @@ def _domain_guard_active(workspace):
 
 
 def generate_ingest_report(workspace, result, task, run_id, created_at, fingerprints, skipped_files):
+    normalized = _normalized_ingest_summary(workspace, result, skipped_files)
     summary = {
         "ingested_count": int(result.get("ingested_count", 0)),
         "skipped_count": int(result.get("skipped_count", 0)),
-        "failed_count": sum(1 for f in (skipped_files or []) if f.get("action") in ("skipped_parse_error",)),
+        "failed_count": int(normalized["parse_error_count"]),
         "quarantined_count": int(result.get("quarantined_count", 0)),
         "draft_count": len(result.get("draft_files", [])),
         "manifest_count": int(result.get("changed_count", 0)),
         "queue_count": int(result.get("ingested_count", 0)),
+        "unsupported_count": int(normalized["unsupported_count"]),
+        "parse_error_count": int(normalized["parse_error_count"]),
+        "duplicate_count": int(normalized["duplicate_count"]),
+        "generated_draft_count": int(normalized["generated_draft_count"]),
+        "promotion_performed": bool(normalized["promotion_performed"]),
+        "review_required": bool(normalized["review_required"]),
     }
 
     items = []
@@ -980,6 +987,7 @@ def generate_ingest_report(workspace, result, task, run_id, created_at, fingerpr
         "created_at": created_at,
         "workspace": str(Path(workspace).resolve()),
         "command": str(task or ""),
+        "manifest_path": normalized["manifest_path"],
         "summary": summary,
         "items": items,
         "safety": safety,
@@ -2799,6 +2807,58 @@ def _skip_record(path: Path, workspace: str, reason: str, action: str = "skipped
     return record
 
 
+def _relative_artifact_path(path: Path, workspace: str) -> str:
+    return str(path.resolve().relative_to(Path(workspace).resolve())).replace("\\", "/")
+
+
+def _skip_matches(skip_file: dict, reason: str) -> bool:
+    return str(skip_file.get("reason") or "").strip() == reason
+
+
+def _normalized_ingest_summary(workspace: str, result: dict, skipped_files: list[dict]) -> dict:
+    rows = [row for row in (skipped_files or []) if isinstance(row, dict)]
+    unsupported_files = [row for row in rows if _skip_matches(row, "skipped_unsupported_extension")]
+    parse_errors = [row for row in rows if _skip_matches(row, "skipped_parse_error")]
+    generated_drafts = [
+        str(path)
+        for path in (result.get("draft_files") or [])
+        if str(path or "").strip()
+    ]
+    promotion_performed = any(
+        str(item.get("promotion_status") or "").strip().lower() == "promoted"
+        for item in (result.get("items") or [])
+        if isinstance(item, dict)
+    )
+    review_required = any(
+        str(item.get("queue_status") or "").strip().lower() == "review_needed"
+        or str(item.get("review_reason") or "").strip().lower() != "trusted"
+        for item in (result.get("items") or [])
+        if isinstance(item, dict)
+    )
+    warnings = []
+    if unsupported_files:
+        warnings.append(f"{len(unsupported_files)} unsupported file(s) skipped.")
+    if parse_errors:
+        warnings.append(f"{len(parse_errors)} parse error file(s) skipped.")
+    if review_required:
+        warnings.append("Drafts were created and still require review before any trusted wiki use.")
+    return {
+        "unsupported_count": len(unsupported_files),
+        "parse_error_count": len(parse_errors),
+        "duplicate_count": int(result.get("skipped_unchanged_count") or 0),
+        "generated_draft_count": len(generated_drafts),
+        "generated_drafts": generated_drafts,
+        "unsupported_files": unsupported_files,
+        "parse_errors": parse_errors,
+        "promotion_performed": promotion_performed,
+        "review_required": review_required,
+        "report_path": _relative_artifact_path(ingest_report_path(workspace), workspace),
+        "gaps_path": _relative_artifact_path(ingest_gaps_path(workspace), workspace),
+        "manifest_path": _relative_artifact_path(manifest_path(workspace), workspace),
+        "warnings": warnings,
+    }
+
+
 def _is_empty_skip_candidate(path: Path) -> bool:
     return path.exists() and path.is_file() and path.stat().st_size == 0
 
@@ -3562,6 +3622,7 @@ def run(task: str, workspace: str) -> dict:
             ],
             "items": [],
         }
+        result.update(_normalized_ingest_summary(workspace, result, skipped_files))
         result["duration_seconds"] = round((datetime.now(timezone.utc) - started).total_seconds(), 4)
         save_ingest_state(workspace, state, result, successful, renamed_sources, deleted_sources, unchanged_fingerprints)
         append_jsonl(
@@ -3619,6 +3680,7 @@ def run(task: str, workspace: str) -> dict:
         "target_type": "directory" if target_path.is_dir() else "file",
         "items": items,
     }
+    result.update(_normalized_ingest_summary(workspace, result, skipped_files))
     result["duration_seconds"] = round((datetime.now(timezone.utc) - started).total_seconds(), 4)
     save_ingest_state(workspace, state, result, successful, renamed_sources, deleted_sources, unchanged_fingerprints)
     append_jsonl(
