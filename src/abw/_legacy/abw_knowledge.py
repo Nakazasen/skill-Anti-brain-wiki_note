@@ -45,6 +45,14 @@ BOUNDED_SUMMARY_SOURCE_LIMIT = 5
 SEARCH_TEXT_EXTENSIONS = {".md", ".txt", ".json", ".jsonl", ".csv", ".html", ".htm"}
 RETRIEVAL_SEARCH_ROOTS = ("wiki", "raw", "drafts")
 TRUSTED_WIKI_STATUSES = {"grounded", "compiled", "trusted"}
+DRAFT_SCORING_EXCLUDED_HEADINGS = {
+    "domain contamination guard",
+    "perception pipeline",
+    "possible queries",
+    "provider assistance",
+    "provenance",
+    "trust notice",
+}
 ABBREVIATION_ALIASES = {
     "agv": ["automated", "guided", "vehicle"],
     "mom": ["manufacturing", "operations", "management"],
@@ -299,6 +307,23 @@ def _read_searchable_text(path):
         return ""
 
 
+def _draft_scoring_text(text):
+    lines = str(text or "").splitlines()
+    kept = []
+    skip_section = False
+    for raw in lines:
+        stripped = raw.strip()
+        if stripped.startswith("##"):
+            heading = stripped.lstrip("#").strip().lower()
+            skip_section = heading in DRAFT_SCORING_EXCLUDED_HEADINGS
+            if skip_section:
+                continue
+        if skip_section:
+            continue
+        kept.append(raw)
+    return "\n".join(kept)
+
+
 def _source_kind(path, workspace_root):
     try:
         relative = path.relative_to(workspace_root)
@@ -527,7 +552,7 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
         if _is_search_excluded(path, text):
             continue
 
-        text_for_scoring = text
+        text_for_scoring = _draft_scoring_text(text) if source_kind == "draft_metadata" else text
 
         try:
             relative = str(path.relative_to(workspace_root))

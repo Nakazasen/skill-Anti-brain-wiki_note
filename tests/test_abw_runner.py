@@ -1587,6 +1587,42 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertEqual(supplier_result["citations"], [])
             self.assertEqual(supplier_result["knowledge"]["score"], 0)
 
+    def test_supplier_contract_query_abstains_for_generated_draft_boilerplate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            drafts = workspace / "drafts"
+            drafts.mkdir(parents=True, exist_ok=True)
+            (drafts / "agv-manual_draft.md").write_text(
+                "# Draft Knowledge: agv_manual\n\n"
+                "## Business Summary\n"
+                "AGV communication uses MQTT for dispatch messages. "
+                "The emergency stop signal must be verified before restart.\n\n"
+                "## Trust Notice\n"
+                "This draft is not trusted wiki knowledge until explicitly approved or promoted by governed workflow.\n",
+                encoding="utf-8",
+            )
+
+            supplier_result = abw_runner.dispatch_request(
+                task="Who approved the AGV supplier contract?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+            restart_result = abw_runner.dispatch_request(
+                task="What signal must be verified before restart?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(supplier_result["current_state"], "knowledge_gap_logged")
+            self.assertEqual(supplier_result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(supplier_result["citations"], [])
+            self.assertEqual(restart_result["current_state"], "knowledge_answered")
+            self.assertEqual(restart_result["knowledge_evidence_tier"], "E1_fallback")
+            self.assertEqual(restart_result["knowledge"]["retrieval_status"], "raw_or_draft_only")
+            self.assertEqual(restart_result["citations"][0]["path"], "drafts\\agv-manual_draft.md")
+
     def test_named_entity_query_abstains_when_topical_source_lacks_entity(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)

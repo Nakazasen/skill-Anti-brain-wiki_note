@@ -183,6 +183,37 @@ class AbwApiTests(unittest.TestCase):
         self.assertEqual(protocol_matches[0]["retrieval_status"], "grounded")
         self.assertEqual(supplier_matches, [])
 
+    def test_draft_boilerplate_approval_words_do_not_trigger_fact_query_match(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            draft_file = root / "drafts" / "agv-manual_draft.md"
+            draft_file.parent.mkdir(parents=True)
+            draft_file.write_text(
+                "# Draft Knowledge: agv_manual\n\n"
+                "## Business Summary\n"
+                "AGV communication uses MQTT for dispatch messages. "
+                "The emergency stop signal must be verified before restart.\n\n"
+                "## Trust Notice\n"
+                "This draft is not trusted wiki knowledge until explicitly approved or promoted by governed workflow.\n",
+                encoding="utf-8",
+            )
+
+            supplier_matches = _search_wiki_contexts(
+                "Who approved the AGV supplier contract?",
+                workspace=root,
+                limit=3,
+            )
+            restart_matches = _search_wiki_contexts(
+                "What signal must be verified before restart?",
+                workspace=root,
+                limit=3,
+            )
+
+        self.assertEqual(supplier_matches, [])
+        self.assertEqual(restart_matches[0]["path"], "drafts\\agv-manual_draft.md")
+        self.assertEqual(restart_matches[0]["source"], "draft_metadata")
+        self.assertIn(restart_matches[0]["retrieval_status"], {"fuzzy_match", "exact_match"})
+
     def test_missing_non_wiki_sources_do_not_get_medium_trust(self):
         result = {
             "answer": "noise",
