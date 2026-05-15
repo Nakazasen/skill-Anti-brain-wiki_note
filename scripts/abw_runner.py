@@ -74,6 +74,25 @@ def new_runtime_id():
     return str(int(datetime.now(timezone.utc).timestamp() * 1000))
 
 
+def read_only_query_mode_enabled():
+    return os.environ.get("ABW_READ_ONLY_QUERY") == "1"
+
+
+def runtime_write_suppressed_for_route(route=None):
+    if not read_only_query_mode_enabled():
+        return False
+    lane = route_lane(route)
+    return lane in {"query", "query_deep"}
+
+
+def runtime_write_suppressed_for_result(result):
+    if not read_only_query_mode_enabled() or not isinstance(result, dict):
+        return False
+    intent = str(result.get("intent") or "").strip().lower()
+    current_state = str(result.get("current_state") or "").strip().lower()
+    return intent == "knowledge" or current_state.startswith("knowledge_")
+
+
 def normalize_memory_scope(memory_scope=None):
     normalized = str(memory_scope or MEMORY_SCOPE or "workspace").strip().lower()
     if normalized in {"workspace", "global"}:
@@ -455,6 +474,7 @@ def save_json(path, payload):
 
 def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, deep=False):
     lane = "query_deep" if deep else "query"
+    runtime_write_suppressed = runtime_write_suppressed_for_route(route)
     binding_status = binding_status_for_execution(
         binding_source,
         {"execution_path": lane},
@@ -463,14 +483,21 @@ def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, 
         deep_result = abw_query_deep.run(task, workspace)
         has_sources = bool(deep_result.get("sources"))
         gap_logged = False
+        gap_log_suppressed = False
+        would_log_gap = False
         if not has_sources:
-            gap_id = log_knowledge_gap(
-                task,
-                workspace=workspace,
-                searched_locations=["wiki/"],
-                reason="Deep query lane did not find enough wiki evidence.",
-            )
-            gap_logged = True
+            if runtime_write_suppressed:
+                gap_id = None
+                gap_log_suppressed = True
+                would_log_gap = True
+            else:
+                gap_id = log_knowledge_gap(
+                    task,
+                    workspace=workspace,
+                    searched_locations=["wiki/"],
+                    reason="Deep query lane did not find enough wiki evidence.",
+                )
+                gap_logged = True
         else:
             gap_id = None
 
@@ -506,6 +533,9 @@ def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, 
             "tier": knowledge_tier,
             "score": knowledge_score,
             "gap_logged": gap_logged,
+            "gap_log_suppressed": gap_log_suppressed,
+            "would_log_gap": would_log_gap,
+            "runtime_write_suppressed": runtime_write_suppressed,
             "source_summary": "local_wiki",
             "source": "wiki",
             "content": body,
@@ -515,8 +545,11 @@ def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, 
             route,
             gap_logged=gap_logged,
             gap_id=gap_id,
+            gap_log_suppressed=gap_log_suppressed,
+            would_log_gap=would_log_gap,
             knowledge_evidence_tier=knowledge_tier,
             knowledge_source_score=knowledge_score,
+            runtime_write_suppressed=runtime_write_suppressed,
             refinement_history=[],
             semantic_fix_applied=False,
             reasoning_steps=deep_result.get("reasoning_steps", []),
@@ -541,17 +574,28 @@ def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, 
 
     result = enrich_knowledge_result(task, workspace=workspace)
     if result.get("gap_logged"):
-        result["gap_id"] = log_knowledge_gap(
-            task,
-            workspace=workspace,
-            searched_locations=["wiki/", "explicit local sources"],
-            reason=(
-                "Deep query lane could not find grounded evidence."
-                if deep
-                else "Query lane could not find grounded evidence."
-            ),
-        )
+        if runtime_write_suppressed:
+            result["gap_logged"] = False
+            result["gap_log_suppressed"] = True
+            result["would_log_gap"] = True
+            result["gap_id"] = None
+        else:
+            result["gap_id"] = log_knowledge_gap(
+                task,
+                workspace=workspace,
+                searched_locations=["wiki/", "explicit local sources"],
+                reason=(
+                    "Deep query lane could not find grounded evidence."
+                    if deep
+                    else "Query lane could not find grounded evidence."
+                ),
+            )
     apply_knowledge_semantics(result, task, route)
+    if runtime_write_suppressed and result.get("current_state") == "knowledge_gap_logged":
+        result["gap_logged"] = False
+        result["gap_log_suppressed"] = True
+        result["would_log_gap"] = True
+        result["gap_id"] = None
     body = knowledge_body(task, result)
     attach_knowledge_output(result, answer_text=body)
     enforce_knowledge_output(result)
@@ -573,8 +617,11 @@ def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, 
     extra = route_extra(
         route,
         gap_logged=result.get("gap_logged", False),
+        gap_log_suppressed=result.get("gap_log_suppressed", False),
+        would_log_gap=result.get("would_log_gap", False),
         knowledge_evidence_tier=result.get("knowledge_evidence_tier"),
         knowledge_source_score=result.get("knowledge_source_score"),
+        runtime_write_suppressed=runtime_write_suppressed,
         refinement_history=result.get("refinement_history", []),
         semantic_fix_applied=result.get("semantic_fix_applied", False),
         summary_status=result.get("summary_status"),
@@ -2247,7 +2294,8 @@ def dispatch_request(
             "params": {"language": parse_language_command(task)},
             "source": "runner",
         }
-        abw_router.log_route_decision(workspace, task, language_route, event="selected")
+        if not runtime_write_suppressed_for_route(language_route):
+            abw_router.log_route_decision(workspace, task, language_route, event="selected")
         result = language_lane_result(
             task,
             workspace=workspace,
@@ -2261,7 +2309,8 @@ def dispatch_request(
 
     memory_item = check_negative_memory(task, workspace=workspace, memory_scope=memory_scope)
     resolved_route = resolve_route(task, workspace=workspace, route=route)
-    abw_router.log_route_decision(workspace, task, resolved_route, event="selected")
+    if not runtime_write_suppressed_for_route(resolved_route):
+        abw_router.log_route_decision(workspace, task, resolved_route, event="selected")
 
     if task_kind == "validation":
         result = validate_candidate_answer(
@@ -2271,7 +2320,8 @@ def dispatch_request(
             binding_mode=binding_mode,
             workspace=workspace,
         )
-        result = apply_acceptance_validation(result, workspace=workspace)
+        if not runtime_write_suppressed_for_result(result):
+            result = apply_acceptance_validation(result, workspace=workspace)
         result = enforce_output_acceptance(result, mode=binding_mode)
         result = attach_state_based_next_actions(result, workspace=workspace)
         if result.get("binding_status") == "rejected" or result.get("current_state") == "blocked":
@@ -2304,13 +2354,14 @@ def dispatch_request(
                 fallback_from=lane,
                 fallback_reason=str(exc),
             )
-            abw_router.log_route_decision(
-                workspace,
-                task,
-                fallback_route,
-                event="fallback",
-                details={"error": str(exc)},
-            )
+            if not runtime_write_suppressed_for_route(fallback_route):
+                abw_router.log_route_decision(
+                    workspace,
+                    task,
+                    fallback_route,
+                    event="fallback",
+                    details={"error": str(exc)},
+                )
             result = query_lane_result(
                 task,
                 workspace=workspace,
@@ -2319,12 +2370,13 @@ def dispatch_request(
                 deep=False,
             )
         elif lane == "ingest":
-            log_knowledge_gap(
-                task,
-                workspace=workspace,
-                searched_locations=["raw/", ".brain/ingest_queue.json"],
-                reason=f"ingest lane failed: {exc}",
-            )
+            if not read_only_query_mode_enabled():
+                log_knowledge_gap(
+                    task,
+                    workspace=workspace,
+                    searched_locations=["raw/", ".brain/ingest_queue.json"],
+                    reason=f"ingest lane failed: {exc}",
+                )
             if isinstance(exc, (FileNotFoundError, NotADirectoryError, ValueError)):
                 model_output = f"""## Finalization
 - current_state: blocked
@@ -2358,13 +2410,14 @@ def dispatch_request(
                     fallback_from="ingest",
                     fallback_reason=str(exc),
                 )
-                abw_router.log_route_decision(
-                    workspace,
-                    task,
-                    fallback_route,
-                    event="fallback",
-                    details={"error": str(exc)},
-                )
+                if not runtime_write_suppressed_for_route(fallback_route):
+                    abw_router.log_route_decision(
+                        workspace,
+                        task,
+                        fallback_route,
+                        event="fallback",
+                        details={"error": str(exc)},
+                    )
                 result = query_lane_result(
                     task,
                     workspace=workspace,
@@ -2374,7 +2427,8 @@ def dispatch_request(
                 )
         else:
             raise
-    result = apply_acceptance_validation(result, workspace=workspace)
+    if not runtime_write_suppressed_for_result(result):
+        result = apply_acceptance_validation(result, workspace=workspace)
     result = enforce_output_acceptance(result, mode=binding_mode)
     result = attach_state_based_next_actions(result, workspace=workspace)
     if result.get("binding_status") == "rejected" or result.get("current_state") == "blocked":

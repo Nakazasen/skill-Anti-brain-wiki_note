@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from .legacy import load
 
 
@@ -27,7 +29,11 @@ def run_task(task: str, *, workspace: str, task_kind: str = "execution"):
 
 def finalize(result, *, workspace: str):
     legacy_runner = _legacy_runner()
-    if isinstance(result, dict) and result.get("evaluation") is None:
+    if (
+        isinstance(result, dict)
+        and result.get("evaluation") is None
+        and not (os.environ.get("ABW_READ_ONLY_QUERY") == "1" and legacy_runner.runtime_write_suppressed_for_result(result))
+    ):
         result = legacy_runner.apply_acceptance_validation(result, workspace=workspace)
     result = _legacy_output().enforce_runner_output(result)
     return legacy_runner.enforce_output_acceptance(result, mode="STRICT")

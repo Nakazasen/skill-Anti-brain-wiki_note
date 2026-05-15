@@ -237,17 +237,22 @@ def _ask_json_data(result: Any, workspace: Path | str) -> dict[str, Any]:
             "source_summary": None,
             "logs": normalized.get("logs", []),
             "provider": None,
+            "gap_log_suppressed": False,
+            "would_log_gap": False,
+            "runtime_write_suppressed": False,
         }
     knowledge = (
         result.get("knowledge_output")
         if isinstance(result.get("knowledge_output"), dict)
         else (result.get("knowledge") if isinstance(result.get("knowledge"), dict) else {})
     )
-    gap_logged = bool(
-        result.get("gap_logged")
-        or knowledge.get("gap_logged")
-        or str(result.get("current_state") or "").strip() == "knowledge_gap_logged"
-    )
+    explicit_gap_logged = result.get("gap_logged")
+    if explicit_gap_logged is None and "gap_logged" in knowledge:
+        explicit_gap_logged = knowledge.get("gap_logged")
+    if explicit_gap_logged is None:
+        gap_logged = str(result.get("current_state") or "").strip() == "knowledge_gap_logged"
+    else:
+        gap_logged = bool(explicit_gap_logged)
     return {
         "answer": normalized["answer"],
         "retrieval_status": normalized["retrieval_status"],
@@ -262,6 +267,9 @@ def _ask_json_data(result: Any, workspace: Path | str) -> dict[str, Any]:
         "source_summary": result.get("source_summary") or knowledge.get("source_summary"),
         "logs": normalized.get("logs", []),
         "provider": result.get("provider"),
+        "gap_log_suppressed": bool(result.get("gap_log_suppressed") or knowledge.get("gap_log_suppressed")),
+        "would_log_gap": bool(result.get("would_log_gap") or knowledge.get("would_log_gap")),
+        "runtime_write_suppressed": bool(result.get("runtime_write_suppressed") or knowledge.get("runtime_write_suppressed")),
     }
 
 

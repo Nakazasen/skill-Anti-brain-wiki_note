@@ -253,6 +253,49 @@ class TestAbwJsonHardening(unittest.TestCase):
         self.assertEqual(report["data"]["warnings"], ["Need to ingest sources first.", "No supporting sources were returned."])
 
     @patch("abw.cli.resolve_workspace")
+    @patch("abw.cli._legacy_entry.final_output")
+    @patch("abw.cli._legacy_entry.execute_command")
+    @patch("abw.cli.prepare_ask_task")
+    def test_ask_json_contract_runtime_write_suppressed(self, mock_prepare, mock_execute, mock_final, mock_resolve):
+        mock_resolve.return_value = self.workspace
+        mock_prepare.return_value = {"task": "unknown query", "provider": "local"}
+        ask_result = {
+            "answer": "No grounded answer found.",
+            "current_state": "knowledge_gap_logged",
+            "gap_logged": False,
+            "gap_log_suppressed": True,
+            "would_log_gap": True,
+            "runtime_write_suppressed": True,
+            "gap_id": None,
+            "knowledge_evidence_tier": "E0_unknown",
+            "knowledge_source_score": 0,
+            "knowledge_output": {
+                "retrieval_status": "no_match",
+                "source_summary": "no_grounded_sources",
+                "gap_logged": False,
+                "gap_log_suppressed": True,
+                "would_log_gap": True,
+                "runtime_write_suppressed": True,
+            },
+            "warnings": ["Need to ingest sources first."],
+            "citations": [],
+        }
+        mock_execute.return_value = ask_result
+        mock_final.return_value = ask_result
+
+        stdout = io.StringIO()
+        with patch("sys.stdout", stdout):
+            abw_cli.main(["--json", "ask", "Who is missing?"])
+
+        report = json.loads(stdout.getvalue())
+        self.assert_envelope(report, "ask")
+        self.assertEqual(report["status"], "no_match")
+        self.assertFalse(report["data"]["gap_logged"])
+        self.assertTrue(report["data"]["gap_log_suppressed"])
+        self.assertTrue(report["data"]["would_log_gap"])
+        self.assertTrue(report["data"]["runtime_write_suppressed"])
+
+    @patch("abw.cli.resolve_workspace")
     @patch("abw.cli.ingest_module.ingest")
     def test_ingest_json_contract(self, mock_ingest, mock_resolve):
         mock_resolve.return_value = self.workspace

@@ -50,7 +50,11 @@ def enforce_agent_execution_path():
 
 def final_output(result):
     enforce_agent_execution_path()
-    if isinstance(result, dict) and result.get("evaluation") is None:
+    if (
+        isinstance(result, dict)
+        and result.get("evaluation") is None
+        and not abw_runner.runtime_write_suppressed_for_result(result)
+    ):
         result = abw_runner.apply_acceptance_validation(
             result,
             workspace=result.get("workspace") or ".",

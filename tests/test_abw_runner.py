@@ -1,4 +1,5 @@
 import sys
+import os
 import json
 import subprocess
 import tempfile
@@ -77,6 +78,51 @@ class AbwRunnerBindingTests(unittest.TestCase):
         self.assertIn("Verified answer without finalization.", rendered)
         self.assertNotIn("binding=runner_enforced", rendered)
         self.assertNotIn("validation_proof", rendered)
+
+    def test_read_only_query_mode_suppresses_runtime_writes_and_keeps_gap_truthful(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "wiki").mkdir(parents=True, exist_ok=True)
+            (workspace / "wiki" / "agv.md").write_text(
+                "# AGV Communication\nstatus: grounded\n\nAGV communication uses MQTT for dispatch messages.\n",
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"ABW_READ_ONLY_QUERY": "1"}, clear=False):
+                result = abw_runner.dispatch_request(
+                    task="Who is Chu Van?",
+                    workspace=str(workspace),
+                    task_kind="execution",
+                    binding_mode="STRICT",
+                    binding_source="cli",
+                )
+
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            self.assertFalse(result["gap_logged"])
+            self.assertTrue(result["gap_log_suppressed"])
+            self.assertTrue(result["would_log_gap"])
+            self.assertTrue(result["runtime_write_suppressed"])
+            self.assertFalse((workspace / ".brain").exists())
+
+    def test_default_query_mode_keeps_runtime_audit_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "wiki").mkdir(parents=True, exist_ok=True)
+            (workspace / "wiki" / "agv.md").write_text(
+                "# AGV Communication\nstatus: grounded\n\nAGV communication uses MQTT for dispatch messages.\n",
+                encoding="utf-8",
+            )
+            result = abw_runner.dispatch_request(
+                task="What does the spec say about AGV communication?",
+                workspace=str(workspace),
+                task_kind="execution",
+                binding_mode="STRICT",
+                binding_source="cli",
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_answered")
+            self.assertTrue((workspace / ".brain" / "route_log.jsonl").exists())
+            self.assertTrue((workspace / ".brain" / "acceptance_log.jsonl").exists())
+            self.assertTrue((workspace / ".brain" / "used_nonces.json").exists())
 
     def test_resolve_trust_label_maps_help_to_informational(self):
         self.assertEqual(
