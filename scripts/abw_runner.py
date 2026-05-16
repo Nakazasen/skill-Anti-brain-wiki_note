@@ -90,7 +90,18 @@ def runtime_write_suppressed_for_result(result):
         return False
     intent = str(result.get("intent") or "").strip().lower()
     current_state = str(result.get("current_state") or "").strip().lower()
-    return intent == "knowledge" or current_state.startswith("knowledge_")
+    route = result.get("route") if isinstance(result.get("route"), dict) else None
+    return (
+        intent == "knowledge"
+        or current_state.startswith("knowledge_")
+        or route_lane(route) in {"query", "query_deep"}
+    )
+
+
+def runtime_write_suppressed_for_task(task, route=None):
+    if not read_only_query_mode_enabled():
+        return False
+    return runtime_write_suppressed_for_route(route) or is_knowledge_intent(task, route)
 
 
 def normalize_memory_scope(memory_scope=None):
@@ -211,6 +222,25 @@ def log_negative_memory(
     rows.append(entry)
     write_memory(workspace, trim_memory(rows), memory_scope=memory_scope)
     return entry
+
+
+def maybe_log_negative_memory(
+    result,
+    *,
+    task,
+    workspace=".",
+    memory_scope=None,
+):
+    if runtime_write_suppressed_for_result(result):
+        return None
+    return log_negative_memory(
+        workspace=workspace,
+        pattern=extract_pattern(task),
+        failure=derive_failure_label(result),
+        context=result.get("current_state"),
+        fix_hint=derive_fix_hint(result),
+        memory_scope=memory_scope,
+    )
 
 
 def check_negative_memory(task, workspace=".", memory_scope=None):
@@ -1656,7 +1686,11 @@ def enforce_output_acceptance(result, mode="STRICT"):
         if not has_echo_locked_runner_output(result):
             return rejected_non_runner_output(task=result.get("task", ""))
         workspace = result.get("workspace") or "."
-        if result.get("evaluation") is not None and not result.get("_nonce_validated"):
+        if (
+            result.get("evaluation") is not None
+            and not result.get("_nonce_validated")
+            and not runtime_write_suppressed_for_result(result)
+        ):
             if abw_proof.nonce_is_used(nonce, runtime_id=runtime_id, workspace=workspace):
                 return rejected_output("nonce already used", task=result.get("task", ""))
             if not abw_proof.mark_nonce_used(nonce, runtime_id=runtime_id, workspace=workspace):
@@ -2307,9 +2341,11 @@ def dispatch_request(
         result = attach_state_based_next_actions(result, workspace=workspace)
         return result
 
-    memory_item = check_negative_memory(task, workspace=workspace, memory_scope=memory_scope)
+    memory_item = None
+    if not runtime_write_suppressed_for_task(task, route):
+        memory_item = check_negative_memory(task, workspace=workspace, memory_scope=memory_scope)
     resolved_route = resolve_route(task, workspace=workspace, route=route)
-    if not runtime_write_suppressed_for_route(resolved_route):
+    if not runtime_write_suppressed_for_task(task, resolved_route):
         abw_router.log_route_decision(workspace, task, resolved_route, event="selected")
 
     if task_kind == "validation":
@@ -2325,12 +2361,10 @@ def dispatch_request(
         result = enforce_output_acceptance(result, mode=binding_mode)
         result = attach_state_based_next_actions(result, workspace=workspace)
         if result.get("binding_status") == "rejected" or result.get("current_state") == "blocked":
-            log_negative_memory(
+            maybe_log_negative_memory(
+                result,
+                task=task,
                 workspace=workspace,
-                pattern=extract_pattern(task),
-                failure=derive_failure_label(result),
-                context=result.get("current_state"),
-                fix_hint=derive_fix_hint(result),
                 memory_scope=memory_scope,
             )
         return attach_memory_warning(result, memory_item)
@@ -2354,7 +2388,7 @@ def dispatch_request(
                 fallback_from=lane,
                 fallback_reason=str(exc),
             )
-            if not runtime_write_suppressed_for_route(fallback_route):
+            if not runtime_write_suppressed_for_task(task, fallback_route):
                 abw_router.log_route_decision(
                     workspace,
                     task,
@@ -2410,7 +2444,7 @@ def dispatch_request(
                     fallback_from="ingest",
                     fallback_reason=str(exc),
                 )
-                if not runtime_write_suppressed_for_route(fallback_route):
+                if not runtime_write_suppressed_for_task(task, fallback_route):
                     abw_router.log_route_decision(
                         workspace,
                         task,
@@ -2432,12 +2466,10 @@ def dispatch_request(
     result = enforce_output_acceptance(result, mode=binding_mode)
     result = attach_state_based_next_actions(result, workspace=workspace)
     if result.get("binding_status") == "rejected" or result.get("current_state") == "blocked":
-        log_negative_memory(
+        maybe_log_negative_memory(
+            result,
+            task=task,
             workspace=workspace,
-            pattern=extract_pattern(task),
-            failure=derive_failure_label(result),
-            context=result.get("current_state"),
-            fix_hint=derive_fix_hint(result),
             memory_scope=memory_scope,
         )
     return attach_memory_warning(result, memory_item)

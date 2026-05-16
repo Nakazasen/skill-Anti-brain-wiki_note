@@ -103,6 +103,30 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertTrue(result["runtime_write_suppressed"])
             self.assertFalse((workspace / ".brain").exists())
 
+    def test_read_only_known_query_does_not_persist_runtime_artifacts_or_nonce_logs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "wiki").mkdir(parents=True, exist_ok=True)
+            (workspace / "wiki" / "agv.md").write_text(
+                "# AGV Communication\nstatus: grounded\n\nAGV communication uses MQTT for dispatch messages.\n",
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"ABW_READ_ONLY_QUERY": "1"}, clear=False):
+                result = abw_runner.dispatch_request(
+                    task="What protocol does the AGV use for dispatch messages?",
+                    workspace=str(workspace),
+                    task_kind="execution",
+                    binding_mode="STRICT",
+                    binding_source="cli",
+                )
+
+            self.assertEqual(result["current_state"], "knowledge_answered")
+            self.assertTrue(result["runtime_write_suppressed"])
+            self.assertFalse((workspace / ".brain" / "acceptance_requests").exists())
+            self.assertFalse((workspace / ".brain" / "runner_artifacts").exists())
+            self.assertFalse((workspace / ".brain" / "used_nonces.json").exists())
+            self.assertFalse((workspace / ".brain" / "negative_memory.jsonl").exists())
+
     def test_default_query_mode_keeps_runtime_audit_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)

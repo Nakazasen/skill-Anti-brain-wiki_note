@@ -247,6 +247,13 @@ def _minimum_specific_term_matches(task):
     return 1 if original_terms.intersection(FACT_SPECIFIC_TERMS) else 0
 
 
+def _minimum_fact_specific_matches(task):
+    fact_specific_terms = sorted(set(_original_query_terms(task)).intersection(FACT_SPECIFIC_TERMS))
+    if not fact_specific_terms:
+        return 0
+    return min(2, len(fact_specific_terms))
+
+
 def _summarize_document(text, limit=420):
     content = str(text or "")
     if not content.strip():
@@ -543,6 +550,8 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
     required_domain_terms = _required_domain_terms(task)
     high_specificity_terms = _high_specificity_query_terms(task)
     minimum_specific_term_matches = _minimum_specific_term_matches(task)
+    minimum_fact_specific_matches = _minimum_fact_specific_matches(task)
+    fact_specific_terms = sorted(set(_original_query_terms(task)).intersection(FACT_SPECIFIC_TERMS))
 
     candidates = []
     for path in _iter_retrieval_candidates(workspace_root):
@@ -584,6 +593,10 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
         if minimum_specific_term_matches:
             matched_specific_terms = [term for term in high_specificity_terms if term in matched_terms]
             if len(matched_specific_terms) < minimum_specific_term_matches:
+                continue
+        if minimum_fact_specific_matches:
+            matched_fact_specific_terms = [term for term in fact_specific_terms if term in matched_terms]
+            if len(matched_fact_specific_terms) < minimum_fact_specific_matches:
                 continue
         matched_named_entities = []
         for entity in required_named_entities:

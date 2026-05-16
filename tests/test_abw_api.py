@@ -183,6 +183,24 @@ class AbwApiTests(unittest.TestCase):
         self.assertEqual(protocol_matches[0]["retrieval_status"], "grounded")
         self.assertEqual(supplier_matches, [])
 
+    def test_fact_specific_query_requires_multiple_fact_terms_for_match(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wiki_file = root / "wiki" / "agv.md"
+            wiki_file.parent.mkdir(parents=True)
+            wiki_file.write_text(
+                "# AGV Vendor Note\nstatus: grounded\n\nAGV vendor onboarding uses MQTT dispatch integration.\n",
+                encoding="utf-8",
+            )
+
+            matches = _search_wiki_contexts(
+                "Who approved the AGV supplier contract?",
+                workspace=root,
+                limit=3,
+            )
+
+        self.assertEqual(matches, [])
+
     def test_draft_boilerplate_approval_words_do_not_trigger_fact_query_match(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
