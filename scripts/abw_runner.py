@@ -231,7 +231,7 @@ def maybe_log_negative_memory(
     workspace=".",
     memory_scope=None,
 ):
-    if runtime_write_suppressed_for_result(result):
+    if read_only_query_mode_enabled() or runtime_write_suppressed_for_result(result):
         return None
     return log_negative_memory(
         workspace=workspace,
@@ -2307,6 +2307,7 @@ def dispatch_request(
     enforce_agent_execution_path()
     task_kind = normalize_task_kind(task_kind)
     binding_mode = normalize_binding_mode(binding_mode)
+    runtime_writes_blocked = read_only_query_mode_enabled() and task_kind in {"execution", "validation"}
     if str(task).strip() == "/abw-health":
         result = abw_health.run_health(
             workspace=workspace,
@@ -2328,7 +2329,7 @@ def dispatch_request(
             "params": {"language": parse_language_command(task)},
             "source": "runner",
         }
-        if not runtime_write_suppressed_for_route(language_route):
+        if not runtime_writes_blocked and not runtime_write_suppressed_for_route(language_route):
             abw_router.log_route_decision(workspace, task, language_route, event="selected")
         result = language_lane_result(
             task,
@@ -2342,10 +2343,10 @@ def dispatch_request(
         return result
 
     memory_item = None
-    if not runtime_write_suppressed_for_task(task, route):
+    if not runtime_writes_blocked and not runtime_write_suppressed_for_task(task, route):
         memory_item = check_negative_memory(task, workspace=workspace, memory_scope=memory_scope)
     resolved_route = resolve_route(task, workspace=workspace, route=route)
-    if not runtime_write_suppressed_for_task(task, resolved_route):
+    if not runtime_writes_blocked and not runtime_write_suppressed_for_task(task, resolved_route):
         abw_router.log_route_decision(workspace, task, resolved_route, event="selected")
 
     if task_kind == "validation":
@@ -2356,7 +2357,7 @@ def dispatch_request(
             binding_mode=binding_mode,
             workspace=workspace,
         )
-        if not runtime_write_suppressed_for_result(result):
+        if not runtime_writes_blocked and not runtime_write_suppressed_for_result(result):
             result = apply_acceptance_validation(result, workspace=workspace)
         result = enforce_output_acceptance(result, mode=binding_mode)
         result = attach_state_based_next_actions(result, workspace=workspace)
@@ -2388,7 +2389,7 @@ def dispatch_request(
                 fallback_from=lane,
                 fallback_reason=str(exc),
             )
-            if not runtime_write_suppressed_for_task(task, fallback_route):
+            if not runtime_writes_blocked and not runtime_write_suppressed_for_task(task, fallback_route):
                 abw_router.log_route_decision(
                     workspace,
                     task,
@@ -2444,7 +2445,7 @@ def dispatch_request(
                     fallback_from="ingest",
                     fallback_reason=str(exc),
                 )
-                if not runtime_write_suppressed_for_task(task, fallback_route):
+                if not runtime_writes_blocked and not runtime_write_suppressed_for_task(task, fallback_route):
                     abw_router.log_route_decision(
                         workspace,
                         task,
@@ -2461,7 +2462,7 @@ def dispatch_request(
                 )
         else:
             raise
-    if not runtime_write_suppressed_for_result(result):
+    if not runtime_writes_blocked and not runtime_write_suppressed_for_result(result):
         result = apply_acceptance_validation(result, workspace=workspace)
     result = enforce_output_acceptance(result, mode=binding_mode)
     result = attach_state_based_next_actions(result, workspace=workspace)

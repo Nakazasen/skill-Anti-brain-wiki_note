@@ -53,6 +53,7 @@ def final_output(result):
     if (
         isinstance(result, dict)
         and result.get("evaluation") is None
+        and not abw_runner.read_only_query_mode_enabled()
         and not abw_runner.runtime_write_suppressed_for_result(result)
     ):
         result = abw_runner.apply_acceptance_validation(

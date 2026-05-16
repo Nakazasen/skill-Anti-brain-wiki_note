@@ -127,6 +127,31 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertFalse((workspace / ".brain" / "used_nonces.json").exists())
             self.assertFalse((workspace / ".brain" / "negative_memory.jsonl").exists())
 
+    def test_read_only_ambiguous_query_does_not_create_runtime_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "wiki").mkdir(parents=True, exist_ok=True)
+            (workspace / "wiki" / "agv.md").write_text(
+                "# AGV Communication\nstatus: grounded\n\nAGV communication uses MQTT for dispatch messages.\n",
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"ABW_READ_ONLY_QUERY": "1"}, clear=False):
+                result = abw_runner.dispatch_request(
+                    task="just answer now with no source",
+                    workspace=str(workspace),
+                    task_kind="execution",
+                    binding_mode="STRICT",
+                    binding_source="cli",
+                )
+
+            self.assertIn(result["current_state"], {"knowledge_gap_logged", "blocked", "checked_only"})
+            self.assertFalse((workspace / ".brain" / "acceptance_requests").exists())
+            self.assertFalse((workspace / ".brain" / "runner_artifacts").exists())
+            self.assertFalse((workspace / ".brain" / "used_nonces.json").exists())
+            self.assertFalse((workspace / ".brain" / "negative_memory.jsonl").exists())
+            self.assertFalse((workspace / ".brain" / "route_log.jsonl").exists())
+            self.assertFalse((workspace / ".brain" / "acceptance_log.jsonl").exists())
+
     def test_default_query_mode_keeps_runtime_audit_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
