@@ -604,6 +604,11 @@ def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, 
         )
 
     result = enrich_knowledge_result(task, workspace=workspace)
+    guard_warning = str((result.get("knowledge_context") or {}).get("guard_warning") or "").strip()
+    if guard_warning:
+        existing_warnings = result.get("warnings") if isinstance(result.get("warnings"), list) else []
+        if guard_warning not in existing_warnings:
+            result["warnings"] = [*existing_warnings, guard_warning]
     if result.get("gap_logged"):
         if runtime_write_suppressed:
             result["gap_logged"] = False
@@ -647,6 +652,7 @@ def query_lane_result(task, workspace=".", route=None, binding_source="mcp", *, 
     runner_status = "blocked" if gate["report"].get("decision") == "blocked" else "completed"
     extra = route_extra(
         route,
+        warnings=result.get("warnings") if isinstance(result.get("warnings"), list) else [],
         gap_logged=result.get("gap_logged", False),
         gap_log_suppressed=result.get("gap_log_suppressed", False),
         would_log_gap=result.get("would_log_gap", False),

@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import hashlib
 import subprocess
 import tempfile
 import unittest
@@ -13,6 +14,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import abw_runner  # noqa: E402
 import abw_proof  # noqa: E402
 import abw_wizard  # noqa: E402
+import abw_ingest  # noqa: E402
 
 
 def make_proof(answer, finalization_block, runtime_id="123", nonce=None, binding_source="mcp"):
@@ -22,6 +24,17 @@ def make_proof(answer, finalization_block, runtime_id="123", nonce=None, binding
 
 def action_commands(actions):
     return [action["command"] if isinstance(action, dict) else action for action in actions]
+
+
+def brain_signature(workspace: Path) -> str:
+    brain = workspace / ".brain"
+    if not brain.exists():
+        return ""
+    rows = []
+    for path in sorted(p for p in brain.rglob("*") if p.is_file()):
+        rel = path.relative_to(workspace).as_posix()
+        rows.append(f"{rel}:{hashlib.sha256(path.read_bytes()).hexdigest()}:{path.stat().st_size}")
+    return hashlib.sha256("\n".join(rows).encode("utf-8")).hexdigest()
 
 
 class AbwRunnerBindingTests(unittest.TestCase):
@@ -1854,6 +1867,180 @@ class AbwRunnerBindingTests(unittest.TestCase):
             self.assertNotIn("muc_tin_cay", rendered)
             self.assertNotIn("validation_proof", rendered)
             self.assertEqual(help_result["next_actions"][0]["command"], "help")
+
+
+class AbwHonestyGuardTests(unittest.TestCase):
+    def test_missing_source_control_abstains_instead_of_answering_from_control_draft(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "missing_source_controls.md").write_text(
+                "# Missing Source Controls\n\n"
+                "The following questions are intentionally absent from this corpus and must not be answered as grounded facts.\n\n"
+                "## Absent controls\n"
+                "- What is the internal IP for the pilot server?\n"
+                "- What is the customer ticket ID for the forklift outage?\n\n"
+                "## Expected behavior\n"
+                "- Return no-match or unknown\n"
+                "- Do not fabricate identifiers\n",
+                encoding="utf-8",
+            )
+            abw_ingest.run("ingest raw", str(workspace))
+
+            result = abw_runner.dispatch_request(
+                task="What is the internal IP for the pilot server?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+            self.assertEqual(result["citations"], [])
+            self.assertIn("absent from the corpus", " ".join(result.get("warnings") or []))
+
+    def test_query_abstains_for_unsupported_file_reference_after_ingest_skip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "procedure_publish_checklist.md").write_text(
+                "# Procedure Publish Checklist\n\nPrepare a sanitized pilot package.\n",
+                encoding="utf-8",
+            )
+            (raw / "unsupported_marker.xyz").write_text(
+                "Synthetic unsupported extension control for parser honesty.\n",
+                encoding="utf-8",
+            )
+            abw_ingest.run("ingest raw", str(workspace))
+
+            result = abw_runner.dispatch_request(
+                task="What does unsupported_marker.xyz say?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+            self.assertEqual(result["citations"], [])
+            self.assertIn("unsupported file", " ".join(result.get("warnings") or []).lower())
+
+    def test_query_abstains_for_parse_error_file_reference_after_ingest_skip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "procedure_publish_checklist.md").write_text(
+                "# Procedure Publish Checklist\n\nPrepare a sanitized pilot package.\n",
+                encoding="utf-8",
+            )
+            (raw / "malformed_placeholder.docx").write_bytes(b"not a docx")
+            abw_ingest.run("ingest raw", str(workspace))
+
+            result = abw_runner.dispatch_request(
+                task="What procedure is stored in malformed_placeholder.docx?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+            self.assertEqual(result["citations"], [])
+            self.assertIn("could not be parsed", " ".join(result.get("warnings") or []))
+
+    def test_positive_draft_fallback_still_works_for_relevant_raw_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "procedure_publish_checklist.md").write_text(
+                "# Procedure Publish Checklist\n\n"
+                "Prepare a sanitized pilot package for a browser UI rerun.\n"
+                "1. Create the external workspace.\n"
+                "2. Place only sanitized raw files in raw.\n",
+                encoding="utf-8",
+            )
+            abw_ingest.run("ingest raw", str(workspace))
+
+            result = abw_runner.dispatch_request(
+                task="What is the procedure to prepare the sanitized pilot package?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_answered")
+            self.assertEqual(result["knowledge_evidence_tier"], "E1_fallback")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "raw_or_draft_only")
+            self.assertTrue(result["citations"])
+            self.assertTrue(str(result["citations"][0]["path"]).startswith("drafts\\"))
+
+    def test_ambiguous_prompt_remains_weak_not_overconfident(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "ambiguous_controls.md").write_text(
+                "# Ambiguous Controls\n\n"
+                "- status process can mean ingest status, review status, or query status\n"
+                "- update form can mean change a file, rerun ingest, or review a draft\n",
+                encoding="utf-8",
+            )
+            abw_ingest.run("ingest raw", str(workspace))
+
+            result = abw_runner.dispatch_request(
+                task="What is the status process?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_answered")
+            self.assertEqual(result["knowledge_evidence_tier"], "E1_fallback")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "raw_or_draft_only")
+            self.assertTrue(result["citations"])
+
+    def test_read_only_queries_do_not_mutate_existing_brain_state_after_ingest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "procedure_publish_checklist.md").write_text(
+                "# Procedure Publish Checklist\n\nPrepare a sanitized pilot package.\n",
+                encoding="utf-8",
+            )
+            (raw / "unsupported_marker.xyz").write_text("unsupported marker\n", encoding="utf-8")
+            (raw / "malformed_placeholder.docx").write_bytes(b"not a docx")
+            abw_ingest.run("ingest raw", str(workspace))
+            before = brain_signature(workspace)
+
+            with patch.dict(os.environ, {"ABW_READ_ONLY_QUERY": "1"}, clear=False):
+                missing = abw_runner.dispatch_request(
+                    task="What does unsupported_marker.xyz say?",
+                    workspace=str(workspace),
+                    task_kind="execution",
+                    binding_mode="STRICT",
+                    binding_source="cli",
+                )
+                positive = abw_runner.dispatch_request(
+                    task="What is the procedure to prepare the sanitized pilot package?",
+                    workspace=str(workspace),
+                    task_kind="execution",
+                    binding_mode="STRICT",
+                    binding_source="cli",
+                )
+
+            after = brain_signature(workspace)
+            self.assertEqual(before, after)
+            self.assertFalse((workspace / ".brain" / "query_deep_runs.jsonl").exists())
+            self.assertTrue(missing["runtime_write_suppressed"])
+            self.assertTrue(positive["runtime_write_suppressed"])
 
 
 if __name__ == "__main__":

@@ -43,6 +43,7 @@ WIKI_SEARCH_DIRS = ("concepts", "entities", "timelines", "sources", "auto_promot
 WEAK_WIKI_CONFIDENCE_THRESHOLD = 0.45
 BOUNDED_SUMMARY_SOURCE_LIMIT = 5
 SEARCH_TEXT_EXTENSIONS = {".md", ".txt", ".json", ".jsonl", ".csv", ".html", ".htm"}
+INGEST_SUPPORTED_EXTENSIONS = SEARCH_TEXT_EXTENSIONS | {".markdown", ".rst", ".adoc", ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tif", ".tiff", ".docx", ".xlsx", ".pdf", ".pptx"}
 RETRIEVAL_SEARCH_ROOTS = ("wiki", "raw", "drafts")
 TRUSTED_WIKI_STATUSES = {"grounded", "compiled", "trusted"}
 DRAFT_SCORING_EXCLUDED_HEADINGS = {
@@ -102,6 +103,14 @@ FACT_SPECIFIC_TERMS = {
     "where",
     "who",
 }
+ABSENT_CONTROL_MARKERS = (
+    "must not be answered as grounded facts",
+    "return no match or unknown",
+    "return no-match or unknown",
+    "do not fabricate identifiers",
+)
+UNSUPPORTED_SKIP_REASONS = {"skipped_unsupported_extension"}
+PARSE_ERROR_SKIP_REASONS = {"skipped_parse_error"}
 
 
 def now_iso():
@@ -312,6 +321,181 @@ def _read_searchable_text(path):
         return path.read_text(encoding="utf-8-sig", errors="ignore")
     except OSError:
         return ""
+
+
+def _normalize_relpath(path_value):
+    return str(path_value or "").replace("\\", "/").strip().lower()
+
+
+def _load_ingest_skip_records(workspace_root):
+    report_path = Path(workspace_root) / ".brain" / "ingest_report.json"
+    if not report_path.exists():
+        return {"unsupported": {}, "parse_errors": {}}
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return {"unsupported": {}, "parse_errors": {}}
+
+    def build_index(items, valid_reasons):
+        indexed = {}
+        for item in items or []:
+            if not isinstance(item, dict):
+                continue
+            relpath = _normalize_relpath(item.get("path") or item.get("source_path"))
+            reason = str(item.get("reason") or "").strip()
+            if valid_reasons and reason not in valid_reasons:
+                continue
+            if not relpath:
+                continue
+            basename = Path(relpath).name.lower()
+            indexed[relpath] = dict(item)
+            indexed[basename] = dict(item)
+        return indexed
+
+    unsupported = build_index(payload.get("unsupported_files"), UNSUPPORTED_SKIP_REASONS)
+    parse_errors = build_index(payload.get("parse_errors"), PARSE_ERROR_SKIP_REASONS)
+
+    for item in payload.get("items") or []:
+        if not isinstance(item, dict):
+            continue
+        relpath = _normalize_relpath(item.get("source_path"))
+        if not relpath or str(item.get("status") or "").strip().lower() != "skipped":
+            continue
+        basename = Path(relpath).name.lower()
+        skip_reason = str(item.get("skip_reason") or "").strip().lower()
+        suffix = Path(relpath).suffix.lower()
+        if "parser failed" in skip_reason or "parse" in skip_reason:
+            parse_errors.setdefault(relpath, {"path": item.get("source_path"), "reason": "skipped_parse_error"})
+            parse_errors.setdefault(basename, {"path": item.get("source_path"), "reason": "skipped_parse_error"})
+        elif suffix and suffix not in INGEST_SUPPORTED_EXTENSIONS:
+            unsupported.setdefault(relpath, {"path": item.get("source_path"), "reason": "skipped_unsupported_extension"})
+            unsupported.setdefault(basename, {"path": item.get("source_path"), "reason": "skipped_unsupported_extension"})
+
+    return {"unsupported": unsupported, "parse_errors": parse_errors}
+
+
+def _query_source_reference_guards(task):
+    guards = []
+    for token in _candidate_source_tokens(task):
+        raw = str(token or "").strip().strip("`'\"")
+        if not raw:
+            continue
+        normalized = _normalize_relpath(raw)
+        basename = Path(normalized).name.lower()
+        stem = Path(basename).stem.lower()
+        guards.append(
+            {
+                "raw": raw,
+                "normalized": normalized,
+                "basename": basename,
+                "stem": stem,
+            }
+        )
+    return guards
+
+
+def _build_abstention_context(*, reason, warning, task, path=None):
+    context = {
+        "source": "none",
+        "content": "",
+        "confidence": 0.0,
+        "path": None,
+        "retrieval_status": "no_match",
+        "guard_reason": reason,
+        "guard_warning": warning,
+    }
+    if path:
+        context["guard_path"] = path
+    named_entities = _required_named_entity_phrases(task)
+    if named_entities:
+        context["required_named_entities"] = named_entities
+    return context
+
+
+def _guard_specific_source_question(task, workspace_root):
+    refs = _query_source_reference_guards(task)
+    if not refs:
+        return None, refs
+
+    skipped = _load_ingest_skip_records(workspace_root)
+    for ref in refs:
+        unsupported = skipped["unsupported"].get(ref["normalized"]) or skipped["unsupported"].get(ref["basename"])
+        if unsupported:
+            path = unsupported.get("path") or ref["raw"]
+            return (
+                _build_abstention_context(
+                    reason="unsupported_file",
+                    warning=f"No trusted source is available because {path} was skipped during ingest as an unsupported file.",
+                    task=task,
+                    path=path,
+                ),
+                refs,
+            )
+        parse_error = skipped["parse_errors"].get(ref["normalized"]) or skipped["parse_errors"].get(ref["basename"])
+        if parse_error:
+            path = parse_error.get("path") or ref["raw"]
+            return (
+                _build_abstention_context(
+                    reason="parse_error_file",
+                    warning=f"No trusted source is available because {path} could not be parsed during ingest.",
+                    task=task,
+                    path=path,
+                ),
+                refs,
+            )
+    return None, refs
+
+
+def _matches_query_source_reference(relative, title, refs):
+    if not refs:
+        return True
+    relative_norm = _normalize_relpath(relative)
+    relative_path = Path(relative_norm)
+    relative_basename = relative_path.name.lower()
+    relative_stem = relative_path.stem.lower()
+    title_norm = _normalize_text(title).replace(" ", "")
+    for ref in refs:
+        if ref["normalized"] == relative_norm:
+            return True
+        if ref["basename"] and ref["basename"] == relative_basename:
+            return True
+        if ref["stem"] and ref["stem"] == relative_stem:
+            return True
+        if ref["stem"] and ref["stem"] in title_norm:
+            return True
+    return False
+
+
+def _find_absent_control_match(task, workspace_root):
+    normalized_query = _normalize_text(task).strip()
+    if not normalized_query:
+        return None
+    for path in _iter_retrieval_candidates(workspace_root):
+        if path.suffix.lower() not in SEARCH_TEXT_EXTENSIONS:
+            continue
+        text = _read_searchable_text(path)
+        normalized_text = _normalize_text(text)
+        if not normalized_text:
+            continue
+        if not any(marker in normalized_text for marker in ABSENT_CONTROL_MARKERS):
+            continue
+        for raw_line in text.splitlines():
+            stripped = raw_line.strip()
+            if not stripped.startswith("-"):
+                continue
+            bullet = stripped.lstrip("-").strip()
+            if _normalize_text(bullet).strip() == normalized_query:
+                try:
+                    relative = str(path.relative_to(workspace_root))
+                except ValueError:
+                    relative = str(path)
+                return _build_abstention_context(
+                    reason="absent_control",
+                    warning="No trusted source is available because this question is explicitly marked as absent from the corpus.",
+                    task=task,
+                    path=relative,
+                )
+    return None
 
 
 def _draft_scoring_text(text):
@@ -543,6 +727,12 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
     terms = _task_terms(task)
     if not terms:
         return []
+    absent_control = _find_absent_control_match(task, workspace_root)
+    if absent_control:
+        return []
+    explicit_guard, source_refs = _guard_specific_source_question(task, workspace_root)
+    if explicit_guard:
+        return []
     required_entities = _required_entity_terms(task)
     required_named_entities = _required_named_entity_phrases(task)
     required_fact_terms = _required_fact_terms(task)
@@ -567,6 +757,10 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
             relative = str(path.relative_to(workspace_root))
         except ValueError:
             relative = str(path)
+        title = _extract_title(text_for_scoring, path)
+
+        if not _matches_query_source_reference(relative, title, source_refs):
+            continue
 
         score, matched_terms, title = _candidate_score(path, text_for_scoring, terms, task, workspace_root)
         if not matched_terms:
@@ -845,6 +1039,14 @@ def _no_match_context(task):
 
 
 def _get_knowledge_context(task, workspace="."):
+    workspace_root = Path(workspace).resolve()
+    explicit_guard, _ = _guard_specific_source_question(task, workspace_root)
+    if explicit_guard:
+        return explicit_guard
+    absent_control = _find_absent_control_match(task, workspace_root)
+    if absent_control:
+        return absent_control
+
     explicit = _read_explicit_local_source(task, workspace=workspace)
     if explicit:
         return explicit

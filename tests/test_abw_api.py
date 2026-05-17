@@ -267,6 +267,84 @@ class AbwApiTests(unittest.TestCase):
         self.assertEqual(payload["data"]["sources"], [])
         self.assertEqual(payload["data"]["retrieval_status"], "no_match")
 
+    def test_missing_source_control_question_does_not_match_control_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            raw_file = root / "raw" / "missing_source_controls.md"
+            raw_file.parent.mkdir(parents=True)
+            raw_file.write_text(
+                "# Missing Source Controls\n\n"
+                "The following questions are intentionally absent from this corpus and must not be answered as grounded facts.\n\n"
+                "## Absent controls\n"
+                "- What is the internal IP for the pilot server?\n"
+                "- What is the customer ticket ID for the forklift outage?\n\n"
+                "## Expected behavior\n"
+                "- Return no-match or unknown\n",
+                encoding="utf-8",
+            )
+
+            matches = _search_wiki_contexts(
+                "What is the internal IP for the pilot server?",
+                workspace=root,
+                limit=3,
+            )
+
+        self.assertEqual(matches, [])
+
+    def test_explicit_unsupported_filename_blocks_unrelated_fallback_candidates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            raw = root / "raw"
+            raw.mkdir(parents=True)
+            (raw / "troubleshooting_sync_warning.md").write_text(
+                "# Troubleshooting Sync Warning\n\nAnswer shows weak evidence only.\n",
+                encoding="utf-8",
+            )
+            brain = root / ".brain"
+            brain.mkdir(parents=True)
+            (brain / "ingest_report.json").write_text(
+                '{\n'
+                '  "unsupported_files": [{"path": "raw/unsupported_marker.xyz", "reason": "skipped_unsupported_extension"}],\n'
+                '  "parse_errors": []\n'
+                '}\n',
+                encoding="utf-8",
+            )
+
+            matches = _search_wiki_contexts(
+                "What does unsupported_marker.xyz say?",
+                workspace=root,
+                limit=3,
+            )
+
+        self.assertEqual(matches, [])
+
+    def test_explicit_parse_error_filename_blocks_unrelated_fallback_candidates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            raw = root / "raw"
+            raw.mkdir(parents=True)
+            (raw / "procedure_publish_checklist.md").write_text(
+                "# Procedure Publish Checklist\n\nPrepare a sanitized pilot package.\n",
+                encoding="utf-8",
+            )
+            brain = root / ".brain"
+            brain.mkdir(parents=True)
+            (brain / "ingest_report.json").write_text(
+                '{\n'
+                '  "unsupported_files": [],\n'
+                '  "parse_errors": [{"path": "raw/malformed_placeholder.docx", "reason": "skipped_parse_error"}]\n'
+                '}\n',
+                encoding="utf-8",
+            )
+
+            matches = _search_wiki_contexts(
+                "What procedure is stored in malformed_placeholder.docx?",
+                workspace=root,
+                limit=3,
+            )
+
+        self.assertEqual(matches, [])
+
     def test_ask_requires_query(self):
         with tempfile.TemporaryDirectory() as tmp:
             response = self.client.post("/ask", json={"workspace": tmp})
