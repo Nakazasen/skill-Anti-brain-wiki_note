@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +26,10 @@ def append_log(workspace, payload):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def read_only_query_mode_enabled():
+    return os.environ.get("ABW_READ_ONLY_QUERY") == "1"
 
 
 def normalize_text(text):
@@ -248,17 +253,19 @@ def run(task: str, workspace: str) -> dict:
         "confidence": confidence,
         "reasoning_steps": reasoning_steps,
         "status": status,
+        "deep_run_log_suppressed": read_only_query_mode_enabled(),
     }
-    append_log(
-        workspace,
-        {
-            "timestamp": now_iso(),
-            "task": task,
-            "status": status,
-            "confidence": confidence,
-            "source_count": len(sources),
-            "evidence_count": len(evidence),
-            "result": result,
-        },
-    )
+    if not result["deep_run_log_suppressed"]:
+        append_log(
+            workspace,
+            {
+                "timestamp": now_iso(),
+                "task": task,
+                "status": status,
+                "confidence": confidence,
+                "source_count": len(sources),
+                "evidence_count": len(evidence),
+                "result": result,
+            },
+        )
     return result

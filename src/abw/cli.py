@@ -240,6 +240,7 @@ def _ask_json_data(result: Any, workspace: Path | str) -> dict[str, Any]:
             "gap_log_suppressed": False,
             "would_log_gap": False,
             "runtime_write_suppressed": False,
+            "deep_run_log_suppressed": False,
         }
     knowledge = (
         result.get("knowledge_output")
@@ -270,6 +271,7 @@ def _ask_json_data(result: Any, workspace: Path | str) -> dict[str, Any]:
         "gap_log_suppressed": bool(result.get("gap_log_suppressed") or knowledge.get("gap_log_suppressed")),
         "would_log_gap": bool(result.get("would_log_gap") or knowledge.get("would_log_gap")),
         "runtime_write_suppressed": bool(result.get("runtime_write_suppressed") or knowledge.get("runtime_write_suppressed")),
+        "deep_run_log_suppressed": bool(result.get("deep_run_log_suppressed")),
     }
 
 
