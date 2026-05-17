@@ -39,6 +39,10 @@ KNOWLEDGE_STOPWORDS = {
     "summarise",
     "overview",
 }
+SHORT_SPECIFIC_TERMS = {
+    "id",
+    "ip",
+}
 WIKI_SEARCH_DIRS = ("concepts", "entities", "timelines", "sources", "auto_promoted", "manual")
 WEAK_WIKI_CONFIDENCE_THRESHOLD = 0.45
 BOUNDED_SUMMARY_SOURCE_LIMIT = 5
@@ -74,15 +78,19 @@ KEYWORD_ALIASES = {
     "budgeting": ["budget", "simulation", "forecast"],
 }
 GENERIC_SOURCE_TERMS = {
+    "about",
     "available",
+    "does",
     "document",
     "documents",
     "file",
     "files",
     "mention",
     "mentions",
+    "say",
     "source",
     "sources",
+    "spec",
     "system",
 }
 FACT_SPECIFIC_TERMS = {
@@ -108,6 +116,14 @@ ABSENT_CONTROL_MARKERS = (
     "return no match or unknown",
     "return no-match or unknown",
     "do not fabricate identifiers",
+)
+SOURCE_COVERAGE_NEGATION_MARKERS = (
+    "does not contain",
+    "do not contain",
+    "not contain",
+    "intentionally absent",
+    "must not be answered",
+    "do not fabricate",
 )
 UNSUPPORTED_SKIP_REASONS = {"skipped_unsupported_extension"}
 PARSE_ERROR_SKIP_REASONS = {"skipped_parse_error"}
@@ -145,20 +161,20 @@ def _task_terms(task):
     expanded_tokens = []
     for raw in raw_tokens:
         normalized_raw = _normalize_text(raw).replace(" ", "")
-        if len(normalized_raw) >= 3:
+        if len(normalized_raw) >= 3 or normalized_raw in SHORT_SPECIFIC_TERMS:
             expanded_tokens.append(normalized_raw)
         expanded_tokens.extend(_split_compound_token(raw))
     if not expanded_tokens:
         expanded_tokens = _normalize_text(task).split()
 
     for token in expanded_tokens:
-        if len(token) < 3 or token in KNOWLEDGE_STOPWORDS:
+        if (len(token) < 3 and token not in SHORT_SPECIFIC_TERMS) or token in KNOWLEDGE_STOPWORDS:
             continue
         if token not in seen:
             seen.add(token)
             tokens.append(token)
         for alias in ABBREVIATION_ALIASES.get(token, []) + KEYWORD_ALIASES.get(token, []):
-            if len(alias) >= 3 and alias not in KNOWLEDGE_STOPWORDS and alias not in seen:
+            if (len(alias) >= 3 or alias in SHORT_SPECIFIC_TERMS) and alias not in KNOWLEDGE_STOPWORDS and alias not in seen:
                 seen.add(alias)
                 tokens.append(alias)
     return tokens
@@ -171,7 +187,7 @@ def _original_query_terms(task):
         normalized_raw = _normalize_text(raw).replace(" ", "")
         candidates = [normalized_raw] + _split_compound_token(raw)
         for token in candidates:
-            if len(token) < 3 or token in KNOWLEDGE_STOPWORDS or token in seen:
+            if (len(token) < 3 and token not in SHORT_SPECIFIC_TERMS) or token in KNOWLEDGE_STOPWORDS or token in seen:
                 continue
             seen.add(token)
             terms.append(token)
@@ -245,15 +261,21 @@ def _required_domain_terms(task):
 
 def _high_specificity_query_terms(task):
     generic_terms = GENERIC_SOURCE_TERMS.union({"agv", "mom", "wms"})
-    return [term for term in _original_query_terms(task) if len(term) >= 4 and term not in generic_terms]
+    return [
+        term
+        for term in _original_query_terms(task)
+        if (len(term) >= 4 or term in SHORT_SPECIFIC_TERMS or term == "abw") and term not in generic_terms
+    ]
 
 
 def _minimum_specific_term_matches(task):
     specific_terms = _high_specificity_query_terms(task)
-    if len(specific_terms) < 2:
-        return 0
     original_terms = set(_original_query_terms(task))
-    return 1 if original_terms.intersection(FACT_SPECIFIC_TERMS) else 0
+    if original_terms.intersection({"source", "sources"}) and _required_entity_terms(task):
+        return 1
+    if len(specific_terms) < 3:
+        return 0
+    return min(2, len(specific_terms))
 
 
 def _minimum_fact_specific_matches(task):
@@ -261,6 +283,26 @@ def _minimum_fact_specific_matches(task):
     if not fact_specific_terms:
         return 0
     return min(2, len(fact_specific_terms))
+
+
+def _has_source_coverage_negation(task, normalized_candidate):
+    if not any(marker in normalized_candidate for marker in SOURCE_COVERAGE_NEGATION_MARKERS):
+        return False
+    query_terms = [
+        term
+        for term in _original_query_terms(task)
+        if term not in GENERIC_SOURCE_TERMS and term not in KNOWLEDGE_STOPWORDS
+    ]
+    return any(re.search(rf"\b{re.escape(term)}\b", normalized_candidate) for term in query_terms)
+
+
+def _specific_term_supported(term, matched_terms):
+    matched = set(matched_terms or [])
+    if term in matched:
+        return True
+    aliases = set(ABBREVIATION_ALIASES.get(term, []) + KEYWORD_ALIASES.get(term, []))
+    aliases.update(_entity_term_variants(term))
+    return bool(aliases.intersection(matched))
 
 
 def _summarize_document(text, limit=420):
@@ -724,6 +766,8 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
     strict_chapter_number = _strict_chapter_number(task)
     required_domain_terms = _required_domain_terms(task)
     high_specificity_terms = _high_specificity_query_terms(task)
+    if not high_specificity_terms and not source_refs:
+        return []
     minimum_specific_term_matches = _minimum_specific_term_matches(task)
     minimum_fact_specific_matches = _minimum_fact_specific_matches(task)
     fact_specific_terms = sorted(set(_original_query_terms(task)).intersection(FACT_SPECIFIC_TERMS))
@@ -753,6 +797,8 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
         filename_norm = _normalize_text(path.stem)
         normalized_candidate = _normalize_text(f"{relative} {title} {' '.join(headings)} {text_for_scoring}")
         compact_candidate = normalized_candidate.replace(" ", "")
+        if _has_source_coverage_negation(task, normalized_candidate):
+            continue
         if strict_chapter_number:
             chapter_re = re.compile(rf"\b{re.escape(strict_chapter_number)}\b")
             if not (
@@ -766,7 +812,7 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
             if not all(re.search(rf"\b{re.escape(term)}\b", title_and_body) for term in required_domain_terms):
                 continue
         if minimum_specific_term_matches:
-            matched_specific_terms = [term for term in high_specificity_terms if term in matched_terms]
+            matched_specific_terms = [term for term in high_specificity_terms if _specific_term_supported(term, matched_terms)]
             if len(matched_specific_terms) < minimum_specific_term_matches:
                 continue
         if minimum_fact_specific_matches:

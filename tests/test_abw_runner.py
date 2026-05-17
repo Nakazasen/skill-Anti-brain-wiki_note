@@ -1870,6 +1870,36 @@ class AbwRunnerBindingTests(unittest.TestCase):
 
 
 class AbwHonestyGuardTests(unittest.TestCase):
+    def test_missing_source_control_abstains_without_explicit_absent_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "factual_lantern_note.md").write_text(
+                "# Project Lantern Note\n\n"
+                "Project Lantern approved color is amber. This is a synthetic factual note for bounded UI pilot validation.\n",
+                encoding="utf-8",
+            )
+            (raw / "missing_source_controls.md").write_text(
+                "# Missing Source Controls\n\n"
+                "This file is a synthetic control placeholder only. "
+                "It does not contain any internal IP, server address, or hidden infrastructure answer material.\n",
+                encoding="utf-8",
+            )
+            abw_ingest.run("ingest raw", str(workspace))
+
+            result = abw_runner.dispatch_request(
+                task="What is the internal IP for the pilot server?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+            self.assertEqual(result["citations"], [])
+
     def test_missing_source_control_abstains_instead_of_answering_from_control_draft(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
@@ -1900,6 +1930,47 @@ class AbwHonestyGuardTests(unittest.TestCase):
             self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
             self.assertEqual(result["citations"], [])
             self.assertIn("absent from the corpus", " ".join(result.get("warnings") or []))
+
+    def test_unrelated_trusted_wiki_is_not_reused_for_missing_source_after_approval(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            wiki = workspace / "wiki"
+            raw = workspace / "raw"
+            wiki.mkdir(parents=True, exist_ok=True)
+            raw.mkdir(parents=True, exist_ok=True)
+            (wiki / "factual-lantern-note.md").write_text(
+                "# Draft Knowledge: factual_lantern_note\n"
+                "status: trusted\n\n"
+                "Project Lantern approved color is amber. This is a synthetic factual note for bounded UI pilot validation.\n",
+                encoding="utf-8",
+            )
+            (raw / "missing_source_controls.md").write_text(
+                "# Missing Source Controls\n\n"
+                "This file is a synthetic control placeholder only. "
+                "It does not contain any internal IP, server address, or hidden infrastructure answer material.\n",
+                encoding="utf-8",
+            )
+
+            factual = abw_runner.dispatch_request(
+                task="What is Project Lantern's approved color?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+            missing = abw_runner.dispatch_request(
+                task="What is the internal IP for the pilot server?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(factual["knowledge"]["source"], "wiki")
+            self.assertEqual(factual["knowledge_evidence_tier"], "E2_wiki")
+            self.assertIn(factual["knowledge"]["retrieval_status"], {"exact_match", "grounded"})
+            self.assertEqual(missing["current_state"], "knowledge_gap_logged")
+            self.assertEqual(missing["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(missing["knowledge"]["tier"], "E0_unknown")
+            self.assertEqual(missing["citations"], [])
 
     def test_query_abstains_for_unsupported_file_reference_after_ingest_skip(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -2005,6 +2076,33 @@ class AbwHonestyGuardTests(unittest.TestCase):
             self.assertEqual(result["knowledge_evidence_tier"], "E1_fallback")
             self.assertEqual(result["knowledge"]["retrieval_status"], "raw_or_draft_only")
             self.assertTrue(result["citations"])
+
+    def test_generic_document_question_abstains_without_clear_source_reference(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "factual_lantern_note.md").write_text(
+                "# Project Lantern Note\n\nProject Lantern approved color is amber.\n",
+                encoding="utf-8",
+            )
+            (raw / "procedure_checklist.md").write_text(
+                "# Procedure Checklist\n\nStep one is prepare. Step two is review. Step three is approve.\n",
+                encoding="utf-8",
+            )
+            abw_ingest.run("ingest raw", str(workspace))
+
+            result = abw_runner.dispatch_request(
+                task="What does this document say?",
+                task_kind="execution",
+                binding_source="mcp",
+                workspace=tmp,
+            )
+
+            self.assertEqual(result["current_state"], "knowledge_gap_logged")
+            self.assertEqual(result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+            self.assertEqual(result["citations"], [])
 
     def test_read_only_queries_do_not_mutate_existing_brain_state_after_ingest(self):
         with tempfile.TemporaryDirectory() as tmp:
