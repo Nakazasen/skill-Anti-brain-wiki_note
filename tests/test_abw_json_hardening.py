@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from abw import cli as abw_cli
+from scripts import abw_ingest, abw_review
 
 
 class TestAbwJsonHardening(unittest.TestCase):
@@ -420,6 +421,83 @@ class TestAbwJsonHardening(unittest.TestCase):
             abw_cli.main(["inspect"])
 
         self.assertEqual(stdout.getvalue().strip(), "ABW Inspect Report")
+
+    @patch("abw.cli.resolve_workspace")
+    def test_approve_json_contract_dry_run(self, mock_resolve):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            mock_resolve.return_value = workspace
+            raw_file = workspace / "raw" / "sample.md"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_text("# Sample\nQueue depth matters.\n", encoding="utf-8")
+            ingest_result = abw_ingest.run("ingest raw/sample.md", str(workspace))
+            draft_path = ingest_result["draft_file"]
+            draft_hash = abw_review.compute_draft_hash(workspace / draft_path)
+
+            stdout = io.StringIO()
+            with patch("sys.stdout", stdout):
+                exit_code = abw_cli.main([
+                    "--json",
+                    "--workspace",
+                    str(workspace),
+                    "approve",
+                    draft_path,
+                    "--dry-run",
+                    "--draft-id",
+                    abw_review.draft_id_from_relpath(draft_path),
+                    "--expected-draft-hash",
+                    draft_hash,
+                ])
+
+            report = json.loads(stdout.getvalue())
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(report["schema_version"], "1")
+            self.assertEqual(report["command_name"], "approve")
+            self.assertEqual(report["workspace"], str(workspace))
+            self.assertEqual(report["status"], "preview_ready")
+            self.assertEqual(report["data"]["status"], "preview_ready")
+            self.assertEqual(report["data"]["target_wiki_path"], "wiki/sample.md")
+
+    @patch("abw.cli.resolve_workspace")
+    def test_approve_json_contract_apply_success(self, mock_resolve):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            mock_resolve.return_value = workspace
+            raw_file = workspace / "raw" / "sample.md"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_text("# Sample\nQueue depth matters.\n", encoding="utf-8")
+            ingest_result = abw_ingest.run("ingest raw/sample.md", str(workspace))
+            draft_path = ingest_result["draft_file"]
+            draft_hash = abw_review.compute_draft_hash(workspace / draft_path)
+            draft_id = abw_review.draft_id_from_relpath(draft_path)
+
+            stdout = io.StringIO()
+            with patch("sys.stdout", stdout):
+                exit_code = abw_cli.main([
+                    "--json",
+                    "--workspace",
+                    str(workspace),
+                    "approve",
+                    draft_path,
+                    "--draft-id",
+                    draft_id,
+                    "--expected-draft-hash",
+                    draft_hash,
+                    "--confirm",
+                    "--confirm-token",
+                    abw_review.confirmation_token_for(draft_id, draft_hash),
+                    "--confirm-text",
+                    abw_review.APPROVE_CONFIRMATION_TEXT,
+                ])
+
+            report = json.loads(stdout.getvalue())
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(report["schema_version"], "1")
+            self.assertEqual(report["command_name"], "approve")
+            self.assertEqual(report["workspace"], str(workspace))
+            self.assertEqual(report["status"], "approved")
+            self.assertTrue(report["data"]["approved"])
+            self.assertTrue(report["data"]["promotionPerformed"])
 
 
 if __name__ == "__main__":

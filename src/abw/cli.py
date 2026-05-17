@@ -146,6 +146,14 @@ def parse_args(argv=None):
 
     approve = add_hidden_parser(sub, "approve")
     approve.add_argument("path")
+    approve.add_argument("--dry-run", action="store_true")
+    approve.add_argument("--draft-id")
+    approve.add_argument("--expected-draft-hash")
+    approve.add_argument("--expected-queue-status", default="review_needed")
+    approve.add_argument("--confirm", action="store_true")
+    approve.add_argument("--confirm-token")
+    approve.add_argument("--confirm-text")
+    approve.add_argument("--operator-note")
     add_hidden_parser(sub, "dashboard")
     add_hidden_parser(sub, "coverage")
     add_hidden_parser(sub, "health")
@@ -338,6 +346,33 @@ def _review_json_data(result: Any) -> dict[str, Any]:
         "current_state": payload.get("current_state"),
         "runner_status": payload.get("runner_status"),
     }
+
+
+def _approve_json_data(result: Any) -> dict[str, Any]:
+    if isinstance(result, dict):
+        return result
+    return {
+        "schema_version": "abw.approve_draft.result.v1",
+        "status": "blocked",
+        "approved": False,
+        "promotionPerformed": False,
+        "manualReviewRequired": True,
+        "message": "Approve contract returned a non-dict result.",
+        "error_code": "INTERNAL_ERROR",
+        "warnings": [],
+        "errors": [{"code": "INTERNAL_ERROR", "message": "Approve contract returned a non-dict result."}],
+        "no_mutation_confirmed": True,
+        "audit_id": None,
+    }
+
+
+def _approve_envelope_status(result: Any) -> str:
+    payload = _approve_json_data(result)
+    return str(payload.get("status") or "success")
+
+
+def _approve_exit_code(result: Any) -> int:
+    return 0 if _approve_envelope_status(result) in {"preview_ready", "approved"} else 3
 
 
 def _print_menu() -> int:
@@ -615,6 +650,47 @@ def main(argv=None) -> int:
             return 2
 
         if args.command == "approve":
+            use_contract = bool(
+                args.json
+                or getattr(args, "dry_run", False)
+                or getattr(args, "draft_id", None)
+                or getattr(args, "expected_draft_hash", None)
+                or getattr(args, "confirm", False)
+                or getattr(args, "confirm_token", None)
+                or getattr(args, "confirm_text", None)
+                or getattr(args, "operator_note", None)
+                or getattr(args, "expected_queue_status", "review_needed") != "review_needed"
+            )
+            if use_contract:
+                result = review.approve_draft_contract(
+                    workspace=str(workspace),
+                    draft_path=args.path,
+                    draft_id=getattr(args, "draft_id", None),
+                    expected_draft_hash=getattr(args, "expected_draft_hash", None),
+                    expected_queue_status=getattr(args, "expected_queue_status", "review_needed"),
+                    confirm={
+                        "user_confirmed": bool(getattr(args, "confirm", False)),
+                        "confirmation_token": getattr(args, "confirm_token", None),
+                        "confirmation_text": getattr(args, "confirm_text", None),
+                    },
+                    operator_note=getattr(args, "operator_note", None),
+                    dry_run=bool(getattr(args, "dry_run", False)),
+                )
+                if args.json:
+                    print(
+                        json.dumps(
+                            _standardize_json(
+                                _approve_json_data(result),
+                                "approve",
+                                workspace,
+                                status=_approve_envelope_status(result),
+                            ),
+                            indent=2,
+                        )
+                    )
+                else:
+                    print(json.dumps(result, indent=2))
+                return _approve_exit_code(result)
             result = review.approve_draft(args.path, workspace=str(workspace))
             return _render_and_exit(result, debug=debug, level=level)
 

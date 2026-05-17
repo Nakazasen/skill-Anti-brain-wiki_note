@@ -54,6 +54,10 @@ try:
 except ImportError:
     # Fallback if scripts not in path (e.g. production install without scripts)
     run_promote_drafts = None
+try:
+    from scripts.abw_review import approve_draft_request
+except ImportError:
+    approve_draft_request = None
 
 CONFIDENCE_MAP = {
     "high": 85,
@@ -105,6 +109,23 @@ class PromoteRequest(WorkspaceRequest):
     dry_run: bool = False
 
 
+class ApproveConfirmRequest(BaseModel):
+    user_confirmed: bool = False
+    confirmation_token: str | None = None
+    confirmation_text: str | None = None
+
+
+class ApproveDraftRequest(WorkspaceRequest):
+    schema_version: str = "abw.approve_draft.v1"
+    draft_path: str | None = None
+    draft_id: str | None = None
+    expected_draft_hash: str | None = None
+    expected_queue_status: str = "review_needed"
+    confirm: ApproveConfirmRequest | None = None
+    operator_note: str | None = None
+    dry_run: bool = True
+
+
 class RouteRequest(BaseModel):
     query: str
     workspaces: list[str] | None = None
@@ -142,6 +163,7 @@ def _build_fastapi_app():
     fastapi_app.post("/workspace-intel")(workspace_intel)
     fastapi_app.post("/workspace-fix")(workspace_fix)
     fastapi_app.post("/promote-drafts")(promote_drafts_fastapi)
+    fastapi_app.post("/approve-draft")(approve_draft_fastapi)
     fastapi_app.post("/route-query")(route_query)
     fastapi_app.get("/list-workspaces")(list_workspaces_api)
     fastapi_app.post("/register-workspace")(register_workspace_api)
@@ -522,6 +544,19 @@ def promote_drafts(payload: PromoteRequest) -> dict[str, Any]:
         raise _error_response("promote-drafts", exc) from exc
 
 
+def approve_draft(payload: ApproveDraftRequest) -> dict[str, Any]:
+    try:
+        workspace = _workspace_path(payload)
+        if approve_draft_request is None:
+            raise HTTPException(status_code=500, detail="Approve engine (scripts/abw_review.py) not found in path")
+        request_payload = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
+        request_payload["workspace"] = str(workspace)
+        result = approve_draft_request(request_payload)
+        return _response("approve-draft", result)
+    except Exception as exc:
+        raise _error_response("approve-draft", exc) from exc
+
+
 def route_query(payload: RouteRequest) -> dict[str, Any]:
     try:
         query = str(payload.query or "").strip()
@@ -615,6 +650,10 @@ def promote_drafts_fastapi(payload: PromoteRequest):
     return promote_drafts(payload)
 
 
+def approve_draft_fastapi(payload: ApproveDraftRequest):
+    return approve_draft(payload)
+
+
 def apply_action(payload: ApplyRequest) -> dict[str, Any]:
     try:
         workspace = _workspace_path(payload)
@@ -676,6 +715,7 @@ def _build_starlette_app() -> Starlette:
             Route("/workspace-intel", report_endpoint(workspace_intel), methods=["POST"]),
             Route("/workspace-fix", report_endpoint(workspace_fix, WorkspaceFixRequest), methods=["POST"]),
             Route("/promote-drafts", report_endpoint(promote_drafts, PromoteRequest), methods=["POST"]),
+            Route("/approve-draft", report_endpoint(approve_draft, ApproveDraftRequest), methods=["POST"]),
             Route("/route-query", report_endpoint(route_query, RouteRequest), methods=["POST"]),
             Route("/list-workspaces", lambda r: JSONResponse(list_workspaces_api()), methods=["GET"]),
             Route("/register-workspace", report_endpoint(register_workspace_api, RegisterRequest), methods=["POST"]),

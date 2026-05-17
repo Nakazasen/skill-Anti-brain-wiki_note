@@ -11,6 +11,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from fastapi.testclient import TestClient  # noqa: E402
 
 from abw.api import app  # noqa: E402
+from scripts import abw_ingest, abw_review  # noqa: E402
 from scripts.abw_knowledge import _search_wiki_contexts  # noqa: E402
 
 
@@ -408,6 +409,71 @@ class AbwApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("unknown apply action", response.text)
+
+    def test_approve_draft_endpoint_returns_preview_contract(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw_file = workspace / "raw" / "ops.md"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_text("# Ops\nQueue depth affects latency.\n", encoding="utf-8")
+            ingest_result = abw_ingest.run("ingest raw/ops.md", str(workspace))
+            draft_path = ingest_result["draft_file"]
+            draft_hash = abw_review.compute_draft_hash(workspace / draft_path)
+
+            response = self.client.post(
+                "/approve-draft",
+                json={
+                    "workspace": tmp,
+                    "draft_path": draft_path,
+                    "draft_id": abw_review.draft_id_from_relpath(draft_path),
+                    "expected_draft_hash": draft_hash,
+                    "expected_queue_status": "review_needed",
+                    "dry_run": True,
+                },
+            )
+            payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["command"], "approve-draft")
+        self.assertEqual(payload["data"]["status"], "preview_ready")
+        self.assertEqual(payload["data"]["target_wiki_path"], "wiki/ops.md")
+        self.assertFalse(payload["data"]["promotionPerformed"])
+
+    def test_approve_draft_endpoint_apply_success(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw_file = workspace / "raw" / "ops.md"
+            raw_file.parent.mkdir(parents=True, exist_ok=True)
+            raw_file.write_text("# Ops\nQueue depth affects latency.\n", encoding="utf-8")
+            ingest_result = abw_ingest.run("ingest raw/ops.md", str(workspace))
+            draft_path = ingest_result["draft_file"]
+            draft_hash = abw_review.compute_draft_hash(workspace / draft_path)
+            draft_id = abw_review.draft_id_from_relpath(draft_path)
+
+            response = self.client.post(
+                "/approve-draft",
+                json={
+                    "workspace": tmp,
+                    "draft_path": draft_path,
+                    "draft_id": draft_id,
+                    "expected_draft_hash": draft_hash,
+                    "expected_queue_status": "review_needed",
+                    "confirm": {
+                        "user_confirmed": True,
+                        "confirmation_token": abw_review.confirmation_token_for(draft_id, draft_hash),
+                        "confirmation_text": abw_review.APPROVE_CONFIRMATION_TEXT,
+                    },
+                    "dry_run": False,
+                },
+            )
+            payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["data"]["status"], "approved")
+        self.assertTrue(payload["data"]["approved"])
+        self.assertTrue(payload["data"]["promotionPerformed"])
 
 
 if __name__ == "__main__":
