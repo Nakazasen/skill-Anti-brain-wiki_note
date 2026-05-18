@@ -93,6 +93,17 @@ GENERIC_SOURCE_TERMS = {
     "spec",
     "system",
 }
+GENERIC_AMBIGUOUS_QUERIES = {
+    "what does this document say",
+    "what does this file say",
+    "what is this about",
+    "summarize this",
+    "summarise this",
+    "tai lieu nay noi gi",
+    "tap tin nay noi gi",
+    "noi dung nay la gi",
+    "tai lieu nay la gi",
+}
 FACT_SPECIFIC_TERMS = {
     "approve",
     "approved",
@@ -680,6 +691,48 @@ def _is_search_excluded(path, text):
     return False
 
 
+def _workspace_retrieval_state(workspace_root):
+    raw_count = 0
+    draft_count = 0
+    trusted_wiki_count = 0
+    quarantine_count = 0
+    for path in _iter_retrieval_candidates(workspace_root):
+        source_kind = _source_kind(path, workspace_root)
+        text = _read_searchable_text(path)
+        if _is_search_excluded(path, text):
+            if source_kind == "wiki":
+                quarantine_count += 1
+            continue
+        if source_kind == "raw":
+            raw_count += 1
+        elif source_kind == "draft_metadata":
+            draft_count += 1
+        elif source_kind == "wiki":
+            trusted_wiki_count += 1
+    return {
+        "raw_count": raw_count,
+        "draft_count": draft_count,
+        "trusted_wiki_count": trusted_wiki_count,
+        "quarantine_count": quarantine_count,
+    }
+
+
+def _is_ambiguous_generic_query(task):
+    normalized = " ".join(_normalize_text(task).split())
+    if not normalized:
+        return False
+    if normalized in GENERIC_AMBIGUOUS_QUERIES:
+        return True
+    terms = set(_original_query_terms(task))
+    if {"document", "say"}.issubset(terms):
+        return True
+    if {"file", "say"}.issubset(terms):
+        return True
+    if {"tai", "lieu", "noi", "gi"}.issubset(set(_normalize_text(task).split())):
+        return True
+    return False
+
+
 def _iter_retrieval_candidates(workspace_root):
     seen: set[Path] = set()
     for root_name in RETRIEVAL_SEARCH_ROOTS:
@@ -781,6 +834,14 @@ def _search_wiki_contexts(task, workspace=".", limit=BOUNDED_SUMMARY_SOURCE_LIMI
     strict_chapter_number = _strict_chapter_number(task)
     required_domain_terms = _required_domain_terms(task)
     high_specificity_terms = _high_specificity_query_terms(task)
+    workspace_state = _workspace_retrieval_state(workspace_root)
+    if _is_ambiguous_generic_query(task) and not source_refs:
+        if (
+            workspace_state["quarantine_count"] > 0
+            or workspace_state["trusted_wiki_count"] > 0
+            or (workspace_state["raw_count"] + workspace_state["draft_count"]) > 1
+        ):
+            return []
     if not high_specificity_terms and not source_refs:
         return []
     minimum_specific_term_matches = _minimum_specific_term_matches(task)
@@ -1089,6 +1150,18 @@ def _get_knowledge_context(task, workspace="."):
     explicit_guard, _ = _guard_specific_source_question(task, workspace_root)
     if explicit_guard:
         return explicit_guard
+    workspace_state = _workspace_retrieval_state(workspace_root)
+    if _is_ambiguous_generic_query(task):
+        if (
+            workspace_state["quarantine_count"] > 0
+            or workspace_state["trusted_wiki_count"] > 0
+            or (workspace_state["raw_count"] + workspace_state["draft_count"]) > 1
+        ):
+            return _build_abstention_context(
+                reason="ambiguous_generic_query",
+                warning="No trusted source is available because this generic question does not identify a specific document in a multi-document or prior-state workspace.",
+                task=task,
+            )
     absent_control = _find_absent_control_match(task, workspace_root)
     if absent_control:
         return absent_control

@@ -2140,6 +2140,60 @@ class AbwHonestyGuardTests(unittest.TestCase):
             self.assertTrue(missing["runtime_write_suppressed"])
             self.assertTrue(positive["runtime_write_suppressed"])
 
+    def test_ambiguous_generic_query_abstains_in_contaminated_workspace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            raw = workspace / "raw"
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "lantern_note.md").write_text(
+                "# Lantern Note\n\nProject Lantern approved color is amber.\n",
+                encoding="utf-8",
+            )
+            quarantine = workspace / "wiki" / "quarantine_wrong_workspace"
+            quarantine.mkdir(parents=True, exist_ok=True)
+            (quarantine / "agv.md").write_text(
+                "# AGV\nstatus: grounded\n\nAGV is unrelated contaminated workspace state.\n",
+                encoding="utf-8",
+            )
+            before = brain_signature(workspace)
+
+            with patch.dict(os.environ, {"ABW_READ_ONLY_QUERY": "1"}, clear=False):
+                result = abw_runner.dispatch_request(
+                    task="Tai lieu nay noi gi?",
+                    workspace=str(workspace),
+                    task_kind="execution",
+                    binding_mode="STRICT",
+                    binding_source="cli",
+                )
+
+            after = brain_signature(workspace)
+            self.assertEqual(before, after)
+            self.assertEqual(result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+            self.assertEqual(result["citations"], [])
+
+    def test_quarantine_wiki_is_not_used_as_trusted_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            quarantine = workspace / "wiki" / "quarantine_wrong_workspace"
+            quarantine.mkdir(parents=True, exist_ok=True)
+            (quarantine / "agv.md").write_text(
+                "# AGV\nstatus: grounded\n\nAGV quarantine content should never answer trusted questions.\n",
+                encoding="utf-8",
+            )
+
+            with patch.dict(os.environ, {"ABW_READ_ONLY_QUERY": "1"}, clear=False):
+                result = abw_runner.dispatch_request(
+                    task="What does this document say?",
+                    workspace=str(workspace),
+                    task_kind="execution",
+                    binding_mode="STRICT",
+                    binding_source="cli",
+                )
+
+            self.assertEqual(result["knowledge"]["retrieval_status"], "no_match")
+            self.assertEqual(result["knowledge"]["tier"], "E0_unknown")
+
 
 if __name__ == "__main__":
     unittest.main()
